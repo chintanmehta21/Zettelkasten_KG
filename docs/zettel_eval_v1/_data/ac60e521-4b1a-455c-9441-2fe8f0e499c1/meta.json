@@ -1,0 +1,156 @@
+{
+  "workspace_zettel_id": "ac60e521-4b1a-455c-9441-2fe8f0e499c1",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "33957f76-2c8a-483f-9c49-9e93f9a3becb",
+  "normalized_url": "https://www.hubermanlab.com/newsletter/improve-working-memory-attention",
+  "title": "Dopamine and Working Memory Enhancement",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:24:29.684406+00:00",
+  "ai_summary_len": 3093,
+  "body_md_len": 2662,
+  "content_hash_hex": "410f632f3a839bbe3d96f938c558e32ad4a19516cfc44c185e2ef8535a980fb0",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.hubermanlab.com/newsletter/improve-working-memory-attention",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "Improve Working Memory & Attention",
+        "description": "Enhance focus and memory using science-based tools that increase dopamine. Learn tests and protocols to improve attention and working memory.",
+        "route_subtype": "page",
+        "og_description": "Enhance focus and memory using science-based tools that increase dopamine. Learn tests and protocols to improve attention and working memory.",
+        "route_supported": true,
+        "twitter_description": "Enhance focus and memory using science-based tools that increase dopamine. Learn tests and protocols to improve attention and working memory."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 30257,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1914,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "working memory",
+          "dopamine",
+          "neuroscience",
+          "cognitive enhancement",
+          "behavioral tools",
+          "supplements",
+          "NSDR",
+          "cold exposure"
+        ],
+        "mini_title": "Dopamine and Working Memory Enhancement",
+        "brief_summary": "Working memory, a limited-capacity system essential for goal-directed tasks, relies on attention and dopamine. Its capacity is linked to task-switching efficiency. Non-diagnostic tests can proxy working memory levels, and neuroimaging confirms dopamine's crucial role, with higher dopamine availability in the prefrontal cortex correlating with better working memory. Behavioral interventions like Non-Sleep Deep Rest (NSDR) and deliberate cold exposure can increase dopamine and improve working memory. Binaural beats show mixed results. Supplements like L-tyrosine and Mucuna pruriens, and prescription drugs, can also enhance working memory but require medical consultation and caution.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Working memory is a limited-capacity system for holding information in mind for a goal.",
+              "It requires attention and the neuromodulator dopamine.",
+              "Its capacity is crucial for productive task-switching."
+            ],
+            "heading": "Working Memory Fundamentals",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Two non-diagnostic tests can provide a baseline proxy for working memory and dopamine levels."
+            ],
+            "heading": "Non-Diagnostic Working Memory Assessment",
+            "sub_sections": {
+              "Test One (Number/Letter Recall)": [
+                "Involves recalling a string of numbers/letters.",
+                "Results are categorized as low, moderate, or high."
+              ],
+              "Test Two (Sentence Word Recall)": [
+                "Involves recalling one word from each of six sentences.",
+                "0-2 correct words indicate low working memory.",
+                "3-6 correct words indicate high working memory (3-4 is average)."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Neuroimaging studies support a link between dopamine and working memory.",
+              "D’Esposito et al. found individuals with high working memory spans have more dopamine available in the prefrontal cortex (PFC).",
+              "Goldman et al. showed directly introducing dopamine into the PFC improved working memory.",
+              "D'Esposito also showed drugs like bromocriptine, which increase dopamine, improve working memory in humans."
+            ],
+            "heading": "Neuroscientific Evidence: Dopamine and Working Memory",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Behavioral tools are recommended as a first-line approach."
+            ],
+            "heading": "Behavioral Tools for Working Memory Improvement",
+            "sub_sections": {
+              "Deliberate Cold Exposure": [
+                "1-3 minutes in a shower or tub, 30-60 minutes before a work session.",
+                "Can greatly increase dopamine, norepinephrine, and epinephrine for hours.",
+                "Ideal temperature is individually determined, often 40-50°F (4-10°C)."
+              ],
+              "Binaural Beats (13-30 Hz)": [
+                "Showed mixed results in improving working memory during tasks.",
+                "Studies by Engelbregt et al. and Beauchene et al. showed benefits.",
+                "Mechanism of action is unknown.",
+                "Effect may be greater for those with initially lower dopamine levels."
+              ],
+              "Non-Sleep Deep Rest (NSDR) / Yoga Nidra": [
+                "Practice of deliberate muscle relaxation.",
+                "Can increase dopamine levels by up to 60% in key brain regions.",
+                "Suggested frequency: 10-20 minute session, 2-3 times per week."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Supplements should be used after behavioral tools and with a doctor's consultation.",
+              "A 'crash' can occur with pro-dopamine supplements."
+            ],
+            "heading": "Supplements for Working Memory (Consult a Doctor)",
+            "sub_sections": {
+              "L-tyrosine": [
+                "Starting dose: 500mg per 100kg body weight."
+              ],
+              "Mucuna pruriens": [
+                "Contains 99% L-dopa, a potent precursor.",
+                "Typical dose: 250-500mg, up to 1-5g for some."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Prescription drugs also improve working memory but require consultation with a board-certified MD.",
+              "Examples include bromocriptine, Adderall, Ritalin, Vyvanse, or modafinil."
+            ],
+            "heading": "Prescription Drugs for Working Memory (Medical Consultation Required)",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1914,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.hubermanlab.com/newsletter/improve-working-memory-attention"
+  }
+}

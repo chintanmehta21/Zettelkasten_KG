@@ -1,0 +1,107 @@
+{
+  "workspace_zettel_id": "13261811-baf0-42e6-9b70-266c21da5c1a",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "0b23b2e7-d951-49db-b904-5fa2e1c649d7",
+  "normalized_url": "https://themarkup.org/working-for-an-algorithm/2022/06/09/an-amazon-warehouse-workers-life-turned-upside-down-after-she-was-hospitalized-for-covid",
+  "title": "Amazon's Pandemic Sick Leave Challenges",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:27:30.365606+00:00",
+  "ai_summary_len": 3279,
+  "body_md_len": 2928,
+  "content_hash_hex": "82c1d4754a7ee32a84e6ca648948be73cda9195418eeb3720da9cff685bc3450",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://themarkup.org/working-for-an-algorithm/2022/06/09/an-amazon-warehouse-workers-life-turned-upside-down-after-she-was-hospitalized-for-covid",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-unavailable"
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "An Amazon Warehouse Worker’s Life Was Turned Upside Down After She Was Hospitalized for COVID – The Markup",
+        "description": "In California, OSHA records show the tech giant has reported no worker deaths and no hospitalizations related to the virus",
+        "route_subtype": "page",
+        "og_description": "In California, OSHA records show the tech giant has reported no worker deaths and no hospitalizations related to the virus",
+        "route_supported": true,
+        "twitter_description": "In California, OSHA records show the tech giant has reported no worker deaths and no hospitalizations related to the virus"
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-flash-unavailable",
+      "total_latency_ms": 26966,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1781,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Amazon",
+          "COVID-19",
+          "Sick Leave",
+          "Human Resources",
+          "Worker Rights",
+          "Homelessness",
+          "Automated Systems"
+        ],
+        "mini_title": "Amazon's Pandemic Sick Leave Challenges",
+        "brief_summary": "Ethel Brooks' experience highlights how Amazon's HR processes and sick leave policies during the COVID-19 pandemic allegedly led to insufficient support for sick workers, contributing to financial hardship and homelessness, a pattern echoed by other employees and automated system failures.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Ethel Brooks, an Amazon Fresh worker, contracted COVID-19 in March 2020 and was hospitalized for weeks at Cedars-Sinai.",
+              "Brooks claims Amazon provided insufficient time off, gave her conflicting information, and dropped her from the schedule, leading to debt and eventual homelessness.",
+              "A month-long email exchange with Amazon HR (HRC) in March-April 2020 showed Brooks seeking information on sick pay and job status, receiving unhelpful and conflicting responses from representatives.",
+              "Brooks received two weeks of sick pay and an unexplained $200 check, which she stated was insufficient for her recovery.",
+              "Amazon spokesperson Kelly Nantel stated The Markup provided limited time for investigation and that Brooks' case is not representative of the majority of employees.",
+              "Nantel claimed Amazon's records show Brooks received responses, two weeks paid leave, approved unpaid time off, and later voluntarily resigned and was re-hired multiple times before being let go for not showing up to work.",
+              "Brooks confirmed she later reapplied and left once she found another job.",
+              "Brooks was hospitalized twice more with COVID and now works as a bus driver, but lives in a single-room occupancy hotel due to credit issues from incurred debt."
+            ],
+            "heading": "Ethel Brooks' Experience and Amazon's Stance",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Amazon reported no COVID-related worker hospitalizations or deaths to Cal/OSHA, despite 2020 news reports of multiple worker deaths in Southern California, Northern California, New York, Ohio, Indiana, and Illinois.",
+              "Six other workers reported struggles to get adequate leave from Amazon, often dealing with automated HR processes (apps, chatbots).",
+              "One former Georgia warehouse worker with asthma was told by HR to return to her station after an attack due to no accrued time off.",
+              "Amazon has rolled back its COVID-19 sick leave policies: first shortening paid leave from two weeks to one in January, then eliminating paid leave entirely for U.S. workers, offering up to five days of unpaid, excused leave.",
+              "Reports from The New York Times and NBC News indicate Amazon's automated systems have mistakenly terminated workers for absences, sent job-abandonment notices, and incorrectly deducted vacation time for sick leave.",
+              "Other Amazon workers, including Natalie Monarrez in Staten Island and Vickie Shannon Allen in Texas, have also experienced homelessness."
+            ],
+            "heading": "Systemic Challenges and Evolving Policies",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The critical impact of corporate HR policies and automated systems on worker well-being and financial stability, especially during public health crises.",
+              "Potential discrepancies between corporate public statements/reported data and individual worker experiences.",
+              "The vulnerability of hourly workers to financial precarity when sick leave and support systems are inadequate.",
+              "The challenges of navigating complex, often automated, HR systems for essential information and support."
+            ],
+            "heading": "Reusable Ideas and Implications",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1781,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://themarkup.org/working-for-an-algorithm/2022/06/09/an-amazon-warehouse-workers-life-turned-upside-down-after-she-was-hospitalized-for-covid"
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "workspace_zettel_id": "f8de85f8-37ed-4c70-8e09-f41cd94a45e7",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "ca57d3df-db5c-4766-a21b-88ae770adefa",
+  "normalized_url": "https://importai.substack.com/p/import-ai-455-automating-ai-research",
+  "title": "Import AI #455: AI to autonomously build successors by 2028",
+  "source_type": "newsletter",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:27:35.776037+00:00",
+  "ai_summary_len": 6131,
+  "body_md_len": 5654,
+  "content_hash_hex": "cfb14ac9cf525952c3ceed291cae25e0e19262f8594021818cb94829e2e0f889",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://importai.substack.com/p/import-ai-455-automating-ai-research",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-unavailable"
+        },
+        {
+          "role": "repair",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "newsletter",
+      "raw_metadata": {
+        "site": "unknown",
+        "title": "Import AI 455: AI systems are about to start building themselves.",
+        "cta_count": 1,
+        "preheader": "The first step towards recursive self improvement",
+        "description": "The first step towards recursive self improvement",
+        "route_subtype": "post",
+        "og_description": "The first step towards recursive self improvement",
+        "detected_stance": "neutral",
+        "route_supported": true,
+        "paywall_provider": "direct",
+        "conclusions_count": 0,
+        "twitter_description": "The first step towards recursive self improvement",
+        "publication_identity": ""
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 74848,
+      "confidence_reason": "HTML article text extracted via direct",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 7142,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "ai-development",
+          "ai-forecasting",
+          "autonomous-ai",
+          "ai-capabilities",
+          "ai-safety",
+          "technological-singularity",
+          "ai-engineering",
+          "research-summary",
+          "future-of-ai",
+          "economic-impact"
+        ],
+        "_shape": "deep_dive_technical",
+        "mini_title": "Import AI #455: AI to autonomously build successors by 2028",
+        "_guard_audit": {
+          "requires_repair": true,
+          "unverified_numerals": [
+            "4-8"
+          ],
+          "banned_adjectives_stripped": [
+            "profound",
+            "significant",
+            "essential",
+            "novel",
+            "advanced",
+            "profound"
+          ]
+        },
+        "_dense_verify": {
+          "stance": "cautionary",
+          "archetype": "engineering_essay",
+          "missing_fact_count": 0
+        },
+        "_shape_method": "tier1_heuristic",
+        "brief_summary": "Import AI newsletter #455 reports a 60%+ probability that AI systems will autonomously develop their own successors by late 2028, achieving no-human-involved AI R&D. The issue, aimed at those tracking AI capabilities, bases this on public data and aggregate benchmark trends, despite individual benchmark flaws. It details AI's rapid advancements in coding, complex task completion, and scientific R&D skills. The newsletter also discusses the pursuit of this goal by frontier labs and the , urgent implications for alignment and the economy, noting that some human creativity is still believed necessary.",
+        "route_subtype": "post",
+        "route_supported": true,
+        "detailed_summary": {
+          "cta": null,
+          "stance": "cautionary",
+          "caveats": [
+            "This conclusion is based on public data from sources like arXiv, bioRxiv, and NBER, focusing on the aggregate trend across multiple benchmarks, despite their individual flaws.",
+            "The author's 2028 prediction is tempered by the belief that some human creativity is still needed; the probability for 2027 is 30%.",
+            "If automation doesn't occur by 2028, it may indicate a fundamental limitation in the current AI paradigm.",
+            "While the author believes AI cannot yet produce radical, paradigm-shifting ideas like the transformer architecture, they argue that most AI progress is methodical engineering work ('perspiration'), which AI is becoming adept at automating.",
+            "There are preliminary signs of creativity in math and computer science, such as a Gemini model finding an interesting solution to an Erdos problem and contributing substantially to a new math proof, but these could be exceptions."
+          ],
+          "sections": [
+            {
+              "bullets": [
+                "The author of Import AI newsletter #455 reluctantly posits a 60%+ probability that AI systems will be able to autonomously build their own successors by the end of 2028.",
+                "This prediction implies achieving no-human-involved AI R&D, a milestone in AI development.",
+                "The conclusion is based on public data from sources like arXiv, bioRxiv, and NBER, focusing on the aggregate trend across multiple benchmarks.",
+                "The author acknowledges individual flaws in these benchmarks but emphasizes the overall upward trajectory of AI capabilities.",
+                "A proof-of-concept for a non-frontier model training its successor is expected within a year or two, though full automation is not anticipated in 2026.",
+                "The author's 2028 prediction is tempered by the belief that some human creativity is still needed, with the probability for 2027 stated as 30%.",
+                "If automation does not occur by 2028, it may indicate a fundamental limitation in the current AI paradigm."
+              ],
+              "heading": "The Core Prediction and its Basis"
+            },
+            {
+              "bullets": [
+                "Evidence for this trend includes AI's rapidly improving capabilities in coding and completing complex, long-duration tasks.",
+                "On the SWE-Bench for real-world GitHub issues, performance has dramatically increased from approximately 2% by Claude 2 in late 2023 to 93.9% by Claude Mythos Preview, effectively saturating the benchmark.",
+                "METR's time horizons plot, which measures the duration of tasks an AI can be 50% reliable at, shows capabilities increasing significantly.",
+                "Capabilities have risen from approximately 30 seconds for GPT-3.5 (2022) to approximately 12 hours for Opus 4.6 (2026).",
+                "Forecaster Ajeya Cotra suggests that approximately 100-hour tasks are possible by the end of 2026.",
+                "These advances correlate with the rise of agentic tools, which allow researchers to delegate tasks such as data cleaning and experiment launching to AI."
+              ],
+              "heading": "Evidence from Coding and Complex Task Completion"
+            },
+            {
+              "bullets": [
+                "AI is also demonstrating mastery of core scientific skills for its own research and development.",
+                "On CORE-Bench, which tests the reproduction of scientific papers, performance jumped from approximately 21.5% in September 2024 (GPT-4o) to 95.5% in December 2025 (Opus 4.5).",
+                "OpenAI's MLE-Bench, designed for Kaggle competitions, saw scores rise from 16.9% in October 2024 (o1 model) to 64.4% in February 2026 (Gemini3).",
+                "These benchmarks indicate AI's growing ability to understand, replicate, and contribute to scientific processes.",
+                "The rapid improvement across these diverse scientific tasks suggests a foundational shift in AI's capacity for independent research."
+              ],
+              "heading": "AI Mastering Core Scientific Skills for R&D"
+            },
+            {
+              "bullets": [
+                "In kernel optimization, a core AI development task, AI is now used competitively for tasks like generating Triton kernels at Meta and writing kernels for Huawei's Ascend chips.",
+                "On PostTrainBench, which tests fine-tuning smaller models, AI systems like Opus 4.6 and GPT 5.4 achieve scores of 25%-28%, about half the human baseline of 51% as of March/April 2026.",
+                "In an Anthropic task for optimizing LLM training code, speedups increased from 2.9x (Opus 4, May 2025) to 52x (Claude Mythos Preview, April 2026), where a human takes 4-8 hours for a 4x speedup.",
+                "Anthropic has also shown a proof-of-concept where AI agents autonomously developed techniques for an AI safety problem that beat a human baseline.",
+                "Furthermore, AI systems are developing meta-skills, such as managing other AI agents in synthetic teams, indicating coordination capabilities."
+              ],
+              "heading": "AI in Core AI Development Tasks and Meta-Skills"
+            },
+            {
+              "bullets": [
+                "While the author believes AI cannot yet produce radical, paradigm-shifting ideas like the transformer architecture, they argue that most AI progress is methodical engineering work, which AI is becoming adept at automating.",
+                "There are preliminary signs of creativity in math and computer science, such as a Gemini model finding an interesting solution to an Erdos problem and contributing substantially to a new math proof, though these could be exceptions.",
+                "The author concludes that AI can automate vast swathes of AI engineering today, moving beyond mere task execution to active development.",
+                "This goal is explicitly pursued by frontier labs like OpenAI (aiming for an 'automated AI research intern' by September 2026), Anthropic, and DeepMind, as well as heavily funded startups like Recursive Superintelligence ($500m raised) and Mirendil.",
+                "The implications include urgent alignment challenges, as current techniques could fail under recursive self-improvement, with risks like 'faking alignment' and compounding errors (e.g., a 99.9% accurate method degrading to 60.5% after 500 generations).",
+                "Other consequences are a massive productivity multiplier across the economy, creating issues of access inequality and systemic bottlenecks, and the rise of a capital-heavy, human-light 'machine economy' that poses challenges to inequality and governance."
+              ],
+              "heading": "Creativity, Frontier Lab Pursuit, and Profound Implications"
+            }
+          ],
+          "issue_thesis": "AI systems will be able to autonomously build their own successors—achieving no-human-involved AI R&D—by the end of 2028, with a 60%+ probability.",
+          "publication_identity": "Import AI newsletter #455",
+          "conclusions_or_recommendations": []
+        },
+        "_shape_confidence": 0.65
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 7142,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://importai.substack.com/p/import-ai-455-automating-ai-research"
+  }
+}

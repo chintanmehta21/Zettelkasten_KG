@@ -1,0 +1,130 @@
+{
+  "workspace_zettel_id": "0061ad33-2f41-444f-b742-4786d15470a6",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "e6e297be-7afd-4751-b90a-b179048d885e",
+  "normalized_url": "https://www.icij.org/investigations/pandora-papers/global-investigation-tax-havens-offshore/",
+  "title": "Pandora Papers Investigation Findings",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:31:56.603681+00:00",
+  "ai_summary_len": 3226,
+  "body_md_len": 2859,
+  "content_hash_hex": "08226dfe69a17c5a863ede47d56e2bb0d7619875aa01702d84587cae5c5fd207",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.icij.org/investigations/pandora-papers/global-investigation-tax-havens-offshore/",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "Offshore havens and hidden riches of world leaders and billionaires exposed in unprecedented leak - ICIJ",
+        "description": "The Pandora Papers reveal the inner workings of a shadow economy that benefits the wealthy and well-connected at the expense of everyone else.",
+        "route_subtype": "page",
+        "og_description": "The Pandora Papers reveal the inner workings of a shadow economy that benefits the wealthy and well-connected at the expense of everyone else.",
+        "route_supported": true,
+        "twitter_description": "The Pandora Papers reveal the inner workings of a shadow economy that benefits the wealthy and well-connected at the expense of everyone else."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 48273,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1879,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Pandora Papers",
+          "Offshore Finance",
+          "Tax Avoidance",
+          "ICIJ",
+          "Financial Secrecy",
+          "Global Elites",
+          "Corruption",
+          "Shell Companies"
+        ],
+        "mini_title": "Pandora Papers Investigation Findings",
+        "brief_summary": "The Pandora Papers, a massive leak of offshore financial documents, revealed the hidden wealth and tax avoidance strategies of world leaders, politicians, and billionaires, exposing how the global offshore system is exploited and sustained by powerful figures and facilitating entities, including the U.S.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Over 11.9 million documents leaked from 14 offshore service firms.",
+              "Investigated for two years by the International Consortium of Investigative Journalists (ICIJ) and over 600 journalists from 150 outlets.",
+              "Uncovered financial secrets of 35 current and former world leaders, over 330 politicians and public officials in 91 countries, and over 130 billionaires.",
+              "Revealed how powerful figures benefit from an offshore system they could help end.",
+              "An ICIJ analysis identified 956 offshore companies tied to 336 high-level officials, with over two-thirds in the British Virgin Islands (BVI)."
+            ],
+            "heading": "Investigation Scope and Findings",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "At least $11.3 trillion is held offshore, per a 2020 OECD study, though the amount tied to crime is unknown.",
+              "The leak is larger than the 2016 Panama Papers.",
+              "Reveals the owners of over 29,000 offshore companies from more than 200 countries.",
+              "Largest contingents of offshore company owners are from Russia, the U.K., Argentina, and China."
+            ],
+            "heading": "Scale of Offshore Holdings",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "King Abdullah II of Jordan secretly purchased 14 luxury homes worth over $106 million through at least 36 shell companies.",
+              "Czech Prime Minister Andrej Babis used shell companies to inject $22 million to buy a French chateau, which he did not declare.",
+              "Former British Prime Minister Tony Blair and his wife acquired an $8.8 million London building by purchasing its BVI-based parent company, saving over $400,000 in property taxes.",
+              "Other leaders implicated include the presidents of Ukraine, Kenya (Uhuru Kenyatta, whose family has over $30 million in offshore assets), and Ecuador (Guillermo Lasso, who moved assets to South Dakota trusts after a law forbade officials from using tax havens).",
+              "Public figures like Sachin Tendulkar, Shakira, and Claudia Schiffer were named, with their representatives claiming their finances are legitimate.",
+              "Italian mobster Raffaele Amato, now serving a 20-year sentence, was also exposed."
+            ],
+            "heading": "Prominent Individuals Implicated",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The system is enabled by elite law firms, banks, and accounting practices in the U.S. and Europe.",
+              "Baker McKenzie, the largest U.S. law firm, worked for clients like Ukrainian oligarch Ihor Kolomoisky (accused of laundering $5.5 billion) and fugitive Jho Low (accused of embezzling over $4.5 billion from 1MDB)."
+            ],
+            "heading": "Facilitators of the Offshore System",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The U.S. itself is a major secrecy jurisdiction.",
+              "States like South Dakota saw trust assets quadruple to $360 billion in a decade.",
+              "The U.S. pressures other nations for transparency on American accounts but has refused to join a reciprocal agreement supported by over 100 jurisdictions."
+            ],
+            "heading": "The United States as a Secrecy Jurisdiction",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The offshore system is highly adaptable.",
+              "After the Panama Papers exposed Mossack Fonseca, hundreds of its clients simply moved to other providers."
+            ],
+            "heading": "System Resilience and Adaptability",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1879,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.icij.org/investigations/pandora-papers/global-investigation-tax-havens-offshore/"
+  }
+}

@@ -1,0 +1,90 @@
+version: "per_source_criteria.v1"
+
+# Per-source-type incremental criteria layered ONTO the universal rubric_v3.yaml.
+# Industry pattern (Sub-1 sweep): single judge + variable rubric; not 10 separate prompts.
+# Shape detector ("academic_roundup" / "link_digest" / etc., already in evaluator.v7
+# prompt) routes which source_type extension applies.
+
+source_types:
+  github:
+    description: "README + repo metadata"
+    additional_criteria:
+      - {id: gh.no_code_block_hallucination,    max_points: 4, detector: "n-gram match against README codeblocks"}
+      - {id: gh.api_names_accurate,             max_points: 3, detector: "identifier extraction + presence check"}
+      - {id: gh.versions_current,               max_points: 2, detector: "Releases endpoint cross-check"}
+      - {id: gh.no_invented_features,           max_points: 3, detector: "FineSurE OutE on README context"}
+    benchmark_lift: "CodeXGLUE summarization track + SentenceBERT scoring (NOT BLEU)"
+
+  newsletter:
+    description: "Long-form essay or curated link digest"
+    additional_criteria:
+      - {id: nl.thesis_captured,                max_points: 4, detector: "first-paragraph keyfact retention"}
+      - {id: nl.editorialization_respects_shape, max_points: 3, detector: "honour _shape: academic_roundup / commentary_essay"}
+      - {id: nl.link_digest_each_item_present,  max_points: 3, detector: "applies only when shape=link_digest"}
+    benchmark_lift: "FacetSum facet labels (purpose/method/findings/value)"
+
+  reddit:
+    description: "Threaded discussion + OP context"
+    additional_criteria:
+      - {id: rd.op_clearly_separated,           max_points: 4, detector: "speaker-role NLI per claim"}
+      - {id: rd.consensus_signal_present,       max_points: 3, detector: "upvote-weighted comment aggregation"}
+      - {id: rd.no_misattributed_user_claim,    max_points: 3, detector: "speaker-attributed NLI"}
+    benchmark_lift: "no public Reddit-Sum benchmark exists — build synthetic 30-50 examples"
+
+  youtube:
+    description: "Auto-transcript or Gemini direct video understanding"
+    additional_criteria:
+      - {id: yt.no_self_attribution_loop,       max_points: 3, detector: "regex (X argues that X argues that)"}
+      - {id: yt.speaker_correctly_attributed,   max_points: 4, detector: "M3-SLU speaker-attributed reasoning"}
+      - {id: yt.chronological_order_preserved,  max_points: 3, detector: "G-Eval coherence with chronology hint"}
+    benchmark_lift: "M3-SLU (arxiv 2510.19358)"
+
+  hackernews:
+    description: "Post title + linked article + top comments"
+    additional_criteria:
+      - {id: hn.article_vs_comment_separated,   max_points: 4, detector: "two-source NLI per claim"}
+      - {id: hn.news_opinion_divide_respected,  max_points: 3, detector: "modality-marker check"}
+    benchmark_lift: "no public benchmark — build synthetic"
+
+  arxiv:
+    description: "Abstract + paper structure"
+    additional_criteria:
+      - {id: ax.contributions_vs_prior_work,    max_points: 4, detector: "FacetSum 'purpose' vs 'method' facet labels"}
+      - {id: ax.experimental_caveats_kept,      max_points: 3, detector: "FacetSum 'findings' facet check"}
+      - {id: ax.novelty_claims_under_shape,     max_points: 2, detector: "honour _shape=academic_roundup; otherwise flag"}
+    benchmark_lift: "FacetSum (arxiv 2106.00130), ScholarSum (arxiv 2402.14359), SummaC NLI"
+
+  podcast:
+    description: "Long transcript, multi-speaker"
+    additional_criteria:
+      - {id: pc.speaker_turns_intact,           max_points: 4, detector: "speaker diarization required"}
+      - {id: pc.sponsor_segments_dropped,       max_points: 3, detector: "regex 'this episode is brought to you by'"}
+      - {id: pc.time_code_refs_preserved,       max_points: 2, detector: "[00:MM:SS] mentions retained where relevant"}
+    benchmark_lift: "PodSumm (arxiv 2009.10315) + IJPREMS 2025 diarization-pre-step"
+
+  twitter:
+    description: "Single tweet or thread"
+    additional_criteria:
+      - {id: tw.thread_root_retained,           max_points: 4, detector: "first tweet must anchor summary"}
+      - {id: tw.retweet_endorsement_separated,  max_points: 3, detector: "retweet markers preserved"}
+      - {id: tw.sarcasm_detected,               max_points: 3, detector: "context-augmented sarcasm classifier (MDPI 14/3/95)"}
+    benchmark_lift: "no public benchmark — synthetic"
+
+  linkedin:
+    description: "Career post + comments"
+    additional_criteria:
+      - {id: li.promotional_clearly_marked,     max_points: 4, detector: "LinkedIn 2025 promotional-pattern detector"}
+      - {id: li.no_factual_promotion_blend,     max_points: 3, detector: "factual vs promotional NLI"}
+    benchmark_lift: "no public benchmark — synthetic"
+
+  web:
+    description: "Generic; fallback for unmatched"
+    additional_criteria:
+      - {id: w.no_navigation_leak,              max_points: 4, detector: "Trafilatura/jusText boilerplate removal at INGEST not eval"}
+      - {id: w.primary_content_identified,      max_points: 3, detector: "main content vs sidebar separation"}
+    benchmark_lift: "Trafilatura evaluation + jusText"
+
+# Cost note (Sub-1 sweep): per-source rubrics add ~0 LLM calls if the judge
+# receives the union of universal_rubric + per_source_criteria via prompt
+# concatenation. ~500 tokens per source-extension block. No additional models.
+# Sub-1 quantified: judge cost is dominated by output tokens, not prompt-count.

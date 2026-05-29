@@ -1,0 +1,236 @@
+{
+  "workspace_zettel_id": "b52a80d6-c4ca-414c-9448-7f5f0f8e7ccd",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "c953d137-fc6a-4de6-ac48-728d9d0544fa",
+  "normalized_url": "https://github.com/theiagen/public_health_bioinformatics",
+  "title": "theiagen/public_health_bioinformatics",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:35:13.482264+00:00",
+  "ai_summary_len": 3551,
+  "body_md_len": 3068,
+  "content_hash_hex": "346b61e6f0fa0efae645497a32b4076d5fcd90d7ee892875f4ea6b8fe977b37c",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/theiagen/public_health_bioinformatics",
+      "author": "theiagen",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "public_health_bioinformatics",
+        "forks": 26,
+        "owner": "theiagen",
+        "stars": 62,
+        "topics": [],
+        "license": "GPL-3.0",
+        "has_demo": false,
+        "language": "WDL",
+        "releases": [
+          {
+            "name": "v4.1.0",
+            "tag_name": "v4.1.0",
+            "prerelease": false,
+            "published_at": "2026-02-02T18:46:17Z"
+          },
+          {
+            "name": "v4.0.0",
+            "tag_name": "v4.0.0",
+            "prerelease": false,
+            "published_at": "2025-12-01T20:09:53Z"
+          },
+          {
+            "name": "v3.1.1",
+            "tag_name": "v3.1.1",
+            "prerelease": false,
+            "published_at": "2025-07-17T19:46:33Z"
+          },
+          {
+            "name": "v3.1.0",
+            "tag_name": "v3.1.0",
+            "prerelease": false,
+            "published_at": "2025-07-03T21:06:00Z"
+          },
+          {
+            "name": "v3.0.1",
+            "tag_name": "v3.0.1",
+            "prerelease": false,
+            "published_at": "2025-04-21T20:22:09Z"
+          }
+        ],
+        "full_name": "theiagen/public_health_bioinformatics",
+        "has_tests": true,
+        "languages": [
+          [
+            "WDL",
+            99.04430300681314
+          ],
+          [
+            "Python",
+            0.9556969931868631
+          ]
+        ],
+        "pages_url": "https://theiagen.github.io/public_health_bioinformatics/",
+        "updated_at": "2026-05-27T17:29:37Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 4,
+        "extra_doc_files": [
+          "docs/index.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "The Public Health Bioinformatics repository primarily contains WDL workflows for genomic characterization, epidemiology, and submission preparation of pathogens, categorized by type (viral, bacterial, fungal). These core workflows are supported by a `docs_dir` providing extensive documentation and a `tests` directory for validation."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-flash-rate-limited",
+      "total_latency_ms": 21426,
+      "confidence_reason": "repo metadata, README, and 1 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2544,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-theiagen-public-health-bioinformatics",
+          "python",
+          "bioinformatics",
+          "wdl",
+          "genomics",
+          "pathogen",
+          "public-health",
+          "terra-bio",
+          "cli-tool",
+          "cromwell"
+        ],
+        "mini_title": "theiagen/public_health_bioinformatics",
+        "owner_login": "theiagen",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "The repository provides bioinformatics workflows written in WDL for genomic characterization of public health pathogens. Workflows are categorized by pathogen type (e.g., _TheiaCoV_, _TheiaProk_) and are designed primarily for Terra.bio, but are also compatible with local or HPC execution using Cromwell or miniWDL. The codebase is predominantly WDL, with a small Python component, and leverages Docker images based on StaPH-B Docker Builds.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Provides bioinformatics workflows for genomic characterization, submission preparation, and genomic epidemiology of public health pathogens, including viruses, bacteria, and fungi.",
+              "Licensed under GNU AGPL v3.0.",
+              "Maintained by Theiagen Genomics, committing to quarterly releases for new features and bug fixes, with urgent fixes released as needed.",
+              "Docker images are based on StaPH-B Docker Builds.",
+              "Extensive documentation is hosted on GitHub Pages.",
+              "Support is available via GitHub issues or by emailing `support@theiagen.com`.",
+              "Acknowledges influences from repositories like Andrew Lang's `genomic_analyses`, Broad's `viral-pipelines`, UPHL's `Cecret`, and Robert Petit's `bactopia`.",
+              "Welcomes community contributions, providing code and documentation style guides.",
+              "Recent activity includes release v4.1.0 and issues related to version updates (Freyja, Clair3), bug fixes (BaseSpace_Fetch failures, read_QC_trim hard failures), and feature requests (DENV characterization, AMRFinderPlus output enhancements).",
+              "Users are directed to cite specific papers when publishing work using the workflows."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "WDL",
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Workflows are written predominantly in WDL (99.0% of the codebase) with a Python component (1.0%).",
+              "All workflows are suffixed with `_PHB`.",
+              "Workflows are categorized by pathogen type: `_TheiaCoV_` & `_TheiaViral_` for viruses, `_TheiaProk_` for bacteria, and `_TheiaEuk_` for fungi.",
+              "Primarily designed for the Terra.bio platform.",
+              "Can also be run locally or on HPC systems with Cromwell or miniWDL."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "WDL",
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The email `@theiagen.com` is documented as a public interface for support.",
+              "The endpoint `/center` is part of the public surface.",
+              "The CLI flag `--pathogen` is available.",
+              "The CLI flag `--Please` is available."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "@theiagen.com",
+              "/center",
+              "--pathogen",
+              "--Please"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Workflows can be imported to Terra via the Dockstore PHB collection.",
+              "Workflows can be run on Terra.bio, locally, or on HPC systems with Cromwell or miniWDL."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "Import to Terra via Dockstore PHB collection."
+            ]
+          },
+          {
+            "bullets": [
+              "The repository includes a `tests` directory."
+            ],
+            "heading": "Tests / Benchmarks / Examples",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Tests",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=1"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.6
+        },
+        "architecture_overview": "The repository provides bioinformatics workflows written in WDL for genomic characterization of public health pathogens. Workflows are categorized by pathogen type (e.g., _TheiaCoV_, _TheiaProk_) and are designed primarily for Terra.bio, but are also compatible with local or HPC execution using Cromwell or miniWDL. The codebase is predominantly WDL, with a small Python component, and leverages Docker images based on StaPH-B Docker Builds.",
+        "benchmarks_tests_examples": [
+          "The repository includes a `tests` directory for workflow validation."
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2544,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/theiagen/public_health_bioinformatics"
+  }
+}

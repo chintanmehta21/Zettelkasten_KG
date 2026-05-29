@@ -1,0 +1,44 @@
+version: "tier_grouping.v1"
+
+# Statistical-reporting tiers for the 47-zettel set (Sub-3 + Sub-1 sweeps).
+# At N=47 across 10 source types, per-source statistical claims are
+# undefined or unusably wide for small cells. The fix is two-fold:
+#   1) ALWAYS report per-zettel/per-source DESCRIPTIVELY (table view).
+#   2) Compute Spearman/Kendall + BCa CI only at the granularity below,
+#      not per-source-type, until N grows beyond ~100/source.
+
+# Tier-A cells (N >= 10): full per-source-type correlation + BCa CI.
+# Tier-B cells (3-9):     descriptive only at source level; pooled into the
+#                         4-mode bucket for correlation analysis.
+# Tier-C cells (<3):      adversarial probe pass/fail only; no correlation.
+
+tiers:
+  A_min_n: 10
+  B_min_n: 3
+  C_max_n: 2
+
+# 4-mode grouping derived from research convergence (Sub-1):
+modes:
+  code_structured:
+    members: [github]
+    rationale: "READMEs + repo metadata; failure modes (API hallucination, version drift) are orthogonal to text-essay failures."
+  long_form_text:
+    members: [newsletter, arxiv, linkedin, web]
+    rationale: "Single-author/single-source essays. Editorialization + facet-conflation are the shared failure modes."
+  social_threaded:
+    members: [reddit, hackernews, twitter]
+    rationale: "OP/comment/thread context; speaker-attribution failures dominate."
+  transcript_multi_speaker:
+    members: [youtube, podcast]
+    rationale: "Time-ordered multi-speaker audio surface; self-attribution loops + speaker-turn scramble dominate."
+
+# Multiple-comparisons correction across the 10 per-source-type p-values:
+multiple_comparisons:
+  method: "holm_bonferroni"
+  family_wise_alpha: 0.05
+  rationale: "Sub-3 cites Holm uniformly more powerful than Bonferroni for k=10 comparisons; correct choice at our scale."
+
+# When N grows past 100:
+graduation_criteria:
+  source_type_promoted_to_tier_A_when: "N(source_type) >= 10"
+  reporting_collapses_back_to_per_source_when: "all 10 source_types have N >= 10"

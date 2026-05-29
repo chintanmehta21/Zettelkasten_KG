@@ -1,0 +1,186 @@
+{
+  "workspace_zettel_id": "96ef92bc-67aa-4932-a11b-1bd9072d0087",
+  "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+  "canonical_zettel_id": "c0442c45-e43b-49ad-a293-d60ab87cea3c",
+  "normalized_url": "https://www.youtube.com/watch?v=juHv_Vi4giU",
+  "title": "AI's New Forward Deployed Engineer",
+  "source_type": "youtube",
+  "publication_date": "2026-05-25",
+  "captured_at": "2026-05-25T14:50:41.348844+00:00",
+  "ai_summary_len": 4810,
+  "body_md_len": 4111,
+  "content_hash_hex": "4a84c6f74396a2ba3732ab1d7fd1627ee12a0353a6b35b90e01fb9bc2dc651e5",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=juHv_Vi4giU",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "transcript_api_webshare",
+        "language": "English (auto-generated)",
+        "video_id": "juHv_Vi4giU",
+        "tier_used": "transcript_api_direct",
+        "tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 8817
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 13
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 8817,
+        "all_tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 8817
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 13
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 17620,
+      "confidence_reason": "transcript via tier=transcript_api_direct len=12518",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2944,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "ai-jobs",
+          "forward-deployed-engineer",
+          "palantir",
+          "anthropic",
+          "openai",
+          "career-advice",
+          "ai-strategy",
+          "job-market",
+          "tech-industry",
+          "commentary"
+        ],
+        "guests": null,
+        "speakers": [
+          "Goldman Sachs"
+        ],
+        "mini_title": "AI's New Forward Deployed Engineer",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "This commentary discusses the \"forward deployed engineer\" as a pivotal new AI-era job. The speaker claims AI companies deploy engineers to client firms. This creates a dependency labeled a \"con.\" The role originated with Palantir, adopted by Anthropic and OpenAI. Projects often involve \"slop\" that fails quickly. Future scenarios range from corporate reliance on AI firms to open-source solutions. The video concludes with job-seeker advice, including resume and interview strategies using Claude.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "interview",
+          "confidence": 0.538
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "commentary",
+          "thesis": "The speaker argues that the \"forward deployed engineer\" is the new pivotal job title in the AI era, representing a strategic move by AI companies to embed their talent within client organizations, which can lead to a dependency on the AI provider's services. This trend, originating from Palantir, is presented as a \"con\" that reshapes the enterprise software landscape and future job market.",
+          "demonstrations": [],
+          "closing_takeaway": "The speaker concludes that adapting to the \"forward deployed engineer\" role, understanding its strategic implications, and leveraging AI tools for career advancement are crucial for navigating the evolving AI-driven job market. This approach, while potentially controversial, is presented as a pragmatic way to secure employment in the new tech landscape.",
+          "chapters_or_segments": [
+            {
+              "title": "The Rise of the Forward Deployed Engineer",
+              "bullets": [
+                "The speaker identifies \"forward deployed engineer\" as the new essential job title in the AI era.",
+                "This term was originally coined by Palantir and represents a \"humans as a service\" model.",
+                "Listeners are advised to update their LinkedIn titles to reflect this new role.",
+                "Anthropic reportedly initiated a $1.5 billion joint venture with BlackRock and Goldman Sachs to deploy these engineers.",
+                "OpenAI responded by launching a $14 billion venture named DeployCo, indicating a competitive landscape.",
+                "This shift is attributed to AI's impact on enterprise engineers, reducing their motivation to engage in traditional coding."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "The \"Slop Contractor\" Model",
+              "bullets": [
+                "These \"forward deployed engineers\" are characterized as \"slop contractors\" hired by companies.",
+                "Their primary purpose is to rapidly construct impressive AI demos and prototypes for clients.",
+                "The resulting systems are often described as \"slop\" that functions well initially without significant user load.",
+                "However, these systems typically fail or become unsustainable after approximately six months.",
+                "By the time these issues arise, the contracted engineers have usually completed their engagement and departed.",
+                "The speaker frames this entire process as a \"con\" where AI companies intentionally foster client team laziness.",
+                "Subsequently, these AI companies then offer their own engineers as the necessary \"antidote\" to the problems they helped create."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Future Scenarios for AI and Employment",
+              "bullets": [
+                "One presented future is a dystopian scenario within 10 years where companies cease hiring their own software engineers.",
+                "Instead, they would exclusively contract engineers from dominant AI firms like Anthropic and OpenAI.",
+                "These powerful AI companies would control access to advanced software-building models, such as hypothetical \"Mythos\" or \"Opus 4.7.\"",
+                "Such firms could potentially grow into $100 trillion companies by gatekeeping these critical technologies.",
+                "In this future, the general public would only have access to weaker AI models suitable for mundane tasks like cooking.",
+                "A less alarming alternative scenario suggests that open-source AI models could advance sufficiently.",
+                "This open-source progress would enable companies to continue developing \"mid-grade software\" internally."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Job Market Advice for the AI Era",
+              "bullets": [
+                "For current job seekers, the speaker advises copying responsibilities directly from Anthropic's job postings for forward-deployed engineers.",
+                "These responsibilities include building production applications using Claude, delivering technical artifacts, and maintaining expertise in LLMs.",
+                "This strategy is claimed to ensure a callback from AI-powered resume screening systems.",
+                "For interviews, candidates should study AI theory abstractly, emulating the rigorous preparation of \"mini Dwarkesh\" Patel.",
+                "The speaker suggests using an AI tool like Claude during technical interviews to generate solutions for complex tasks.",
+                "An example task given is building a multi-agent orchestration system, with the advice to then claim credit for the AI-generated output."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Palantir",
+          "Anthropic",
+          "BlackRock",
+          "Goldman Sachs",
+          "OpenAI",
+          "DeployCo",
+          "Claude",
+          "Mythos",
+          "Opus 4.7",
+          "LinkedIn",
+          "Dwarkesh Patel",
+          "The New York Times"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2944,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=juHv_Vi4giU"
+  }
+}

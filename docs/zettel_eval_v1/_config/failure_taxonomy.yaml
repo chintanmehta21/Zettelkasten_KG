@@ -1,0 +1,101 @@
+version: "failure_taxonomy.v1"
+
+# Canonical FRANK-7 + FineSurE refresh (Pagnoni et al. NAACL 2021, Song et al. ACL 2024).
+# Every judge call MUST return per-class counts so the operator can see exactly
+# which error class fired, not just a composite drop. Cheapest production wiring
+# (per Sub-2 sweep): single structured-output prompt returning a JSON vector +
+# per-instance span list. ~150-300 extra output tokens vs current composite-only.
+
+intrinsic_classes:
+  - id: EntE
+    name: Entity Error
+    definition: "Wrong subject/object/attribute of a predicate"
+    detector_hint: "NER alignment + NLI; MiniCheck atomic check"
+    example: "Source: 'OpenAI released GPT-4 in 2023' -> Summary: 'OpenAI released GPT-4 in 2022'"
+  - id: PredE
+    name: Predicate Error
+    definition: "Verb/relation inconsistent with source"
+    detector_hint: "NegBERT + NLI prob delta; FineSurE PredE classifier"
+    example: "Source: 'X criticised Y' -> Summary: 'X endorsed Y'"
+  - id: CircE
+    name: Circumstance Error
+    definition: "Wrong location, time, manner, or modality"
+    detector_hint: "spaCy DATE/TIME NER + Heideltime alignment; modal-verb lexicon"
+    example: "Source: 'might be feasible' -> Summary: 'will be feasible'"
+  - id: CorefE
+    name: Coreference Error
+    definition: "Pronoun/reference bound to wrong antecedent"
+    detector_hint: "coref chain check; speaker-verb pattern"
+    example: "Source: 'A said X. B replied.' -> Summary: 'B said X.'"
+  - id: LinkE
+    name: Discourse Link Error
+    definition: "Causal/temporal/contrastive connector wrong"
+    detector_hint: "discourse-connective lexicon + NLI directionality"
+    example: "Source: 'X despite Y' -> Summary: 'X because Y'"
+  - id: GramE
+    name: Grammatical Error
+    definition: "Meaning destroyed by syntax"
+    detector_hint: "fluency check via G-Eval or grammarly-like rule set"
+  - id: OutE
+    name: Out-of-Article / Extrinsic
+    definition: "Claim not present in source (FRANK extrinsic; HaluEval 'fabrication')"
+    detector_hint: "exact substring + MiniCheck NLI contradict_prob >= 0.7"
+    example: "Summary asserts a fact not anywhere in source"
+
+orthogonal_axes:
+  completeness:
+    definition: "Required keyfacts missing from summary"
+    detector_hint: "FineSurE bipartite keyfact->summary match, or QAGS/QuestEval"
+  conciseness:
+    definition: "Sentences contributing zero keyfacts; redundant bullets"
+    detector_hint: "FineSurE zero-alignment sentence count; n-gram redundancy"
+
+# FaithBench (NAACL 2025) meta-overlay applied AFTER intrinsic classification.
+# Lets us downgrade a flagged claim from "error" to "questionable" or "benign"
+# (true-but-unsupported) so the operator's triage queue shrinks.
+meta_labels:
+  - consistent
+  - questionable
+  - benign
+
+# Source-type-specific extensions (additive). Triggered only when source_type matches.
+# Derived from Sub-1 and Sub-2 sweeps.
+source_type_extensions:
+  github:
+    - {id: wrong_api_name,        maps_to: EntE, detector_hint: "match identifiers vs README codeblocks"}
+    - {id: wrong_repo_language,   maps_to: EntE, detector_hint: "github.languages metadata cross-check"}
+    - {id: stale_version_claim,   maps_to: CircE, detector_hint: "extract version strings vs Releases endpoint"}
+  arxiv:
+    - {id: contribution_vs_prior_work_conflation, maps_to: CorefE, detector_hint: "FacetSum facet labels purpose/method/findings/value"}
+    - {id: missing_experimental_caveat,           maps_to: completeness, detector_hint: "FacetSum 'findings' facet check"}
+    - {id: novelty_editorialization,              maps_to: OutE, detector_hint: "auto-relaxed under academic_roundup shape"}
+  youtube:
+    - {id: speaker_self_attribution_loop, maps_to: GramE, detector_hint: "regex (X argues that X argues that)"}
+    - {id: wrong_speaker_quote,           maps_to: CorefE, detector_hint: "M3-SLU speaker-attributed reasoning"}
+    - {id: missing_visual_context,        maps_to: completeness, detector_hint: "n/a when Gemini direct-video used"}
+  reddit:
+    - {id: op_vs_top_comment_confusion,   maps_to: CorefE, detector_hint: "OP context separator must persist through summary"}
+    - {id: missing_consensus_signal,      maps_to: completeness, detector_hint: "upvote-weighted comment aggregation check"}
+  hackernews:
+    - {id: article_vs_commenter_conflation, maps_to: CorefE, detector_hint: "two-source NLI: claim must cite article OR comment"}
+  newsletter:
+    - {id: editorialization_under_commentary_shape, maps_to: OutE, detector_hint: "respect shape-aware override per evaluator.v7"}
+    - {id: missing_primary_thesis,                  maps_to: completeness, detector_hint: "first-paragraph keyfact retention"}
+  podcast:
+    - {id: sponsor_segment_leak, maps_to: OutE,   detector_hint: "detect sponsor patterns ('this episode is brought to you by')"}
+    - {id: speaker_turn_scramble, maps_to: CorefE, detector_hint: "speaker diarization required"}
+  twitter:
+    - {id: missing_thread_context, maps_to: completeness, detector_hint: "thread root tweet must remain anchor"}
+    - {id: sarcasm_misdetected,    maps_to: PredE,        detector_hint: "context-augmented summary for sarcasm classifier (MDPI 14/3/95)"}
+  linkedin:
+    - {id: promotional_treated_as_fact, maps_to: OutE, detector_hint: "promotional-pattern detector (LinkedIn 2025 algo signals)"}
+  web:
+    - {id: nav_or_boilerplate_leak, maps_to: OutE, detector_hint: "Trafilatura/jusText preprocessing should run BEFORE ingestion, not at eval"}
+
+# Reporting format (per Sub-2 industry consensus):
+# - Per-zettel: top-3 error classes + spans, plus a per-class count vector across all 7+2.
+# - Aggregate: histogram per class across runs/source-types; never collapse to a single composite.
+reporting:
+  per_zettel_top_k_errors: 3
+  aggregate_format: "histogram_by_class"
+  confusion_matrix: false   # research-only; not production dashboard pattern

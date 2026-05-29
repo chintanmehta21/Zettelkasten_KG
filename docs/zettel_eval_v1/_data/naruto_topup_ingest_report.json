@@ -1,0 +1,424 @@
+{
+  "started_at": "2026-05-28T12:35:09.136403+00:00",
+  "finished_at": "2026-05-28T12:41:42.997757+00:00",
+  "naruto_auth_id": "f2105544-b73d-4946-8329-096d82f070d3",
+  "concurrency": 4,
+  "items": [
+    {
+      "url": "https://www.hubermanlab.com/newsletter/improve-working-memory-attention",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2650,
+      "latency_ms": 10249,
+      "error": null
+    },
+    {
+      "url": "https://www.hubermanlab.com/newsletter/how-to-improve-learning-performance-by-developing-a-growth-mindset",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1572,
+      "latency_ms": 10800,
+      "error": null
+    },
+    {
+      "url": "https://www.hubermanlab.com/newsletter/breathwork-protocols-for-health-focus-stress",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2516,
+      "latency_ms": 12246,
+      "error": null
+    },
+    {
+      "url": "https://www.brainpost.co/weekly-brainpost/2026/5/9/o23a9cxxj8cxdfk3lwx4c34gebyyjs",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1676,
+      "latency_ms": 15659,
+      "error": null
+    },
+    {
+      "url": "https://www.brainpost.co/weekly-brainpost?month=06-2025",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1726,
+      "latency_ms": 19270,
+      "error": null
+    },
+    {
+      "url": "https://yourlocalepidemiologist.substack.com/p/a-week-of-chaos-in-public-health",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1315,
+      "latency_ms": 22694,
+      "error": null
+    },
+    {
+      "url": "https://importai.substack.com/p/import-ai-455-automating-ai-research",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 5643,
+      "latency_ms": 28213,
+      "error": null
+    },
+    {
+      "url": "https://themarkup.org/working-for-an-algorithm/2022/06/09/an-amazon-warehouse-workers-life-turned-upside-down-after-she-was-hospitalized-for-covid",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2926,
+      "latency_ms": 31557,
+      "error": null
+    },
+    {
+      "url": "https://popular.info/p/the-money-behind-the-new-iran-war",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3082,
+      "latency_ms": 20196,
+      "error": null
+    },
+    {
+      "url": "https://www.noahpinion.blog/p/the-fall-of-the-nerds",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2620,
+      "latency_ms": 12050,
+      "error": null
+    },
+    {
+      "url": "https://www.densediscovery.com/issues/381",
+      "source_section": "newsletter",
+      "status": "failed",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": null,
+      "latency_ms": 28599,
+      "error": "HTTPStatusError: Client error '403 Forbidden' for url 'https://www.densediscovery.com/issues/381'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+    },
+    {
+      "url": "https://www.noahpinion.blog/p/china-is-quietly-looking-weaker",
+      "source_section": "newsletter",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1813,
+      "latency_ms": 19284,
+      "error": null
+    },
+    {
+      "url": "https://gwern.net/silk-road",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3903,
+      "latency_ms": 14767,
+      "error": null
+    },
+    {
+      "url": "https://gwern.net/spaced-repetition",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 5526,
+      "latency_ms": 202867,
+      "error": null
+    },
+    {
+      "url": "https://refractor.io/mental-health/serotonin-dopamine-real-time-tracking-brain/",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2142,
+      "latency_ms": 16052,
+      "error": null
+    },
+    {
+      "url": "https://quantum.country/search",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3175,
+      "latency_ms": 14594,
+      "error": null
+    },
+    {
+      "url": "https://www.lesswrong.com/posts/fbrz9xhKpEeTKw5zL/irretrievability-or-murphy-s-curse-of-oneshotness-upon-asi",
+      "source_section": "web",
+      "status": "failed",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": null,
+      "latency_ms": 32449,
+      "error": "HTTPStatusError: Client error '429 Too Many Requests' for url 'https://www.lesswrong.com/posts/fbrz9xhKpEeTKw5zL/irretrievability-or-murphy-s-curse-of-oneshotness-upon-asi'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429"
+    },
+    {
+      "url": "https://uniqure.gcs-web.com/news-releases/news-release-details/uniqure-announces-positive-topline-results-pivotal-phase-iii",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1437,
+      "latency_ms": 11720,
+      "error": null
+    },
+    {
+      "url": "https://www.icij.org/investigations/pandora-papers/global-investigation-tax-havens-offshore/",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2854,
+      "latency_ms": 3364,
+      "error": null
+    },
+    {
+      "url": "https://www.icij.org/investigations/panama-papers/20160403-panama-papers-global-overview/",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3347,
+      "latency_ms": 17068,
+      "error": null
+    },
+    {
+      "url": "https://www.bellingcat.com/news/2026/05/11/active-club-colombia-politics/",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3427,
+      "latency_ms": 9926,
+      "error": null
+    },
+    {
+      "url": "https://www.project-syndicate.org/commentary/china-science-technology-outflanking-the-us-and-europe-by-johan-rockstrom-and-inga-strumke-2026-05",
+      "source_section": "web",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1076,
+      "latency_ms": 6643,
+      "error": null
+    },
+    {
+      "url": "https://github.com/BindsNET/bindsnet",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3336,
+      "latency_ms": 8667,
+      "error": null
+    },
+    {
+      "url": "https://github.com/psychopy/psychopy",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3015,
+      "latency_ms": 9673,
+      "error": null
+    },
+    {
+      "url": "https://github.com/theiagen/public_health_bioinformatics",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3055,
+      "latency_ms": 11474,
+      "error": null
+    },
+    {
+      "url": "https://github.com/onionshare/onionshare",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2531,
+      "latency_ms": 10641,
+      "error": null
+    },
+    {
+      "url": "https://github.com/rapid7/metasploit-framework",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3151,
+      "latency_ms": 12533,
+      "error": null
+    },
+    {
+      "url": "https://github.com/sherlock-project/sherlock",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2933,
+      "latency_ms": 11320,
+      "error": null
+    },
+    {
+      "url": "https://github.com/OpenBB-finance/OpenBBTerminal",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2563,
+      "latency_ms": 10418,
+      "error": null
+    },
+    {
+      "url": "https://github.com/athensresearch/athens",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2753,
+      "latency_ms": 6462,
+      "error": null
+    },
+    {
+      "url": "https://github.com/dendronhq/dendron",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2689,
+      "latency_ms": 18956,
+      "error": null
+    },
+    {
+      "url": "https://github.com/microsoft/EconML",
+      "source_section": "github",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3493,
+      "latency_ms": 32699,
+      "error": null
+    },
+    {
+      "url": "https://www.reddit.com/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025/",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 2748,
+      "latency_ms": 141197,
+      "error": null
+    },
+    {
+      "url": "https://www.reddit.com/r/MachineLearning/comments/1tdje2d/arxiv_implements_1year_ban_for_papers_containing/",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 6367,
+      "latency_ms": 132918,
+      "error": null
+    },
+    {
+      "url": "https://www.reddit.com/r/Defcon/comments/1p5nvdr/famous_fictional_hackers/",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 3200,
+      "latency_ms": 136308,
+      "error": null
+    },
+    {
+      "url": "https://www.reddit.com/r/darknet/comments/1ohbzod/what_kind_of_communities_exist_on_the_dark_web/",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 4487,
+      "latency_ms": 64099,
+      "error": null
+    },
+    {
+      "url": "https://www.reddit.com/r/badeconomics/comments/1mxgdxa/how_money_works_does_not_understand_how_housing/",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 6957,
+      "latency_ms": 60776,
+      "error": null
+    },
+    {
+      "url": "https://www.reddit.com/r/AskEconomics/comments/1oghgwl/eli5_the_richest_person_in_1993_had_a_networth_of/",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 4620,
+      "latency_ms": 71898,
+      "error": null
+    },
+    {
+      "url": "https://www.reddit.com/r/AskEconomics/comments/1q37pg4/why_isnt_russia_collapsing/",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 4767,
+      "latency_ms": 66904,
+      "error": null
+    },
+    {
+      "url": "https://reddit.com/r/IAmA/comments/blv3r8/im_ray_dalio_founder_of_bridgewater_associates_im",
+      "source_section": "reddit",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 6440,
+      "latency_ms": 59886,
+      "error": null
+    },
+    {
+      "url": "https://www.marxists.org/archive/marx/works/1867-c1/",
+      "source_section": "arxiv",
+      "status": "succeeded",
+      "workspace_zettel_id": null,
+      "canonical_zettel_id": null,
+      "summary_len": 1506,
+      "latency_ms": 7053,
+      "error": null
+    }
+  ],
+  "verify": {
+    "checked": 0,
+    "missing_zettels": [],
+    "without_chunks": [],
+    "kg_edge_count": 0
+  }
+}

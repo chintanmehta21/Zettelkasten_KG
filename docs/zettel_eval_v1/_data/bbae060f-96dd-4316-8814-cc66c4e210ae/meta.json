@@ -1,0 +1,140 @@
+{
+  "workspace_zettel_id": "bbae060f-96dd-4316-8814-cc66c4e210ae",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "e34f36f3-bb53-494d-b6f3-3de0bc8b6619",
+  "normalized_url": "https://www.reddit.com/r/Defcon/comments/1p5nvdr/famous_fictional_hackers",
+  "title": "r/Defcon share image compilation famous fictional",
+  "source_type": "reddit",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:40:11.375187+00:00",
+  "ai_summary_len": 3217,
+  "body_md_len": 2741,
+  "content_hash_hex": "70d7b0c302b399779a80e86048dc294365f64b47a26ea73f36324c8117a7ed02",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.reddit.com/r/Defcon/comments/1p5nvdr/famous_fictional_hackers",
+      "author": "BengalPirate",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "reddit",
+      "raw_metadata": {
+        "score": 651,
+        "title": "Famous Fictional Hackers",
+        "author": "BengalPirate",
+        "permalink": "/r/Defcon/comments/1p5nvdr/famous_fictional_hackers/",
+        "subreddit": "Defcon",
+        "num_comments": 83,
+        "route_subtype": "reddit",
+        "route_supported": true,
+        "pullpush_enabled": true,
+        "pullpush_fetched": 0,
+        "nested_reply_count": 30,
+        "comment_divergence_pct": 61.45,
+        "rendered_comment_count": 32
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-flash-rate-limited",
+      "total_latency_ms": 29397,
+      "confidence_reason": "json endpoint ok; rendered=32/83 divergence=61.45%",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2560,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "r-defcon",
+          "q-and-a",
+          "fictional-hackers",
+          "movies",
+          "tv-shows",
+          "pop-culture",
+          "cybersecurity",
+          "hacking",
+          "war-games",
+          "sneakers"
+        ],
+        "op_author": "u/BengalPirate",
+        "mini_title": "r/Defcon share image compilation famous fictional",
+        "_dense_verify": {
+          "missing_fact_count": 0
+        },
+        "brief_summary": "OP's main point was To share an image compilation of famous fictional hackers and invite community discussion on. The dominant replies focused on Significant Fictional Hackers Omitted from the Compilation. Consensus stayed around significant fictional hackers omitted from the compilation while ambiguity and debate over. Dissent centered on Neo's hacking isn't explicitly shown, only stated by agents. Caveat: removed or missing comments may limit what is visible in the thread.",
+        "route_subtype": "reddit",
+        "route_supported": true,
+        "detailed_summary": {
+          "op_intent": "To share an image compilation of famous fictional hackers and invite community discussion on who was included or missed.",
+          "reply_clusters": [
+            {
+              "theme": "Significant Fictional Hackers Omitted from the Compilation",
+              "examples": [
+                "David Lightman (War Games)",
+                "Robert Redford / Whistler / Carl (Sneakers)",
+                "Kevin Flynn (Tron)",
+                "Boris (Goldeneye)",
+                "Acid Burn",
+                "Penny (Inspector Gadget)",
+                "Stanley Jobson (Swordfish)",
+                "Hackerman (Kung Fury)",
+                "Dade/Zero Cool/Crash Override"
+              ],
+              "reasoning": "Many users identified prominent fictional hackers from movies and TV shows that were not included in the original image, indicating a perceived incompleteness of the compilation."
+            },
+            {
+              "theme": "Ambiguity and Debate Over the Definition of 'Hacker' for Fictional Characters",
+              "examples": [
+                "Neo's actions debated as 'magician' vs. 'transcendent hacker'",
+                "Whistler's role as 'phreaker' vs. 'hacker'",
+                "Kevin Flynn as 'genius programmer' vs. 'hacker' for invading a network",
+                "Dade/Zero Cool/Crash Override as 'rogue sysadmin' vs. 'hacker'"
+              ],
+              "reasoning": "Users engaged in discussions about whether certain characters, like Neo or Kevin Flynn, truly fit the traditional or modern definition of a 'hacker,' highlighting different interpretations of the term and the characters' technical roles."
+            },
+            {
+              "theme": "Nostalgic Appreciation for Iconic Hacker Movie Quotes and Scenes",
+              "examples": [
+                "\"Mr. Potato Head? MR. POTATO HEAD!?\" (Sneakers)",
+                "\"I'm invincible!\" (Goldeneye)",
+                "\"HACK THE PLANET!\"",
+                "\"It’s a Unix system! I know this.\"",
+                "\"you didn't say the magic word\"",
+                "\"Password: Swordfish\""
+              ],
+              "reasoning": "Several comments expressed fondness for specific memorable lines and moments from classic hacker-themed films, indicating a shared cultural appreciation for these elements."
+            }
+          ],
+          "counterarguments": [
+            "Neo's hacking isn't explicitly shown, only stated by agents.",
+            "The definition of a 'hacker' is debated, with some distinguishing between making a system behave unexpectedly (glitch) and actively causing that behavior.",
+            "Some characters, like Dade/Zero Cool/Crash Override, are argued to be more 'rogue sysadmin' than traditional hackers.",
+            "Whistler from 'Sneakers' is debated as a 'phreaker' vs. a 'hacker' who worked with assembly code.",
+            "Kevin Flynn from 'Tron' is considered a 'genius programmer' who invaded a network, rather than a 'hacker' in the traditional sense."
+          ],
+          "moderation_context": "Rendered comments covered only part of the thread (32/83 visible; divergence 61.45%).",
+          "unresolved_questions": [
+            "Is War Games good?",
+            "Who is the bottom right character in the image?",
+            "So I guess you’ve never hacked the Gibson..",
+            "How could you not know Zero Cool?"
+          ]
+        }
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2560,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.reddit.com/r/Defcon/comments/1p5nvdr/famous_fictional_hackers"
+  }
+}

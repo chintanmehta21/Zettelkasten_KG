@@ -1,0 +1,189 @@
+{
+  "workspace_zettel_id": "8fb2f662-4cbe-4207-a599-a2de2744c1a9",
+  "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+  "canonical_zettel_id": "60c97764-80f8-4b50-b523-b88d677df322",
+  "normalized_url": "https://www.youtube.com/watch?v=9OQ5vaYbGV0",
+  "title": "Google I O Gemini AI",
+  "source_type": "youtube",
+  "publication_date": "2026-05-23",
+  "captured_at": "2026-05-23T06:55:33.922721+00:00",
+  "ai_summary_len": 4249,
+  "body_md_len": 3794,
+  "content_hash_hex": "5c1ccfbc7c03c0dc91507eabb6e86c5fb43cd13a00b16b83dccc4eac7062b6be",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=9OQ5vaYbGV0",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "gemini_filedata",
+        "model": "gemini-2.5-flash",
+        "video_id": "9OQ5vaYbGV0",
+        "key_index": 0,
+        "tier_used": "gemini_filedata",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 17057
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 17057,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 17057
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 19001,
+      "confidence_reason": "transcript via tier=gemini_filedata len=6495",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3033,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "google-io",
+          "gemini-ai",
+          "artificial-intelligence",
+          "google-products",
+          "tpu",
+          "chrome",
+          "web-development",
+          "keynote-summary",
+          "ai-agents",
+          "walkthrough"
+        ],
+        "guests": null,
+        "speakers": [
+          "Demis Hassabis"
+        ],
+        "mini_title": "Google I O Gemini AI",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this walkthrough, Demis Hassabis argues that google is transitioning into an \"agentic gemini era,\" where its gemini ai models are deeply integrated across all products, transforming google from an information organizer into an \"interface to reality.\" this strategy aims to leverage ai to redefine user interaction and maintain competitiveness in the evolving ai landscape. The closing point is that google is aggressively pursuing an ai-first strategy, embedding gemini across its entire product e",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "explainer",
+          "confidence": 0.714
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "walkthrough",
+          "thesis": "Google is transitioning into an \"agentic Gemini era,\" where its Gemini AI models are deeply integrated across all products, transforming Google from an information organizer into an \"interface to reality.\" This strategy aims to leverage AI to redefine user interaction and maintain competitiveness in the evolving AI landscape.",
+          "demonstrations": [
+            "A live demo of the Anti-gravity IDE building an operating system from scratch.",
+            "A live demo of Gemini coding missing drivers for Doom within the newly built OS."
+          ],
+          "closing_takeaway": "Google is aggressively pursuing an AI-first strategy, embedding Gemini across its entire product ecosystem and investing heavily in both hardware and software to create a new \"interface to reality.\" This comprehensive approach aims to solidify Google's position as a leader in the rapidly evolving field of artificial intelligence.",
+          "chapters_or_segments": [
+            {
+              "title": "Segment 1: Google's Agentic AI Vision",
+              "bullets": [
+                "Google I/O outlined a vision for an \"agentic Gemini era,\" embedding Gemini AI into all its products.",
+                "This strategy aims to transform Google Search, Gmail, Android, and even glasses into AI agents.",
+                "The speaker posits Google is shifting from organizing information via hyperlinks to becoming an \"interface to reality.\"",
+                "This strategic move is intended to compete directly with companies like Anthropic and OpenAI.",
+                "Google's token serving has dramatically scaled from 9.7 trillion to 3.2 quadrillion per month in two years, supported by increased Alphabet capital expenditures."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Segment 2: Hardware and Core AI Model Announcements",
+              "bullets": [
+                "A significant hardware announcement involved splitting Tensor Processing Units (TPUs) into TPU T for training and TPU I for inference.",
+                "The headline model, Gemini Omni, is a multimodal AI capable of accepting text, video, and sound inputs to produce any desired output.",
+                "Demis Hassabis suggested that Gemini Omni possesses the capability to simulate reality.",
+                "A new design system for the Gemini app, called Neural Expressive, was introduced to optimize the generation of UI elements like diagrams and mini-apps.",
+                "Google also released Gemini Flash 3.5, a fast model claimed to be nearly as capable as Opus 4.7 and GPT 5.5 but significantly quicker."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Segment 3: Developer Tools and Demonstrations",
+              "bullets": [
+                "The IDE formerly known as Windsurf, now called Anti-gravity, was showcased as a VS Code fork similar to Cursor.",
+                "Anti-gravity now functions like an OpenAI Codex clone, specifically focused on managing AI agents.",
+                "A live demonstration showed Anti-gravity building an operating system from scratch in 12 hours using billions of tokens.",
+                "When the OS failed to run Doom due to missing drivers, Gemini instantly coded the necessary drivers.",
+                "The pricing for Gemini 3.5 Flash is three times higher than its predecessor and 30 times more than Gemini 1.5 Flash, though it remains cheaper than Claude."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Segment 4: Web Development Enhancements",
+              "bullets": [
+                "For web developers, Chrome now includes an HTML-in-Canvas API.",
+                "This API enables native HTML elements to be rendered and utilized within a canvas environment.",
+                "Developers can integrate HTML elements alongside existing tools such as WebGL and WebGPU.",
+                "The video also mentioned a sponsor, Emergent, an AI tool that uses specialized agents for parallel full-stack development."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Gemini AI",
+          "Gemini Spark",
+          "Gemini Omni",
+          "Gemini Flow",
+          "Search",
+          "Gmail",
+          "Android",
+          "Tensor Processing Units",
+          "TPU T",
+          "TPU I",
+          "Neural Expressive",
+          "Gemini Flash 3.5",
+          "Opus 4.7",
+          "GPT 5.5",
+          "Gemini 3.5 Pro",
+          "Windsurf",
+          "Anti-gravity",
+          "VS Code",
+          "Cursor",
+          "OpenAI Codex",
+          "Doom",
+          "Claude",
+          "Chrome",
+          "HTML-in-Canvas API",
+          "WebGL",
+          "WebGPU",
+          "Emergent",
+          "Anthropic",
+          "OpenAI",
+          "Alphabet"
+        ],
+        "attribution_confidence": "high"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3033,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=9OQ5vaYbGV0"
+  }
+}

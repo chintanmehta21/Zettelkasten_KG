@@ -1,0 +1,133 @@
+{
+  "workspace_zettel_id": "55bf9ba4-078d-4d18-a5a8-82e771ec67f0",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "3178d3ee-1fff-4eec-a9ba-1a3a557797af",
+  "normalized_url": "https://www.hubermanlab.com/newsletter/breathwork-protocols-for-health-focus-stress",
+  "title": "Huberman Lab: Breathing Protocols",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:24:33.140029+00:00",
+  "ai_summary_len": 2784,
+  "body_md_len": 2524,
+  "content_hash_hex": "269f2cf373ba0a7466172748d860bf4dd40e8e535bc8b3ce1a181ef88f2e36d7",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.hubermanlab.com/newsletter/breathwork-protocols-for-health-focus-stress",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "Breathwork Protocols for Health, Focus & Stress",
+        "description": "In this newsletter, I explain how to use specific breathing patterns to influence your brain-body state and thereby positively shift your mood, physical capacity, and focus — and improve sleep.",
+        "route_subtype": "page",
+        "og_description": "In this newsletter, I explain how to use specific breathing patterns to influence your brain-body state and thereby positively shift your mood, physical capacity, and focus — and improve sleep.",
+        "route_supported": true,
+        "twitter_description": "In this newsletter, I explain how to use specific breathing patterns to influence your brain-body state and thereby positively shift your mood, physical capacity, and focus — and improve sleep."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 40438,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1719,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Breathing",
+          "Physiology",
+          "Cognition",
+          "Stress Management",
+          "Sleep",
+          "Performance",
+          "Health"
+        ],
+        "mini_title": "Huberman Lab: Breathing Protocols",
+        "brief_summary": "Deliberate breathing protocols can bridge the subconscious and conscious mind to positively influence mood, physical capacity, focus, and sleep by optimizing oxygen and carbon dioxide ratios.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Breathing's primary function is to balance oxygen (O2) and carbon dioxide (CO2) ratios.",
+              "Inhaled O2 is carried by hemoglobin to cells.",
+              "CO2, while a waste product, is essential for changing hemoglobin's shape to release O2 into tissues.",
+              "CO2 levels relate to body pH; during exercise, a slight pH drop increases O2 offloading to muscles.",
+              "The brain, being highly metabolic, requires significant O2, and improper O2:CO2 ratios can cause hypoxia, impairing cognition."
+            ],
+            "heading": "Physiology of Breathing",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Healthy at-rest breathing is about 12 breaths per minute (~6 liters of air).",
+              "Most people \"overbreathe\" at 15-18 breaths per minute, causing hypocapnia (low CO2).",
+              "Hypocapnia reduces O2 delivery and can lead to anxiety and poor focus.",
+              "To counter overbreathing, one can take small pauses between breaths and practice nasal breathing."
+            ],
+            "heading": "Common Breathing Patterns and Their Impact",
+            "sub_sections": {
+              "Benefits of Nasal Breathing": [
+                "Increases resistance and extends exhales.",
+                "Warms air.",
+                "Produces nitric oxide, improving blood vessel dilation and relieving congestion.",
+                "Claimed to improve facial aesthetics."
+              ],
+              "Sleep Apnea (Under-breathing)": [
+                "Causes hypoxia and frequent waking at night.",
+                "Symptoms include snoring and irritability.",
+                "Risks include cardiovascular disease and stroke.",
+                "Treatments include CPAP machines or mouth taping."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Breathing directly controls heart rate via respiratory sinus arrhythmia.",
+              "Inhaling longer/more vigorously increases heart rate.",
+              "Exhaling longer/more vigorously decreases heart rate."
+            ],
+            "heading": "Breathing Protocols for Health and Performance",
+            "sub_sections": {
+              "Box Breathing": [
+                "A pattern of inhale-hold-exhale-hold.",
+                "Practicing for 2-3 minutes, 1-2 times per week, can improve diaphragmatic control and reduce overbreathing."
+              ],
+              "Carbon Dioxide Tolerance Test": [
+                "Developed by Brian Mackenzie.",
+                "Measures the duration of a single, slow exhale after a full inhale to assess breathing efficiency."
+              ],
+              "Cyclic Hyperventilation (Alertness)": [
+                "Involves 25 cycles of deep nasal inhales and mouth exhales, followed by a 15-30 second breath-hold.",
+                "Releases adrenaline to enhance focus.",
+                "Caution is advised for those with anxiety, and it must never be performed near water or while driving due to the risk of passing out."
+              ],
+              "Physiological Sigh (Stress Reduction)": [
+                "Described as the fastest way to calm the autonomic nervous system.",
+                "Involves two consecutive nasal inhales followed by a long mouth exhale.",
+                "A clinical trial showed 5 minutes of daily practice reduces stress, improves sleep, and lowers resting heart rate."
+              ]
+            }
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1719,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.hubermanlab.com/newsletter/breathwork-protocols-for-health-focus-stress"
+  }
+}

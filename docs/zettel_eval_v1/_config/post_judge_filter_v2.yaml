@@ -1,0 +1,104 @@
+version: "post_judge_filter_v2.v1"
+
+# Spec for the expanded deterministic post-judge filter. Implements lesson-1
+# from the orchestration article ("separate doing from judging") re-cast for
+# summary evaluation: the LLM judge is the doer; the deterministic filter is
+# the judge-of-the-judge.
+#
+# CURRENT prod implementation (ops/scripts/lib/phases.py::filter_judge_false_positives):
+#   - Drops summac_lite.contradicted_sentences whose span IS verbatim in source
+#   - Drops invented_number anti-patterns whose source_region IS in source
+#   - Clears hallucination_cap if no remaining hallucination anti-patterns
+#
+# Coverage gap (Sub-2 + article lesson-1): only 2 of FRANK-7 classes have
+# deterministic verifiers. The other 5 go through unchecked. This file specifies
+# the FULL FRANK-7 coverage table; implementation lands in zettel_eval_v1
+# scripts (NOT in the prod phases.py, so we do not touch the live summary_eval_v2
+# loop). Implementation TBD per operator approval of run order.
+
+isolation_rule: |
+  The expanded filter ONLY runs inside docs/zettel_eval_v1/. It SHALL NOT be
+  back-ported into ops/scripts/lib/phases.py until the operator explicitly
+  approves a phase-3 graduation; otherwise we risk regressing the production
+  summary_eval_v2 calibration baseline.
+
+frank_class_detectors:
+  EntE:
+    name: "Entity error — wrong subject/object/attribute"
+    detector_chain:
+      - {type: ner_alignment,    library: "spacy en_core_web_sm",     drop_if: "every NER span in summary appears verbatim in source OR has source synonym in WordNet"}
+      - {type: numeric_match,    library: "extract_numeric_tokens",   drop_if: "every digit-grouping-normalised number appears in source"}
+      - {type: nli_entailment,   library: "minicheck",                drop_if: "MiniCheck-DeBERTa entailment_prob >= 0.85 on the flagged sentence"}
+    fp_signal_field: "entity_fp_dropped"
+
+  PredE:
+    name: "Predicate error — verb/relation flip"
+    detector_chain:
+      - {type: negation_check,   library: "negbert OR rule-based",    drop_if: "neg-prefix count between summary and corresponding source sentence is equal"}
+      - {type: modal_match,      library: "modal-verb lexicon",       drop_if: "epistemic modal in summary matches source (might/will/can/must)"}
+      - {type: nli_entailment,   library: "minicheck",                drop_if: "entailment_prob >= 0.85"}
+    fp_signal_field: "predicate_fp_dropped"
+
+  CircE:
+    name: "Circumstance error — wrong location/time/manner/modality"
+    detector_chain:
+      - {type: date_alignment,   library: "spacy DATE+TIME ner + dateparser",  drop_if: "every DATE/TIME span in summary normalises to an ISO span present in source"}
+      - {type: place_match,      library: "spacy GPE+LOC ner",         drop_if: "every place name appears in source"}
+      - {type: modality_lexicon, library: "list: may, might, could, would, will, must, should",  drop_if: "epistemic strength preserved"}
+    fp_signal_field: "circumstance_fp_dropped"
+
+  CorefE:
+    name: "Coreference error — pronoun/reference bound to wrong antecedent"
+    detector_chain:
+      - {type: speaker_attribution, library: "regex 'X said/argued/claimed' + match speaker name to source", drop_if: "speaker-verb attribution chain present in source"}
+      - {type: pronoun_chain,    library: "neural coref (fastcoref)",  drop_if: "coref chain consistent with source (best-effort; partial detector)"}
+    fp_signal_field: "coref_fp_dropped"
+    notes: "Hardest deterministic class; lean on judge LLM for most of the signal."
+
+  LinkE:
+    name: "Discourse link error — causal/temporal/contrastive connector flip"
+    detector_chain:
+      - {type: connective_lexicon, library: "discourse connectives: because, despite, therefore, however, although, while, after, before, since",
+         drop_if: "connective polarity (causal vs concessive) matches source"}
+      - {type: nli_directionality, library: "minicheck on each linked clause pair", drop_if: "entailment direction matches"}
+    fp_signal_field: "link_fp_dropped"
+
+  GramE:
+    name: "Grammatical error — meaning destroyed by syntax"
+    detector_chain:
+      - {type: regex_loops,      library: "regex (\\b\\w+ \\w+\\b that \\1 \\2 that)",  drop_if: "no self-attribution repetition loop found"}
+      - {type: language_tool,    library: "language_tool_python",     drop_if: "no critical-severity grammar issue"}
+    fp_signal_field: "gram_fp_dropped"
+    notes: "Catches the 'Steve Jobs argues that Steve Jobs argues that' YouTube failure mode."
+
+  OutE:
+    name: "Out-of-article / extrinsic — claim not in source"
+    detector_chain:
+      - {type: verbatim_substring, library: "find_unverified_substring (existing in phases.py)", drop_if: "summary span found verbatim in source (whitespace + digit-grouping tolerant)"}
+      - {type: nli_entailment,   library: "minicheck",                drop_if: "entailment_prob >= 0.7 on (source, summary_sentence)"}
+    fp_signal_field: "extrinsic_fp_dropped"
+    notes: "Current invented_number filter already does this for digits; v2 generalises to all spans."
+
+# Completeness + Conciseness — orthogonal axes from FineSurE; not FRANK classes.
+# Listed for completeness but require different machinery (bipartite match, not span-level FP filter).
+non_frank_axes:
+  completeness:
+    detector: "FineSurE keyfact-extraction + bipartite match (v2 work; out of scope for filter_v2)"
+  conciseness:
+    detector: "FineSurE zero-alignment sentence count (v2 work)"
+
+# Audit trail (per article lesson-10, structured artifacts):
+audit_trail:
+  per_zettel_drop_log: "runs/<run-id>/per_zettel/<wz_uuid>.judge_filter.json"
+  per_run_aggregate:   "runs/<run-id>/judge_filter_summary.json"
+  fields_per_drop:
+    - "frank_class"
+    - "detector_chain_step_that_dropped"
+    - "flagged_span (truncated to 120 chars)"
+    - "drop_reason (human-readable, e.g. 'verbatim substring found at source offset 4521')"
+    - "judge_evaluator_metadata.model_used (for drift attribution)"
+
+# Calibration link: every detector_chain rule should be paired with at least
+# one judge_calibration_set.json item that exercises it. The 10_judge_calibration.py
+# report flags any detector_chain rule that NEVER fires across the calibration
+# set — likely either over-conservative or dead code.

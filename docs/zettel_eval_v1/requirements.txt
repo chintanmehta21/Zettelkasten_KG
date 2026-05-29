@@ -1,0 +1,31 @@
+# Eval-time deps for docs/zettel_eval_v1/.
+# DELIBERATELY separate from ops/requirements.txt — none of these ship to prod.
+# Install on operator laptop:
+#   pip install -r docs/zettel_eval_v1/requirements.txt
+
+# Statistics
+scipy>=1.13           # scipy.stats.bootstrap (BCa), scipy.stats.spearmanr/kendalltau
+scikit-learn>=1.4     # LogisticRegression for Bradley-Terry weight fit
+krippendorff>=0.6     # ordinal Krippendorff alpha for intra-rater retest
+
+# NLI scorer (laptop only, NEVER on prod droplet)
+torch>=2.2            # CPU build is sufficient: --index-url https://download.pytorch.org/whl/cpu
+transformers>=4.40    # for AutoModelForSequenceClassification + DeBERTa-v3 tokenizer
+sentencepiece>=0.2    # required by DeBERTa-v3 tokenizer
+huggingface-hub>=0.23
+
+# Diverse-family judge
+anthropic>=0.39
+
+# Sentence splitting fallback (when atomic_facts.json missing/sparse)
+nltk>=3.8
+
+# Industry-grade JSON repair for LLM output truncation/malformation.
+# Used as the primary repair layer in atomic_facts._parse_facts before
+# the hand-rolled `_repair_truncated_json_array` fallback. PyPI:
+# mangiucugna/json_repair (4.9k stars, v0.59.10 May 2026). Optional —
+# atomic_facts gracefully degrades when missing.
+json-repair>=0.30
+
+# Project runtime deps that scripts import (transitively via the prod codebase)
+# NOT re-pinned here; install via `pip install -r ops/requirements.txt` first.

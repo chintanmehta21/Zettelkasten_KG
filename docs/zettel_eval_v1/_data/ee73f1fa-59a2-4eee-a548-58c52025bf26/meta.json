@@ -1,0 +1,267 @@
+{
+  "workspace_zettel_id": "ee73f1fa-59a2-4eee-a548-58c52025bf26",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "679a0fea-b94f-4df8-8812-810b9ad6f3e9",
+  "normalized_url": "https://github.com/psychopy/psychopy",
+  "title": "psychopy/psychopy",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:34:08.450789+00:00",
+  "ai_summary_len": 3513,
+  "body_md_len": 3033,
+  "content_hash_hex": "d9a9e55c1bbc1cfe64dca097e81f38a1b871dec9f50097fab40f7e671a13eb35",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/psychopy/psychopy",
+      "author": "psychopy",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "psychopy",
+        "forks": 977,
+        "owner": "psychopy",
+        "stars": 2007,
+        "topics": [
+          "experiment",
+          "experiment-control",
+          "experimental-design",
+          "linguistics",
+          "neuroscience",
+          "psycholinguistics",
+          "psychology",
+          "psychophysics",
+          "psychopy",
+          "python",
+          "science"
+        ],
+        "license": "GPL-3.0",
+        "has_demo": false,
+        "language": "Python",
+        "releases": [
+          {
+            "name": "2026.1.3",
+            "tag_name": "2026.1.3",
+            "prerelease": false,
+            "published_at": "2026-03-30T09:51:12Z"
+          },
+          {
+            "name": "2026.1.2",
+            "tag_name": "2026.1.2",
+            "prerelease": false,
+            "published_at": "2026-03-19T11:12:49Z"
+          },
+          {
+            "name": "2026.1.1",
+            "tag_name": "2026.1.1",
+            "prerelease": false,
+            "published_at": "2026-02-26T14:36:01Z"
+          },
+          {
+            "name": "2026.1.0",
+            "tag_name": "2026.1.0",
+            "prerelease": false,
+            "published_at": "2026-02-20T13:03:35Z"
+          },
+          {
+            "name": "2025.2.4",
+            "tag_name": "2025.2.4",
+            "prerelease": false,
+            "published_at": "2026-01-08T14:08:38Z"
+          }
+        ],
+        "full_name": "psychopy/psychopy",
+        "has_tests": false,
+        "languages": [
+          [
+            "Python",
+            99.23025983162907
+          ],
+          [
+            "JavaScript",
+            0.7430575431475396
+          ],
+          [
+            "Go Template",
+            0.024629134467676526
+          ],
+          [
+            "Shell",
+            0.002053490755720311
+          ]
+        ],
+        "pages_url": null,
+        "updated_at": "2026-05-25T13:23:42Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 7,
+        "extra_doc_files": [
+          "CONTRIBUTING.md",
+          "docs/readme.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "This repository exclusively hosts the PsychoPy library, a Python package designed for creating behavioral science experiments. It enables experiments to run as local Python scripts or online using JavaScript. The `docs_dir` likely contains documentation for this library."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "total_latency_ms": 15593,
+      "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2630,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-psychopy-psychopy",
+          "python",
+          "library",
+          "psychology",
+          "neuroscience",
+          "psychophysics",
+          "behavioral-science",
+          "experimentation",
+          "python-library",
+          "open-source"
+        ],
+        "mini_title": "psychopy/psychopy",
+        "owner_login": "psychopy",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "PsychoPy is a Python library for behavioral science experiments. It serves as the core backend, with separate repositories (`psychopy/psychopy-studio`, `psychopy/psychopy-app`) providing modern web-based and legacy wxPython graphical user interfaces, respectively. Experiments can be executed locally as Python scripts or deployed online using JavaScript, supporting both a graphical Builder UI and direct Python coding.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "PsychoPy is an open-source Python package for creating and running behavioral science experiments in fields like psychology, neuroscience, and psychophysics.",
+              "The project aims to be precise enough for psychophysics, easy enough for teaching, and flexible for other uses.",
+              "Experiments can be run as local Python scripts or online using JavaScript.",
+              "It offers two interfaces: a graphical UI called Builder and direct Python coding."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Python",
+              "JavaScript",
+              "Go Template",
+              "numpy"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "PsychoPy Library",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "This repository contains only the PsychoPy library.",
+              "The application UIs are in separate repositories: `psychopy/psychopy-studio` for the modern web-based GUI and `psychopy/psychopy-app` for the legacy wxPython GUI."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "Python",
+              "JavaScript"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The public surface includes components prefixed with `/psy...`."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "/psy..."
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Contributions are managed via forks and pull requests.",
+              "Bug fixes are based on the `release` branch.",
+              "New features are developed on the `dev` branch.",
+              "Commits should be tagged with prefixes: BF (bug fix), FF (feature fix), RF (refactoring), NF (new feature), ENH (enhancement), DOC (documentation), and TEST."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Contribution Workflow",
+            "public_interfaces": [],
+            "usability_signals": [
+              "Experiments can be run as local Python scripts or online using JavaScript."
+            ]
+          },
+          {
+            "bullets": [
+              "Documentation is available on the project homepage.",
+              "A YouTube channel provides additional resources.",
+              "A textbook offers in-depth information.",
+              "A Discourse forum is available for community support.",
+              "A dedicated docs repository (`psychopy/psychopy-docs`) exists for documentation."
+            ],
+            "heading": "Documentation",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Documentation Ecosystem",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Recent releases include 2026.1.3.",
+              "Identified bugs in `MovieStim` and `visual.TextStim` components.",
+              "A breaking change in the `SerialDevice` wrapper has been noted.",
+              "Memory leaks and font rendering inconsistencies are reported.",
+              "Stdout update failures in the runner and crashes when opening multiple windows are issues.",
+              "Dependency problems with `pypi-search` on older versions and `pyobjc` on Linux.",
+              "Compatibility problems with Python 3.12+.",
+              "Feature requests include merging experiments and automating translation file updates."
+            ],
+            "heading": "Recent Issues / Development Status",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Recent Issues / Development Status",
+            "public_interfaces": [],
+            "usability_signals": [
+              "7 GitHub Actions workflows are used for continuous integration."
+            ]
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "docs_markers=1"
+          ],
+          "archetype": "docs_heavy",
+          "confidence": 1.0
+        },
+        "architecture_overview": "PsychoPy is a Python library for behavioral science experiments. It serves as the core backend, with separate repositories (`psychopy/psychopy-studio`, `psychopy/psychopy-app`) providing modern web-based and legacy wxPython graphical user interfaces, respectively. Experiments can be executed locally as Python scripts or deployed online using JavaScript, supporting both a graphical Builder UI and direct Python coding.",
+        "benchmarks_tests_examples": null
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2630,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/psychopy/psychopy"
+  }
+}

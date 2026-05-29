@@ -1,0 +1,125 @@
+version: "judges.v2"
+
+# Sub-4 + Sub-5 hard rule: pin DATED model aliases (e.g. -002 suffix), not
+# floating aliases. Floating aliases auto-swap on Google's schedule and break
+# reproducibility. Anthropic version-pins via dated suffix natively. Every run
+# MUST record response_model from the SDK; reject when null or != request_model.
+
+judges:
+  primary:
+    id: "gemini-2.5-flash"
+    requested_model: "gemini-2.5-flash-002"     # DATED alias (Sub-4 mandate)
+    fallback_request_alias: "gemini-2.5-flash"  # only used if the dated alias 404s; logs a warning
+    provider: "google"
+    api_key_env: "GEMINI_API_KEYS"
+    role_tag: "rubric_evaluator"
+    temperature: 0.0
+    max_output_tokens: 32768
+    retries: 3
+    backoff_seconds: [2, 4]
+    prompt_id: "evaluator.v7"  # from website/features/summarization_engine/evaluator/prompts.py
+    drift_check:
+      record_response_model_field: "GenerateContentResponse.modelVersion"
+      reject_on_null: true
+      flag_on_mismatch: true   # warn but do not abort; surface in next-run report
+    notes: |
+      Parity with current production evaluator. Atomic facts extracted via
+      the same key pool with role_tag=atomic_facts (see atomic_facts.py).
+
+  secondary:
+    id: "claude-haiku-4-5"
+    requested_model: "claude-haiku-4-5-20251001"  # already dated by Anthropic convention
+    provider: "anthropic"
+    api_key_env: "ANTHROPIC_API_KEY"
+    role_tag: "rubric_evaluator_diverse"
+    temperature: 0.0
+    max_output_tokens: 32768
+    retries: 3
+    backoff_seconds: [2, 4]
+    prompt_id: "evaluator.v7"
+    drift_check:
+      record_response_model_field: "response.model"
+      reject_on_null: true
+      flag_on_mismatch: true
+    notes: |
+      Different-family judge for self-preference correction
+      (Panickssery 2024, PoLL Verga 2024). Eval-time only;
+      not on prod droplet. Operator provides ANTHROPIC_API_KEY in
+      .env.eval (separate from prod .env.v2).
+
+atomic_fact_extractor:
+  default:
+    id: "gemini-2.5-flash"
+    role_tag: "atomic_facts"
+    prompt_id: "atomic_facts.v1"
+  experimental_swap:
+    id: "gemini-2.5-flash-lite"
+    role_tag: "atomic_facts_swap"
+    notes: |
+      Optional --swap-extractor flag for run-NNN-extract-swap experiments
+      that break the same-family extract-and-judge circularity.
+
+# Sizing (operator-overridden 2026-05-28-evening):
+#   anchor_size = 40 (per sweep-3-budget verdict)
+#   rotation = 1 per source per iter (operator restored; sweep-3-budget had cut to 0;
+#             operator wants thorough deep-check breadth)
+#   active iters = 5 (operator restored iter-005)
+# Token-economics-grounded budget (Gemini 2.5 Flash + Claude Haiku 4.5 pricing 2026-05;
+# see METHODOLOGY §19.3 for the calculation): ~$8 USD total. NOT a vibes estimate.
+
+run_matrix:
+  - iter_id: "iter-001-baseline"
+    judges: ["primary"]
+    nli: false
+    description: "Parity replicate of current summary_eval_v2 evaluator on the 40-anchor set."
+    output_root: "runs/iter-001-baseline/"
+    status: active
+
+  - iter_id: "iter-002-claude"
+    judges: ["secondary"]
+    nli: false
+    description: "Claude Haiku 4.5 only; isolate self-preference effect."
+    output_root: "runs/iter-002-claude/"
+    status: active
+
+  - iter_id: "iter-003-nli"
+    judges: ["primary"]
+    nli: true
+    description: "Gemini + MiniCheck-DeBERTa-v3-Large NLI; isolate NLI signal."
+    output_root: "runs/iter-003-nli/"
+    status: active
+
+  - iter_id: "iter-004-jury"
+    judges: ["primary", "secondary"]
+    nli: true
+    description: "Full jury + NLI. The candidate for new production composite."
+    output_root: "runs/iter-004-jury/"
+    status: active
+
+  - iter_id: "iter-005-extract-swap"
+    judges: ["primary"]
+    nli: true
+    extractor: "experimental_swap"
+    description: "Break extractor-judge circularity; same metrics as 003 + NLI but extractor swapped to gemini-2.5-flash-lite. Operator restored 2026-05-28-evening for thorough deep-check coverage."
+    output_root: "runs/iter-005-extract-swap/"
+    status: active
+
+# Per-source folders auto-created inside each output_root:
+# github / newsletter / reddit / youtube / hackernews / arxiv /
+# podcast / twitter / linkedin / web   +   _overall
+# (see runs/README.md for the per-folder file contract)
+output_layout:
+  per_iter_dirs: ["_overall", "github", "newsletter", "reddit", "youtube",
+                  "hackernews", "arxiv", "podcast", "twitter", "linkedin", "web"]
+  filename_contract:
+    per_source:
+      - "per_zettel/<wz_uuid>.json"
+      - "manifest_results.csv"
+      - "error_class_histogram.json"
+      - "source_summary.md"
+      - "top_failures.md"
+    iter_level:
+      - "config.json"
+      - "telemetry.json"
+      - "REPORT.md"
+      - "README.md"

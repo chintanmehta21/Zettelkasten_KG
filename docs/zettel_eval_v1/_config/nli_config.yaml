@@ -1,0 +1,49 @@
+version: "nli_config.v1"
+
+model:
+  id: "lytang/MiniCheck-DeBERTa-v3-Large"
+  type: "deberta-v3-large-mnli-finetune"
+  provider: "huggingface"
+  paper: "Tang et al. EMNLP 2024 - MiniCheck"
+  params: 435000000
+  approx_disk_mb: 1700
+  approx_ram_mb_fp32: 1800
+  approx_ram_mb_fp16: 900
+  license: "MIT"
+  url: "https://github.com/Liyan06/MiniCheck"
+
+execution:
+  device: "cpu"            # never gpu in v1; explicit "cpu" to avoid accidental driver requirements
+  precision: "fp16"        # halves RAM with negligible accuracy loss for inference
+  batch_size: 8
+  max_premise_tokens: 2048
+  max_hypothesis_tokens: 256
+  approx_latency_per_claim_ms_cpu: 1000
+
+claim_segmentation:
+  source: "atomic_facts.json"
+  fallback: "sentence_split_via_nltk"
+  max_claims_per_zettel: 60       # raise from current ceiling of 30 per atomic_facts.py;
+                                  # research shows ~60-120 claims is standard at proposition granularity
+
+combine_rule:
+  faithfulness:
+    method: "min"
+    inputs: ["llm_finesure_faithfulness", "nli_mean_entailment"]
+    description: "Conservative: either-or-both unfaithful sinks composite faithfulness."
+  hard_fail_gate:
+    enabled: true
+    condition: "nli_contradict_prob >= 0.7 AND llm_judge_label == contradicted"
+    action: "flag_for_human_review"   # never auto-fail; this is diagnostic, not gating
+
+# v2 candidates (not enabled in v1):
+v2_candidates:
+  - "Add Vectara HHEM-2.1-Open as second NLI; ensemble via mean(MiniCheck, HHEM)."
+  - "Fine-tune MiniCheck head on the human-annotated round-1 set after collection."
+  - "Switch device to mps on Apple Silicon if developer laptop supports it (~5-10x speedup)."
+
+scope_guard: |
+  This NLI scorer NEVER runs on the prod DigitalOcean droplet. It runs on the
+  operator's laptop (CPU or MPS). The 2 GB droplet co-tenants gunicorn workers,
+  BGE int8 cascade, and FastAPI; adding a 1.7 GB transformer model would
+  violate the iter-03 protected RAM budget (GUNICORN_WORKERS=2, --preload).

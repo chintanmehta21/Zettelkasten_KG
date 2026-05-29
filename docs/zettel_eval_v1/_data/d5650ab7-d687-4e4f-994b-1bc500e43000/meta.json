@@ -1,0 +1,244 @@
+{
+  "workspace_zettel_id": "d5650ab7-d687-4e4f-994b-1bc500e43000",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "027292cd-cd90-4c62-a21f-138bdbd74c69",
+  "normalized_url": "https://github.com/dendronhq/dendron",
+  "title": "dendronhq/dendron",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:38:51.739807+00:00",
+  "ai_summary_len": 3256,
+  "body_md_len": 2700,
+  "content_hash_hex": "c46118a8adc8890a2135b61f3480f47fb9a10186dedb60e62767d750ca8b184c",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/dendronhq/dendron",
+      "author": "dendronhq",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "dendron",
+        "forks": 301,
+        "owner": "dendronhq",
+        "stars": 7405,
+        "topics": [
+          "dendron",
+          "markdown",
+          "markdown-editor",
+          "pkm",
+          "vscode",
+          "zettelkasten"
+        ],
+        "license": "Apache-2.0",
+        "has_demo": false,
+        "language": "TypeScript",
+        "releases": [],
+        "full_name": "dendronhq/dendron",
+        "has_tests": false,
+        "languages": [
+          [
+            "TypeScript",
+            95.74199155176389
+          ],
+          [
+            "JavaScript",
+            2.6459693886090836
+          ],
+          [
+            "HTML",
+            0.43474161022273355
+          ],
+          [
+            "CSS",
+            0.38814025285048004
+          ],
+          [
+            "SCSS",
+            0.3511674120618963
+          ],
+          [
+            "Shell",
+            0.23289078063736804
+          ],
+          [
+            "Jinja",
+            0.131401907042887
+          ],
+          [
+            "Less",
+            0.0349013010760903
+          ],
+          [
+            "Makefile",
+            0.029647876365206816
+          ],
+          [
+            "MDX",
+            0.009147919370371248
+          ]
+        ],
+        "pages_url": null,
+        "updated_at": "2026-05-26T15:17:33Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 16,
+        "extra_doc_files": [
+          "CONTRIBUTING.md",
+          "docs/README.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "Dendron is a local-first, markdown-based personal knowledge management tool that organizes notes within \"vaults,\" which are git-backed folders. Schemas provide structure and consistency for these notes. The `docs_dir` likely contains documentation, and vaults can be published as static sites."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 20421,
+      "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2253,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-dendronhq-dendron",
+          "javascript",
+          "pkm",
+          "knowledge-management",
+          "markdown",
+          "typescript",
+          "vs-code",
+          "local-first",
+          "git",
+          "developer-tools"
+        ],
+        "mini_title": "dendronhq/dendron",
+        "owner_login": "dendronhq",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "Dendron (dendronhq/dendron) is an open-source, local-first, markdown-based Personal Knowledge Management (PKM) tool built primarily with TypeScript, JavaScript, and HTML, also leveraging Next.js for publishing. It organizes knowledge in plaintext files within git-backed \"vaults\" and integrates with VS Code and VSCodium. Users interact with it through its VS Code integration and a CLI, which includes the `/sub` interface. The project is currently in maintenance-only mode.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Dendron is an open-source, local-first, markdown-based Personal Knowledge Management (PKM) tool.",
+              "It is designed for developers and integrates with VS Code and VSCodium.",
+              "The project is in maintenance-only mode; active development has ceased.",
+              "Dendron's mission is to manage any amount of knowledge, aiming to scale beyond 10,000 notes.",
+              "Its design is developer-centric, targeting the efficiency of Vim and extensibility of Emacs within a text-centric, keyboard-focused UX.",
+              "It employs a principle of \"gradual structure,\" extending markdown with primitives that can be added as a knowledge base grows."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "TypeScript",
+              "JavaScript",
+              "HTML",
+              "Next.js"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [
+              "/sub"
+            ],
+            "usability_signals": [
+              "Integrates with VS Code and VSCodium",
+              "Licensed under Apache 2.0"
+            ]
+          },
+          {
+            "bullets": [
+              "The architecture uses plaintext files manageable with git.",
+              "Knowledge is organized into \"vaults\" (git-backed folders).",
+              "Key features include a unified lookup for finding/creating notes.",
+              "Schemas are used for consistency and autocompletion.",
+              "Navigation is supported via backlinks and a graph view.",
+              "Robust refactoring capabilities are provided, preserving links.",
+              "Supports mermaid diagrams and KaTeX for math.",
+              "Supports note embedding.",
+              "Vaults can be published as static Next.js websites with granular permissions."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The CLI includes the `/sub` interface."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "/sub"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The repository provides a `./setup.sh` script for development environment automation."
+            ],
+            "heading": "Operational guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "./setup.sh"
+            ]
+          },
+          {
+            "bullets": [
+              "The project is in maintenance-only mode, and active development has ceased.",
+              "Recent issues involve bugs with Mermaid support overriding VS Code's native feature.",
+              "Outdated documentation has been noted.",
+              "CLI errors have been reported.",
+              "Problems with image pasting and preview rendering have been observed."
+            ],
+            "heading": "Current Status / Issues",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Current Status / Issues",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=1"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.6
+        },
+        "architecture_overview": "Dendron's architecture centers on plaintext markdown files, managed with Git, and organized into \"vaults.\" It extends markdown with \"gradual structure\" primitives and uses schemas for consistency. Navigation is supported through backlinks and a graph view. The system provides robust refactoring capabilities and supports rich content like mermaid diagrams and KaTeX. Vaults can be published as static Next.js websites.",
+        "benchmarks_tests_examples": null
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2253,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/dendronhq/dendron"
+  }
+}

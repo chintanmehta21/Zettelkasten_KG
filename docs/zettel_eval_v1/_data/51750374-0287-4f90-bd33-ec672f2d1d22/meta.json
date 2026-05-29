@@ -1,0 +1,135 @@
+{
+  "workspace_zettel_id": "51750374-0287-4f90-bd33-ec672f2d1d22",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "f7a287b9-1ea7-41f3-a36c-caa4c35ecd2d",
+  "normalized_url": "https://peps.python.org/pep-0701/",
+  "title": "PEP 701: F-string Formalization",
+  "source_type": "web",
+  "publication_date": "2026-05-14",
+  "captured_at": "2026-05-14T17:19:31.105195+00:00",
+  "ai_summary_len": 3634,
+  "body_md_len": 3237,
+  "content_hash_hex": "780b6e239d253173591b5d0a22f91d12a5e0c38c49ea2cfcce957741fb78afed",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://peps.python.org/pep-0701/",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "PEP 701 – Syntactic formalization of f-strings | peps.python.org",
+        "description": "This document proposes to lift some of the restrictions originally formulated in PEP 498 and to provide a formalized grammar for f-strings that can be integrated into the parser directly. The proposed syntactic formalization of f-strings will have some ...",
+        "route_subtype": "page",
+        "og_description": "This document proposes to lift some of the restrictions originally formulated in PEP 498 and to provide a formalized grammar for f-strings that can be integrated into the parser directly. The proposed syntactic formalization of f-strings will have some ...",
+        "route_supported": true
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 47530,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2091,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Python",
+          "PEP 701",
+          "f-strings",
+          "Python 3.12",
+          "parser",
+          "PEG grammar",
+          "syntax"
+        ],
+        "mini_title": "PEP 701: F-string Formalization",
+        "brief_summary": "PEP 701, accepted for Python 3.12, formalizes f-string syntax by providing a PEG grammar and integrating it directly into the parser, lifting previous restrictions. This aims to reduce CPython parser maintenance costs and improve user experience by allowing more flexible f-string expressions.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Accepted for Python 3.12, formalizes f-string syntax.",
+              "Provides a PEG grammar and integrates f-strings directly into the parser.",
+              "Lifts restrictions from PEP 498.",
+              "Authored by Pablo Galindo Salgado, Batuhan Taskaya, Lysandros Nikolaou, and Marta Gómez Macías.",
+              "Aims to reduce CPython parser maintenance cost and improve user experience.",
+              "Previous implementation treated f-strings as `STRING` tokens, requiring error-prone post-processing.",
+              "Prevented the use of the new PEG parser's (PEP 617) improved error messages.",
+              "Lacked a formal grammar for other Python implementations (e.g., PyPy) to follow."
+            ],
+            "heading": "PEP 701: Overview and Motivation",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Lifts several limitations originally imposed due to CPython's old lexer.",
+              "The new grammar defines the expression component as 'any applicable Python expression'.",
+              "Allows for arbitrary nesting of f-strings, with a mandated minimum nesting depth of 5.",
+              "Specifies a minimum nesting depth of 2 for expressions within format specifiers (e.g., `f\"{'':*^{1:{1}}}\"` must be valid).",
+              "Changes are designed to be backwards-compatible, preserving the existing Abstract Syntax Tree (AST).",
+              "Introduces no semantic changes to existing code.",
+              "The f-string debug feature (`f\"{expr=}\"`), introduced in Python 3.8, is unaffected, but its formal handling requires the lexer to preserve the raw string of the expression, including whitespace."
+            ],
+            "heading": "Key Changes and Lifted Limitations",
+            "sub_sections": {
+              "Comments": [
+                "The `#` character for comments is now permitted within multi-line f-string expressions.",
+                "Requires the closing brace `}` to be on a subsequent line."
+              ],
+              "Newlines": [
+                "Newlines are allowed within expression brackets."
+              ],
+              "Backslashes": [
+                "Backslashes and escape sequences are now allowed inside expression parts (e.g., `f\"{'\\n'.join(items)}\"`)."
+              ],
+              "Quote Reuse": [
+                "The same quote character delimiting the f-string can now be used within an expression part (e.g., `f\"key: {my_dict['key']}\"`).",
+                "Acknowledged as controversial by some due to readability concerns and challenges for simple syntax highlighters (like IDLE's).",
+                "Arguments in favor include consistency with other languages (JavaScript, Ruby, C#), simplification for code generators (`ast.unparse`), and significantly reduced implementation complexity in the PEG parser.",
+                "Authors decided against forbidding quote reuse at the parser level, suggesting it be handled by linters."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "To support the new grammar, three new tokens are introduced: `FSTRING_START`, `FSTRING_MIDDLE`, and `FSTRING_END`.",
+              "The `tokenize` module will be updated to emit these new tokens.",
+              "The PEP provides a reference algorithm for adapting lexers using a stack of modes."
+            ],
+            "heading": "Implementation Details",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Two ideas were rejected:",
+              "1. Lifting the restriction that expressions with top-level `:` or `!` characters (like lambdas) must be parenthesized.",
+              "2. Allowing escaped braces (`\\{`, `\\}`).",
+              "Allowing escaped braces (`\\{`, `\\}`) was deferred as a potential future enhancement.",
+              "The new, simpler way to teach f-strings is: 'You can place any valid Python expression inside an f-string expression, and everything after a `:` character at the top level will be identified as a format specification.'",
+              "A reference implementation is available."
+            ],
+            "heading": "Rejected Ideas and Simplified Teaching",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2091,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://peps.python.org/pep-0701/"
+  }
+}

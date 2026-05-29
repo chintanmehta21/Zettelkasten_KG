@@ -1,0 +1,162 @@
+{
+  "workspace_zettel_id": "6ac4c5f0-5c73-426b-9d9b-0f8ac4a9cd43",
+  "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+  "canonical_zettel_id": "19d5eba8-e5e5-455d-9ce0-2bdf26aa240c",
+  "normalized_url": "https://paperboy.com/blog/the-last-interface",
+  "title": "Paperboy AI: An Always-On Personal Presence",
+  "source_type": "web",
+  "publication_date": "2026-05-26",
+  "captured_at": "2026-05-26T01:41:33.912471+00:00",
+  "ai_summary_len": 3722,
+  "body_md_len": 3330,
+  "content_hash_hex": "eadd25e9930c058bef409e0a6646020d44ac19470cf750d3347453d22ccf94d0",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://paperboy.com/blog/the-last-interface",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "The Last Interface — Paperboy",
+        "description": "The architecture of personal intelligence — what happens when AI learns to be you.",
+        "route_subtype": "page",
+        "og_description": "The architecture of personal intelligence — what happens when AI learns to be you.",
+        "route_supported": true,
+        "twitter_description": "The architecture of personal intelligence — what happens when AI learns to be you."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 21964,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2036,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Personal AI",
+          "AI Architecture",
+          "Multi-agent Systems",
+          "Privacy by Design",
+          "User Modeling",
+          "Cognitive Load",
+          "Proactive AI"
+        ],
+        "mini_title": "Paperboy AI: An Always-On Personal Presence",
+        "brief_summary": "Paperboy is an AI designed as an always-on personal presence that learns from a user's screen, conversations, and decisions to proactively manage life's demands. Its architecture is inspired by neural networks, using a knowledge graph as a user model and agents organized by 'surfaces' operating at five distinct speeds. The system employs an explicit loss function to address silent omissions and emphasizes 'privacy as architecture' with local data encryption and no general model training on user data, building its competitive moat on earning user trust.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Paperboy is an AI designed to be an always-on personal presence.",
+              "Understands a user by observing their screen, conversations, and decisions.",
+              "Aims to solve the 'presence problem'—the gap between cognitive capacity and life's demands.",
+              "Proactively notices and handles issues, rather than just being a better data storage tool."
+            ],
+            "heading": "Core Concept: Solving the 'Presence Problem'",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Architecture modeled on neural networks: AI agents are like neurons, intelligence emerges from connections.",
+              "The 'knowledge graph' acts as the weight matrix, accumulating a model of the user.",
+              "User corrections function as backpropagation, adjusting specific weights.",
+              "An attention mechanism dynamically loads relevant knowledge for each query.",
+              "Memory gates (input, forget, output) manage what is learned and surfaced.",
+              "Incorporates concepts like dropout for anti-fragility and a mixture-of-experts model."
+            ],
+            "heading": "System Architecture: Neural Network Analogy",
+            "sub_sections": {
+              "Agent Organization": [
+                "Agents are organized by 'surfaces' (where they operate, e.g., Slack, code, email) rather than capabilities.",
+                "Each surface agent maintains private memory.",
+                "A central 'gardener' agent cross-pollinates insights to create a unified user model."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Each surface operates at five distinct speeds, extending to physical presence in meetings."
+            ],
+            "heading": "Five Speeds of Operation",
+            "sub_sections": {
+              "Work (Deep dives)": [
+                "Produces interactive, generated UI (called 'canvases') like reports or refactored code."
+              ],
+              "Reflex (Sub-second)": [
+                "Local, sub-second actions like autocomplete that reshape the interface."
+              ],
+              "Glance (1-2 seconds)": [
+                "Contextual information like tooltips or suggestion chips."
+              ],
+              "Background (Continuous)": [
+                "Continuous, unnoticed tasks like finding flaky tests or nudging on deadlines."
+              ],
+              "Physical Presence Extension": [
+                "Interpreting audio, surfacing context, decoding subtext, and handling follow-ups in meetings."
+              ],
+              "Think (Seconds-to-a-minute)": [
+                "Conversational responses like drafting replies or diagnosing problems."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Addresses silent omissions, which are identified as the biggest failures of personal AI.",
+              "Uses an explicit loss function with five signals:",
+              "Accuracy: Correctness of information or actions.",
+              "Latency: Speed of response or action.",
+              "Autonomy: Degree of independent action.",
+              "Taste: The difference between a draft and the user's final version.",
+              "Absence: What the system should have noticed but didn't."
+            ],
+            "heading": "Explicit Loss Function for Personal AI",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Lessons from multi-agent systems, validated by Cursor at a 1,000-agent scale, include:",
+              "Peer coordination fails.",
+              "Single agents with too many roles break.",
+              "Optimizing for convergence beats requiring perfect correctness at each step.",
+              "Hard problems remain, including irreversibility of actions, user contradictions, and respecting the user's 'identity line'."
+            ],
+            "heading": "Lessons from Multi-Agent Systems and Remaining Challenges",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Building a future where the human is at the center, making the user the loss function.",
+              "Employs 'privacy as architecture':",
+              "Data is encrypted on the user's machine by default.",
+              "No aggregate data collection.",
+              "No general model training on user data.",
+              "The business model is reliant on earning user trust for delegation.",
+              "The system's competitive moat is the irreducible time it spends learning a user's judgment, voice, and values."
+            ],
+            "heading": "Privacy as Architecture and Business Model",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2036,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://paperboy.com/blog/the-last-interface"
+  }
+}

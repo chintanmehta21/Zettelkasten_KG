@@ -1,0 +1,191 @@
+version: "iter_001_p1_checks.v1"
+
+# Operationalises the P1 checks from
+# docs/research/zettel-eval-v1_improvements.md
+# (the FRANK-grounded improvements report read at session 2026-05-28).
+#
+# These FIVE P1 checks land in iter-001-baseline as first-class outputs alongside
+# the existing rubric_v3 composite. Each check has:
+#   - a deterministic component (where industry has working pre-LLM heuristics)
+#   - an LLM-judge component (current evaluator stack)
+#   - a per-zettel field in zettel_results that the operator can sort by
+#
+# Goal: every zettel's eval JSON exposes WHICH of these 5 gates fired,
+# not just an aggregate composite. iter-002..005 may relax / tighten them.
+
+p1_checks:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # P1.1  CLAIM ATTRIBUTION GATE (Attributed Claim Rate, ACR)
+  # Catches: OutE, plus any EntE/PredE/CircE where evidence span is missing
+  # Method: per atomic claim, retrieve candidate source span; LLM-judge / NLI
+  #         decides support. ACR = supported_claims / total_claims.
+  # Source: docs/research/zettel-eval-v1_improvements.md §"P1 — Claim attribution gate"
+  # ─────────────────────────────────────────────────────────────────────────
+  claim_attribution:
+    output_field: "acr_score"
+    decomposition_source: "atomic_facts.json (already produced)"
+    evidence_retrieval:
+      - method: "verbatim_substring (find_unverified_substring)"
+        notes: "Existing helper in ops/scripts/lib/phases.py; whitespace + digit-grouping tolerant"
+      - method: "minicheck_entailment (iter-003+; not in iter-001-baseline)"
+        notes: "Sub-2 sweep: real NLI catches ~+3-6 pt over LLM-prompt SummaC"
+    judge_combinator:
+      iter_001: "verbatim_substring OR judge_finesure_faithfulness >= 0.9 -> supported"
+      iter_003plus: "min(verbatim_OR_judge, nli_entailment_prob) -> supported"
+    gate_thresholds:
+      block_if: "acr_score < 0.85  AND  any unsupported claim is severity=critical"
+      warn_if:  "acr_score in [0.85, 0.95)"
+    per_zettel_emit:
+      - "acr_score (float)"
+      - "unsupported_claim_count (int)"
+      - "unsupported_claim_severities (list)"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # P1.2  ENTITY / NUMBER / DATE / UNIT CONSISTENCY (Entity Slot Support, ESS)
+  # Catches: EntE single-token errors
+  # Method: spaCy NER on summary AND source; numeric + DATE token extraction;
+  #         deterministic alignment.
+  # Already partially implemented as compute_numeric_grounding_signal()
+  # for numeric tokens; iter-001 extends to entity + date.
+  # ─────────────────────────────────────────────────────────────────────────
+  entity_consistency:
+    output_field: "ess_score"
+    detectors:
+      - {kind: "numeric_tokens", impl: "website.features.summarization_engine.evaluator.numeric_grounding.numeric_validator (exists)"}
+      - {kind: "spacy_PERSON_ORG_GPE", impl: "spacy en_core_web_sm; ship as pip dep in requirements.txt (already pinned)"}
+      - {kind: "DATE_TIME_normalisation", impl: "spacy DATE + dateparser for ISO-normalisation"}
+    drop_if_match_in_source: true
+    gate_thresholds:
+      block_if: "ess_score < 0.90  AND  any unsupported entity is a named PERSON/ORG/GPE"
+      warn_if:  "ess_score in [0.90, 0.97)"
+    per_zettel_emit:
+      - "ess_score (float)"
+      - "unsupported_entity_count (int)"
+      - "unsupported_entity_examples (top 3)"
+      - "numeric_grounding_score (already exists, surfaced here too)"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # P1.3  PREDICATE / POLARITY / MODALITY (Predicate Consistency Score, PCS;
+  #       Circumstance Match Score, CMS)
+  # Catches: PredE polarity flips, CircE modality drift
+  # Method: lexicon-based negation + modal-verb scan; LLM-judge fallback.
+  # ─────────────────────────────────────────────────────────────────────────
+  predicate_modality_consistency:
+    output_fields: ["pcs_score", "cms_score"]
+    detectors:
+      pcs:
+        - {kind: "negation_count_parity", impl: "regex over neg lexicon: not, no, never, n't, without"}
+        - {kind: "stance_verb_match", impl: "lexicon: endorse|criticise|support|oppose|approve|reject"}
+        - {kind: "llm_judge_predicate_check", impl: "ConsolidatedEvaluator.evaluate() existing finesure.faithfulness sub-call"}
+      cms:
+        - {kind: "modal_lexicon", impl: "list: may, might, could, would, will, must, should, can, possibly, perhaps, likely"}
+        - {kind: "range_collapse_detector", impl: "regex over ranges like 'N-M years' -> single N"}
+        - {kind: "date_alignment", impl: "spacy DATE; reuse ESS detector"}
+    gate_thresholds:
+      block_if: "pcs_score < 0.95"
+      warn_if:  "cms_score < 0.90"
+    per_zettel_emit:
+      - "pcs_score (float)"
+      - "cms_score (float)"
+      - "polarity_flip_examples (top 3)"
+      - "modality_drift_examples (top 3)"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # P1.4  PER-CLASS MUST-PASS SMOKE BANK
+  # Already designed (see _config/judge_calibration_set.json).
+  # iter-001 wiring: 10_judge_calibration.py runs BEFORE 02_run_judge.py;
+  # if calibration overall_pass != true, 02_run_judge.py refuses unless
+  # --override-calibration is set. This is the article's lesson-5 gate.
+  # ─────────────────────────────────────────────────────────────────────────
+  smoke_bank:
+    output_field: "calibration_pass"
+    source_set: "_config/judge_calibration_set.json"
+    target_detection_rate_per_class: 0.70
+    pre_flight_gate: true
+    per_zettel_emit:
+      - "calibration_pass (bool; same value for all zettels in this iter)"
+      - "calibration_per_class_detection (dict; same for all zettels)"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # P1.5  COMPLETENESS AUDIT (Key-Fact Coverage Recall, KCR)
+  # Catches: Completeness failures
+  # Method: extract keyfacts from source via LLM; bipartite match against
+  #         summary atomic claims. Surface unmatched keyfacts.
+  # NOTE: this is the SECOND most expensive P1 (one extra LLM call per zettel
+  # for keyfact extraction). Per Sub-2 sweep: ~$0.10/zettel additional.
+  # In iter-001, we approximate via the EXISTING rubric.completeness component
+  # so we get a "lite" KCR without the extra call. Full KCR ships in iter-002.
+  # ─────────────────────────────────────────────────────────────────────────
+  completeness_audit:
+    iter_001_implementation: "lite"  # uses existing rubric.completeness; no extra LLM call
+    iter_002plus_implementation: "full_keyfact_bipartite_match"
+    lite_path:
+      output_field: "kcr_lite_score"
+      derived_from: "rubric.components[id=detailed.one_bullet_per_unit].score / max_points"
+    full_path_spec:
+      keyfact_extraction:
+        prompt: "atomic_facts.v2 (TBD; mirror the FineSurE keyfact extractor)"
+        call_cost: "+1 LLM call per zettel"
+      bipartite_match:
+        method: "MiniCheck-DeBERTa entailment between each source keyfact and the summary as a whole"
+        threshold: "entailment_prob >= 0.6"
+    gate_thresholds:
+      iter_001:
+        warn_if: "kcr_lite_score < 0.7"
+      iter_002plus:
+        block_if: "kcr_full_score < 0.6  AND  any unmatched keyfact has weight=P0"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Output schema additions per zettel
+# (extends runs/<iter>/<source>/per_zettel/<wz_uuid>.json)
+# ─────────────────────────────────────────────────────────────────────────
+per_zettel_p1_block:
+  acr_score: "float"
+  ess_score: "float"
+  pcs_score: "float"
+  cms_score: "float"
+  kcr_lite_score: "float"
+  calibration_pass: "bool"
+  decision: "pass | warn | fail"
+  fail_reasons: "list of strings; subset of {acr_block, ess_block, pcs_block, calibration_fail}"
+  warn_reasons: "list"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Aggregate report (runs/<iter>/REPORT.md additions)
+# ─────────────────────────────────────────────────────────────────────────
+aggregate_p1_block:
+  - "Distribution of acr/ess/pcs/cms/kcr_lite across all 47 zettels (mean + BCa CI)"
+  - "Per-source histogram: which P1 gates fire most frequently per source type"
+  - "Cross-iter delta of P1 gate fire-rates (vs run-001 baseline; written by 07_diff_runs.py)"
+
+# ─────────────────────────────────────────────────────────────────────────
+# What changes vs the pre-P1 design
+# ─────────────────────────────────────────────────────────────────────────
+delta_vs_current_design:
+  - "rubric_v3.yaml composite formula UNCHANGED. P1 scores are surfaced ALONGSIDE composite, not folded in."
+  - "post_judge_filter_v2.yaml COVERS ess/pcs/cms detectors. iter-001 implements the deterministic chain only; LLM-judge backstop reuses the existing ConsolidatedEvaluator call."
+  - "judge_calibration_set.json is the SMOKE BANK (P1.4); gating already specified in METHODOLOGY §18.7"
+  - "kcr_lite_score in iter-001 reuses existing rubric.completeness; full KCR with keyfact extraction lands in iter-002 only after the lite signal is calibrated"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Per-iter expansion plan (which checks tighten across iters)
+# ─────────────────────────────────────────────────────────────────────────
+iter_progression:
+  iter-001-baseline:
+    p1_checks: ["claim_attribution(verbatim+judge)", "entity_consistency(spacy+numeric)",
+                "predicate_modality(lexicon+judge)", "smoke_bank(calibration_gate)",
+                "completeness_lite(rubric.completeness)"]
+    notes: "Establish baseline; no new LLM cost beyond existing evaluator."
+  iter-002-claude:
+    p1_checks: "same as iter-001 PLUS Claude-Haiku second-opinion on each P1 fire"
+    notes: "Self-preference correction on the P1 gates themselves."
+  iter-003-nli:
+    p1_checks: "ACR upgraded to MiniCheck-DeBERTa NLI; PCS/CMS upgraded with NLI sub-call"
+    notes: "Replace LLM-prompt-as-NLI with real DeBERTa NLI. Eval-time CPU only."
+  iter-004-jury:
+    p1_checks: "iter-003 + Claude jury vote on every P1 decision"
+    notes: "Strongest evaluator; baseline candidate for promoting to production."
+  iter-005-extract-swap:
+    p1_checks: "iter-003 + gemini-2.5-flash-lite atomic_facts extractor"
+    notes: "Break extractor-judge circularity (Sub-1 sweep). Compare to iter-003 on ACR specifically."

@@ -1,0 +1,116 @@
+{
+  "workspace_zettel_id": "a5d22e48-ccc0-4607-b0c5-c59eb4ffd4c6",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "cd51b341-e2b9-4d09-b975-59bea83b0ce6",
+  "normalized_url": "https://refractor.io/mental-health/serotonin-dopamine-real-time-tracking-brain/",
+  "title": "Real-time Dopamine & Serotonin Monitoring in Human Brain",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:29:50.993777+00:00",
+  "ai_summary_len": 2640,
+  "body_md_len": 2147,
+  "content_hash_hex": "a95f9f053e5fcbe80a9df734ff8d0f1bc34cfd76454665e7921153b46ae212be",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://refractor.io/mental-health/serotonin-dopamine-real-time-tracking-brain/",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "Real-time tracking of serotonin, dopamine opens new window to the brain",
+        "description": "Dopamine and serotonin are brain chemicals implicated in a range of neurological disorders including Parkinson’s and depression. A new tool is offering an unprecedented look at these neurotransmitters in action.",
+        "route_subtype": "page",
+        "og_description": "Dopamine and serotonin are brain chemicals implicated in a range of neurological disorders including Parkinson’s and depression, so understanding how they work could be key to the development of more effective treatments for these conditions. A new tool is offering an unprecedented look at these…",
+        "route_supported": true,
+        "twitter_description": "Dopamine and serotonin are brain chemicals implicated in a range of neurological disorders including Parkinson’s and depression, so understanding how they work could be key to the development of more effective treatments for these conditions. A new tool is offering an unprecedented look at these neurotransmitters in action, enabling scientists to monitor their real-time activity for the first time."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 14556,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1234,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Neuroscience",
+          "Dopamine",
+          "Serotonin",
+          "Fast Scan Cyclic Voltammetry",
+          "Human Brain",
+          "Deep Brain Stimulation",
+          "Decision Making",
+          "Neurological Disorders",
+          "Brain Plasticity",
+          "Perception"
+        ],
+        "mini_title": "Real-time Dopamine & Serotonin Monitoring in Human Brain",
+        "brief_summary": "Scientists utilized fast scan cyclic voltammetry to achieve the first real-time, sub-second monitoring of dopamine and serotonin activity in the human brain during a decision-making task. The study, involving patients undergoing deep brain stimulation surgery, revealed distinct roles for serotonin in uncertainty and dopamine in decision anticipation, offering new insights into neurological processes and potential therapeutic targets.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "A new tool using fast scan cyclic voltammetry enabled real-time, sub-second activity monitoring of dopamine and serotonin.",
+              "This marks the first time such monitoring has been achieved in the human brain.",
+              "The technique represents a vast improvement over previous methods, which could not offer the same frequency or volume of measurements."
+            ],
+            "heading": "Novel Electrochemical Monitoring Technique",
+            "sub_sections": {
+              "Experimental Procedure": [
+                "Scientists from Virginia Tech inserted a carbon fiber microelectrode to detect and record neurotransmitter release.",
+                "Awake patients performed a decision-making task 200 to 300 times.",
+                "The task involved judging the direction of moving dots and indicating their confidence."
+              ],
+              "Study Design and Participants": [
+                "The study involved five patients (two with Parkinson’s disease, three with essential tremor) undergoing deep brain stimulation (DBS) surgery.",
+                "The research was conducted at Wake Forest Baptist Medical Center."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Serotonin levels were observed to rise with uncertainty and fall with certainty.",
+              "Dopamine levels increased as subjects anticipated their decision.",
+              "A choice was made when both neurotransmitters reached certain levels."
+            ],
+            "heading": "Observed Neurotransmitter Dynamics and Significance",
+            "sub_sections": {
+              "Expert Commentary": [
+                "P. Read Montague, the study's senior author, stated this is the first time moment-to-moment activity in these systems has been measured and linked to perception and cognitive capacities, acting across unexpected time and space scales.",
+                "Principal investigator Kenneth T. Kishida noted the study provides insight into how these neurochemicals affect learning, brain plasticity, and perception."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Dopamine and serotonin are implicated in neurological disorders like Parkinson's (characterized by dopamine depletion) and depression.",
+              "Understanding their broader roles—such as serotonin in the gut regulating blood sugar or how ketamine may address low levels—is key to developing new treatments.",
+              "This research may help develop a better understanding of how drugs like serotonin reuptake inhibitors impact conditions like depression."
+            ],
+            "heading": "Broader Implications for Neurological Understanding and Treatment",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1234,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://refractor.io/mental-health/serotonin-dopamine-real-time-tracking-brain/"
+  }
+}

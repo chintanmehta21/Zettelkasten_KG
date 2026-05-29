@@ -1,0 +1,128 @@
+{
+  "workspace_zettel_id": "7883c431-7e09-47bc-91ec-d8d61e63a70d",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "0dcc9120-0f75-44dd-966d-b8381c1481ce",
+  "normalized_url": "https://popular.info/p/the-money-behind-the-new-iran-war",
+  "title": "Lobbying for War: Financial Ties and Geopolitical Influence",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:28:14.050999+00:00",
+  "ai_summary_len": 3602,
+  "body_md_len": 3086,
+  "content_hash_hex": "5fa1ec159590546db1d85559b3548e200522ff1cf2fa0fc518881abe26b42324",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://popular.info/p/the-money-behind-the-new-iran-war",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "The money behind the new Iran War - by Judd Legum",
+        "description": "In private calls over the last several weeks, Saudi Crown Prince Mohammed bin Salman urged President Trump to attack Iran.",
+        "route_subtype": "page",
+        "og_description": "In private calls over the last several weeks, Saudi Crown Prince Mohammed bin Salman urged President Trump to attack Iran.",
+        "route_supported": true,
+        "twitter_description": "In private calls over the last several weeks, Saudi Crown Prince Mohammed bin Salman urged President Trump to attack Iran."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "total_latency_ms": 27956,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2029,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Geopolitics",
+          "Foreign Policy",
+          "Financial Influence",
+          "Saudi Arabia",
+          "UAE",
+          "Iran",
+          "Trump Administration",
+          "Jared Kushner",
+          "Mohammed bin Salman",
+          "Conflict",
+          "Investments",
+          "Ethics"
+        ],
+        "mini_title": "Lobbying for War: Financial Ties and Geopolitical Influence",
+        "brief_summary": "In a near-future scenario, Saudi Crown Prince Mohammed bin Salman (MBS) reportedly urged President Trump to attack Iran, despite U.S. intelligence indicating no imminent threat. This lobbying followed significant Saudi and UAE investments in ventures tied to Trump, Jared Kushner, and Steve Witkoff, raising questions about the influence of financial interests on foreign policy decisions, culminating in a conflict that resulted in hundreds of deaths.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Saudi Crown Prince Mohammed bin Salman (MBS) reportedly urged President Trump to attack Iran in the weeks leading up to Trump's announcement of 'major combat operations'.",
+              "This lobbying occurred despite U.S. intelligence assessing no imminent threat from Iran.",
+              "The push for war followed billions in Saudi investments in projects that enriched Trump and his son-in-law, Jared Kushner.",
+              "Trump installed Kushner as a top negotiator with Iran, who, along with Middle East envoy Steve Witkoff, participated in a failed mediation session in Geneva.",
+              "Trump had previously stated in June 2025 that more limited strikes had 'completely obliterated Iran’s nuclear capability'."
+            ],
+            "heading": "The Call to War and Preceding Context",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Kushner's private equity fund, Affinity Partners, received a $2 billion investment in 2021 from the Saudi Public Investment Fund (PIF).",
+              "MBS personally approved this investment, overriding a PIF screening committee's recommendation against it due to Kushner's 'inexperience' and 'excessive' fees.",
+              "PIF pays Kushner an annual 1.25% fee ($25 million), with an estimated $137 million projected by August 2026.",
+              "In September 2025, PIF and Affinity Partners were part of a group that acquired Electronic Arts for $55 billion, marking the largest leveraged buyout in history.",
+              "The UAE also invested approximately $200 million in Affinity Partners, with additional funds coming via Lunate, a firm tied to UAE sovereign wealth funds.",
+              "Kushner initially stated in February 2024 that he was just an 'investor,' but later argued in October 2025 that his financial dealings represented 'experience and trusted relationships'."
+            ],
+            "heading": "Jared Kushner's Financial Entanglements",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Steve Witkoff, Middle East envoy, is a co-founder of the crypto firm World Liberty Financial (WLF).",
+              "Witkoff retains an 8-figure stake in WLF, a company in which the Trump family also owns a significant piece.",
+              "Days before Trump's inauguration, the UAE's national security advisor, Sheikh Tahnoon bin Zayed Al Nahyan, purchased 49% of WLF for $250 million.",
+              "Of this purchase, $187 million was directed to Trump family entities and $31 million to the Witkoff family.",
+              "In May 2025, a company controlled by Tahnoon purchased $2 billion in crypto tokens from WLF."
+            ],
+            "heading": "Steve Witkoff and UAE Investments",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The war began weeks after PIF financed a $7 billion deal with the Trump Organization.",
+              "This deal involved building a Trump-branded hotel, golf course, and 500 mansions (priced $6.7M-$24M) within the $63 billion PIF-funded Diriyah development.",
+              "Trump maintains ownership of the Trump Organization via a trust that ethics experts describe as 'meaningless'.",
+              "Trump receives about 80% of such licensing fees from these deals."
+            ],
+            "heading": "Donald Trump's Financial Interests",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Trump announced the war in a short video on Truth Social from Mar-a-Lago, where he later attended a $1 million-per-plate fundraiser.",
+              "By the following day, the conflict had resulted in three U.S. and hundreds of Iranian deaths.",
+              "Iranian retaliatory strikes targeted Riyadh and locations in the UAE."
+            ],
+            "heading": "The War's Immediate Aftermath",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2029,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://popular.info/p/the-money-behind-the-new-iran-war"
+  }
+}

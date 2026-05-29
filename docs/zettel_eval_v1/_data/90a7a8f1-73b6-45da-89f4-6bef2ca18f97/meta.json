@@ -1,0 +1,130 @@
+{
+  "workspace_zettel_id": "90a7a8f1-73b6-45da-89f4-6bef2ca18f97",
+  "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+  "canonical_zettel_id": "212875e9-ea27-4ad3-8c96-3ba0f6ceddcd",
+  "normalized_url": "https://docs.python.org/3/library/contextvars.html",
+  "title": "Python's `contextvars` Module",
+  "source_type": "web",
+  "publication_date": "2026-05-17",
+  "captured_at": "2026-05-17T12:10:21.623623+00:00",
+  "ai_summary_len": 2510,
+  "body_md_len": 2150,
+  "content_hash_hex": "1dc274d8a24610eccc9cfaf18a19dc67f833040a0704090a77101925c6ddfd1b",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://docs.python.org/3/library/contextvars.html",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "contextvars — Context Variables — Python 3.14.5 documentation",
+        "description": "This module provides APIs to manage, store, and access context-local state. The ContextVar class is used to declare and work with Context Variables. The copy_context() function and the Context clas...",
+        "og_description": "This module provides APIs to manage, store, and access context-local state. The ContextVar class is used to declare and work with Context Variables. The copy_context() function and the Context clas..."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 30178,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1668,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Python",
+          "contextvars",
+          "PEP 567",
+          "concurrency",
+          "asyncio",
+          "state management",
+          "threading.local"
+        ],
+        "mini_title": "Python's `contextvars` Module",
+        "brief_summary": "The `contextvars` module (Python 3.7+, PEP 567) provides APIs for managing context-local state, offering an alternative to `threading.local()` for concurrent code. It prevents state bleeding by associating values with the current execution context, with native `asyncio` support.",
+        "detailed_summary": [
+          {
+            "bullets": [
+              "`contextvars` module added in Python 3.7, detailed in PEP 567.",
+              "Provides APIs to manage context-local state.",
+              "Recommended over `threading.local()` for stateful context managers in concurrent code.",
+              "Prevents state from bleeding across different execution contexts."
+            ],
+            "heading": "Introduction and Purpose",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Declares a context variable using `contextvars.ContextVar(name[, *, default])`.",
+              "`name` is a required, read-only property (added in 3.7.1) for introspection.",
+              "`default` is an optional, keyword-only fallback value.",
+              "Context variables should be created at the top module level, not in closures, to prevent garbage collection issues."
+            ],
+            "heading": "`contextvars.ContextVar` Class",
+            "sub_sections": {
+              "Methods": [
+                "`get([default])`: Returns a value by checking for a method-level default, then the variable's default, before raising a `LookupError`.",
+                "`set(value)`: Sets a new value and returns a `Token` object.",
+                "`reset(token)`: Restores the variable to its previous state using a `Token` that can only be used once."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Returned by `set()`.",
+              "Since Python 3.14, the `Token` object can be used as a context manager for automatic resets.",
+              "Has read-only properties: `var` (the `ContextVar` that created it) and `old_value` (the value before `set()`, or `Token.MISSING` if unset)."
+            ],
+            "heading": "`Token` Object",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "`contextvars.copy_context()` returns a copy of the current `Context` object with O(1) complexity.",
+              "The `contextvars.Context` class is a mapping of `ContextVars` to values.",
+              "Each thread has its own stack of `Context` objects; the the current context is the one at the top.",
+              "A context's `run(callable, *args, **kwargs)` method pushes it onto the stack, executes the callable, and then pops it off.",
+              "Attempting to enter an already-entered context raises a `RuntimeError`.",
+              "`Context` implements the `collections.abc.Mapping` interface."
+            ],
+            "heading": "`contextvars.Context` Class",
+            "sub_sections": {
+              "Mapping Interface Methods": [
+                "`copy()`",
+                "`__getitem__`",
+                "`get()`",
+                "`keys()`",
+                "`values()`",
+                "`items()`"
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "`contextvars` are natively supported in `asyncio`.",
+              "Example: an echo server using a `ContextVar` to make a client's address available to handler functions without explicit passing."
+            ],
+            "heading": "`asyncio` Integration",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1668,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://docs.python.org/3/library/contextvars.html"
+  }
+}

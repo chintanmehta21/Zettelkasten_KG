@@ -1,0 +1,252 @@
+{
+  "workspace_zettel_id": "24d1a13a-bf7e-4848-b54d-83eafe327fee",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "6edd8f35-27ce-4f0e-99e5-a9d4937a47b7",
+  "normalized_url": "https://github.com/sherlock-project/sherlock",
+  "title": "sherlock-project/sherlock",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:37:11.872255+00:00",
+  "ai_summary_len": 3433,
+  "body_md_len": 2949,
+  "content_hash_hex": "598512e04e6b3e6a503746f306e9018924bcc58d2692595853e4aedb531ab25f",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/sherlock-project/sherlock",
+      "author": "sherlock-project",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "sherlock",
+        "forks": 9806,
+        "owner": "sherlock-project",
+        "stars": 84072,
+        "topics": [
+          "cli",
+          "cti",
+          "cybersecurity",
+          "forensics",
+          "hacktoberfest",
+          "information-gathering",
+          "infosec",
+          "linux",
+          "osint",
+          "pentesting",
+          "python",
+          "python3",
+          "reconnaissance",
+          "redteam",
+          "sherlock",
+          "tools"
+        ],
+        "license": "MIT",
+        "has_demo": false,
+        "language": "Python",
+        "releases": [
+          {
+            "name": "Sherlock v0.16.0",
+            "tag_name": "v0.16.0",
+            "prerelease": false,
+            "published_at": "2025-09-16T02:37:59Z"
+          },
+          {
+            "name": "Sherlock v0.15.0",
+            "tag_name": "v0.15.0",
+            "prerelease": false,
+            "published_at": "2024-07-08T09:57:38Z"
+          }
+        ],
+        "full_name": "sherlock-project/sherlock",
+        "has_tests": true,
+        "languages": [
+          [
+            "Python",
+            97.26335161749064
+          ],
+          [
+            "Dockerfile",
+            2.1128359564526344
+          ],
+          [
+            "Shell",
+            0.6238124260567167
+          ]
+        ],
+        "pages_url": null,
+        "updated_at": "2026-05-28T09:01:21Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 7,
+        "extra_doc_files": [
+          "docs/README.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "Sherlock is a command-line tool that hunts social media accounts by username across various networks. It leverages a local `data.json` file to define sites for searching, with the `tests` directory ensuring its functionality and `docs_dir` containing project documentation."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 16713,
+      "confidence_reason": "repo metadata, README, and 1 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2791,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-sherlock-project-sherlock",
+          "python",
+          "cli-tool",
+          "osint",
+          "social-media",
+          "username-search",
+          "security",
+          "reconnaissance",
+          "docker",
+          "open-source"
+        ],
+        "mini_title": "sherlock-project/sherlock",
+        "owner_login": "sherlock-project",
+        "_dense_verify": {
+          "archetype": "cli_tool",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "Sherlock is a Python-based command-line tool designed for Open Source Intelligence (OSINT), enabling users to find social media accounts by username across over 400 networks. Its core functionality relies on a `data.json` file that defines the searchable sites. The tool is primarily implemented in Python, with supporting components in Dockerfile and Shell, facilitating broad installation and usage across various environments.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Sherlock is a Python-based command-line tool for Open Source Intelligence (OSINT) that finds social media accounts by username across over 400 networks.",
+              "The project is licensed under MIT and was created by Siddharth Dushantha.",
+              "The latest version is 0.16.0."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Its core logic relies on a `data.json` file to define searchable sites.",
+              "The tool is primarily written in Python (97.3%), with minor parts in Dockerfile (2.1%) and Shell (0.6%).",
+              "The default behavior prioritizes the local `data.json` file."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "Python",
+              "Dockerfile",
+              "Shell",
+              "argparse"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The tool is invoked with `sherlock user1 [user2 ...]`, and results are saved to a text file named after the username (e.g., `user123.txt`).",
+              "It supports multiple output formats including CSV (`--csv`) and XLSX (`--xlsx`).",
+              "Key command-line options include specifying an output file/folder, limiting searches to specific sites (`--site`), using a proxy (`--proxy`), setting a request timeout (default 60s), and including NSFW sites (`--nsfw`).",
+              "The `--update` flag was added to fetch the latest version of `data.json`."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "sherlock user1 [user2 ...]",
+              "--csv",
+              "--xlsx",
+              "--site",
+              "--proxy",
+              "--nsfw",
+              "--update",
+              "/picture",
+              "--rm",
+              "--help",
+              "--version",
+              "--verbose"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Installation is supported via `pipx`, `pip`, `uv`, Docker (`docker run -it --rm sherlock/sherlock`), and `dnf`.",
+              "Community-maintained packages exist for Debian (>=13), Ubuntu (>=22.10), Homebrew, Kali, and BlackArch.",
+              "Third-party packages for ParrotOS and Ubuntu 24.04 are noted as broken."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "pipx",
+              "pip",
+              "uv",
+              "docker run -it --rm sherlock/sherlock",
+              "dnf",
+              "Debian (>=13)",
+              "Ubuntu (>=22.10)",
+              "Homebrew",
+              "Kali",
+              "BlackArch"
+            ]
+          },
+          {
+            "bullets": [
+              "Recent development activity includes fixing a crash when usernames end in a period (issue #2970).",
+              "Addressed numerous false positives (e.g., on TikTok due to SlardarWAF, and on sites using AWS WAF) and false negatives.",
+              "Fixed a command injection vulnerability.",
+              "Improved Ctrl+C responsiveness and enhanced URL encoding for usernames.",
+              "There are ongoing efforts to add a PyQt5 GUI."
+            ],
+            "heading": "Recent Developments",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Recent Developments",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=3",
+            "topics_cli"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.882
+        },
+        "architecture_overview": "Sherlock is a Python-based command-line tool designed for Open Source Intelligence (OSINT), enabling users to find social media accounts by username across over 400 networks. Its core functionality relies on a `data.json` file that defines the searchable sites. The tool is primarily implemented in Python, with supporting components in Dockerfile and Shell, facilitating broad installation and usage across various environments.",
+        "benchmarks_tests_examples": null
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2791,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/sherlock-project/sherlock"
+  }
+}

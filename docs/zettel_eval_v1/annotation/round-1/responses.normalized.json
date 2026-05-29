@@ -1,0 +1,41 @@
+{
+  "round": "1",
+  "responses": [
+    {
+      "zettel_uuid": "sz0",
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.7,
+        "coherence": 0.8
+      }
+    },
+    {
+      "zettel_uuid": "sz1",
+      "scores_normalized": {
+        "faithfulness": 0.6,
+        "coverage": 0.55,
+        "conciseness": 0.7,
+        "coherence": 0.8
+      }
+    },
+    {
+      "zettel_uuid": "sz2",
+      "scores_normalized": {
+        "faithfulness": 0.7,
+        "coverage": 0.6,
+        "conciseness": 0.7,
+        "coherence": 0.8
+      }
+    },
+    {
+      "zettel_uuid": "sz_backfilled",
+      "scores_normalized": {
+        "faithfulness": 0.8,
+        "coverage": 0.65,
+        "conciseness": 0.7,
+        "coherence": 0.8
+      }
+    }
+  ]
+}

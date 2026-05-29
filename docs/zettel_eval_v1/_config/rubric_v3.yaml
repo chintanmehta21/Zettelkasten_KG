@@ -1,0 +1,95 @@
+version: "rubric_v3.v1"
+source_type: "universal"
+composite_max_points: 100
+
+# v1 weights are PARITY with website/features/summarization_engine/evaluator/models.py::composite_score.
+# Will be refit from pairwise human preference (Bradley-Terry, run-005+) and
+# the calibrated set persisted to rubric_v3.calibrated.yaml.
+composite_axes:
+  rubric_total:           {weight: 0.60, source: "rubric.total_of_100"}
+  finesure_faithfulness:  {weight: 0.20, source: "finesure.faithfulness.score * 100"}
+  finesure_completeness:  {weight: 0.10, source: "finesure.completeness.score * 100"}
+  g_eval_aggregate:       {weight: 0.10, source: "g_eval_aggregate(coherence, fluency)"}
+
+# 100-point rubric components mirror docs/summary_eval/_config/rubric_universal.yaml
+# during run-001 (baseline parity). Drift will be flagged by rubric_sha256.
+components:
+  - id: "brief_summary"
+    max_points: 25
+    criteria:
+      - {id: "brief.what_this_is",            max_points: 5, maps_to_metric: ["finesure.completeness"]}
+      - {id: "brief.main_topic",              max_points: 5, maps_to_metric: ["finesure.completeness"]}
+      - {id: "brief.major_units",             max_points: 6, maps_to_metric: ["finesure.completeness"]}
+      - {id: "brief.distinctive_signal",      max_points: 5, maps_to_metric: ["finesure.completeness"]}
+      - {id: "brief.length_5_to_7_sentences", max_points: 2, maps_to_metric: ["finesure.conciseness"]}
+      - {id: "brief.no_fabrication",          max_points: 2, maps_to_metric: ["finesure.faithfulness", "nli_minicheck"]}
+
+  - id: "detailed_summary"
+    max_points: 45
+    criteria:
+      - {id: "detailed.one_bullet_per_unit",  max_points: 18, maps_to_metric: ["finesure.completeness"]}
+      - {id: "detailed.no_invented_content",  max_points: 10, maps_to_metric: ["finesure.faithfulness", "nli_minicheck"]}
+      - {id: "detailed.logical_order",        max_points: 8,  maps_to_metric: ["g_eval.coherence"]}
+      - {id: "detailed.bullets_focused",      max_points: 5,  maps_to_metric: ["g_eval.coherence"]}
+      - {id: "detailed.bullets_specific",     max_points: 4,  maps_to_metric: ["finesure.conciseness"]}
+
+  - id: "tags"
+    max_points: 15
+    criteria:
+      - {id: "tags.count_7_to_10",            max_points: 3, maps_to_metric: ["finesure.conciseness"]}
+      - {id: "tags.topical_specificity",      max_points: 5, maps_to_metric: ["finesure.completeness"]}
+      - {id: "tags.source_type_marker",       max_points: 3, maps_to_metric: ["finesure.completeness"]}
+      - {id: "tags.no_unsupported",           max_points: 4, maps_to_metric: ["finesure.faithfulness", "nli_minicheck"]}
+
+  - id: "label"
+    max_points: 15
+    criteria:
+      - {id: "label.fast_identifier",         max_points: 8, maps_to_metric: ["finesure.completeness"]}
+      - {id: "label.makes_sense_alone",       max_points: 7, maps_to_metric: ["finesure.completeness", "finesure.conciseness"]}
+
+anti_patterns:
+  - {id: "invented_fact",                 description: "Any invented fact, interface, person, or conclusion.",  auto_cap: 60}
+  - {id: "missing_primary_unit",          description: "Primary thesis/purpose/question/central unit missing.", auto_cap: 75}
+  - {id: "generic_tags_or_ambiguous_label", description: "Generic tags OR ambiguous label.",                    auto_cap: 90}
+
+global_rules:
+  editorialization_penalty:
+    threshold_flags: 3
+
+# v3 additions over v1/v2:
+nli_integration:
+  combine_rule: "min"      # min(llm_faithfulness, nli_faithfulness) — conservative
+  hard_fail:
+    nli_contradict_prob_gte: 0.7
+    requires_llm_judge_agreement: true
+  ranking_signal_axis: "finesure.faithfulness"
+
+multi_judge:
+  primary: "gemini-2.5-flash-002"               # DATED alias (Sub-4)
+  secondary: "claude-haiku-4-5-20251001"
+  combine_rule: "mean"    # report both; mean for composite when both runs available
+
+# Sub-2 sweep: FRANK-7 + FineSurE failure taxonomy is the canonical
+# fine-grained error vector. The judge MUST also emit the per-class count
+# vector defined in _config/failure_taxonomy.yaml. The composite formula
+# above is unchanged for v1 parity, but the per-class vector is exposed
+# alongside the composite so the operator can triage which class fired
+# (NOT just "faithfulness=0.85").
+failure_taxonomy_ref: "_config/failure_taxonomy.yaml"
+
+# Sub-1 sweep: per-source-type criteria are concatenated into the judge
+# prompt at runtime based on the zettel's source_type. ~500 tokens added
+# per source-extension; ~0 extra LLM calls. The shape-aware overrides in
+# evaluator.v7 prompt remain authoritative for editorialization policy.
+per_source_criteria_ref: "_config/per_source_criteria.yaml"
+
+# Sub-3 sweep: statistical reporting tiers + Holm-Bonferroni across the
+# 10 per-source p-values.
+tier_grouping_ref: "_config/tier_grouping.yaml"
+
+# 2026-05-28 FRANK improvements report (P1 checks):
+# Five gates surfaced alongside the composite — claim attribution (ACR),
+# entity-slot support (ESS), predicate consistency (PCS), circumstance
+# match (CMS), key-fact coverage lite (KCR-lite). Composite formula
+# UNCHANGED; P1 scores live in p1_block of each per_zettel JSON.
+p1_checks_ref: "_config/iter_001_p1_checks.yaml"

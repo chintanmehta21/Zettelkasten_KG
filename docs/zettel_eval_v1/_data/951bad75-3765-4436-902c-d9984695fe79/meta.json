@@ -1,0 +1,168 @@
+{
+  "workspace_zettel_id": "951bad75-3765-4436-902c-d9984695fe79",
+  "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+  "canonical_zettel_id": "5c6df67e-6d1d-467f-9c93-34d2fb544639",
+  "normalized_url": "https://www.youtube.com/watch?v=SG_mlwiD-PQ",
+  "title": "Mateus Asato's Pentatonic Workout",
+  "source_type": "youtube",
+  "publication_date": "2026-05-26",
+  "captured_at": "2026-05-26T05:30:04.920318+00:00",
+  "ai_summary_len": 3292,
+  "body_md_len": 2828,
+  "content_hash_hex": "cbb3f6f5e7580046f670129fb3de865ed29247781c8993df1085f1a5c0025deb",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=SG_mlwiD-PQ",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "transcript_api_webshare",
+        "language": "English",
+        "video_id": "SG_mlwiD-PQ",
+        "tier_used": "transcript_api_direct",
+        "tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 6978
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 15
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 6978,
+        "all_tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 6978
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 15
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 15084,
+      "confidence_reason": "transcript via tier=transcript_api_direct len=5916",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2436,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "guitar-lesson",
+          "mateus-asato",
+          "daddario",
+          "pentatonic-scale",
+          "guitar-soloing",
+          "music-theory",
+          "guitar-practice",
+          "fretboard-visualization",
+          "commentary",
+          "guitar-techniques"
+        ],
+        "guests": null,
+        "speakers": [
+          "Mateus Asato"
+        ],
+        "mini_title": "Mateus Asato's Pentatonic Workout",
+        "_dense_verify": {
+          "format_label": "tutorial",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this commentary, Mateus Asato argues that mateus asato presents his personal three-step methodology for guitarists to effectively practice and creatively integrate minor pentatonic scales into their soloing. The closing point is that mateus asato concludes by reiterating his personal conviction that the pentatonic scale remains the most fundamentally important scale for his guitar playing.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "commentary",
+          "confidence": 0.2
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "commentary",
+          "thesis": "Mateus Asato presents his personal three-step methodology for guitarists to effectively practice and creatively integrate minor pentatonic scales into their soloing. His approach emphasizes both mechanical mastery and musical expression.",
+          "demonstrations": [
+            "Practicing minor pentatonic shapes in C minor.",
+            "Isolating and practicing a difficult pentatonic shape (e.g., shape two).",
+            "Incorporating rhythmic variations (groups of four or five notes).",
+            "Applying the blue note in B minor.",
+            "Shifting scales (B flat minor to B minor).",
+            "Using double stops with shape four in C sharp minor."
+          ],
+          "closing_takeaway": "Mateus Asato concludes by reiterating his personal conviction that the pentatonic scale remains the most fundamentally important scale for his guitar playing.",
+          "chapters_or_segments": [
+            {
+              "title": "Pentatonic Shape Memorization",
+              "bullets": [
+                "Mateus Asato begins by outlining the importance of memorizing all five shapes of the minor pentatonic scale.",
+                "He explains that these shapes are derived from the CAGED system, which helps visualize the fretboard in distinct positions.",
+                "His practice method involves selecting a random and often challenging key, such as C minor, to repeat these shapes.",
+                "If a specific pattern, like shape two, proves difficult, he advises isolating and practicing it until clarity is achieved.",
+                "He also suggests incorporating rhythmic variations into practice, such as playing notes in groups of four or five."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Horizontal Fretboard Visualization",
+              "bullets": [
+                "The second step focuses on transcending vertical fretboard visualization to instead see the neck horizontally.",
+                "Asato believes this horizontal perspective significantly enhances musical richness in soloing.",
+                "He challenges himself by imagining he is limited to only two strings.",
+                "This constraint encourages the incorporation of diverse techniques and motifs.",
+                "The purpose of this exercise is to foster greater musicality within the scale."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Incorporating Musical \"Colors\"",
+              "bullets": [
+                "The final step involves enriching the five pentatonic notes with additional \"colors\" or \"flavors.\"",
+                "This includes the strategic use of the blue note, which he demonstrates in the key of B minor.",
+                "He also suggests adding chromatic passing tones to create more sophisticated melodic lines.",
+                "Asato recommends carefully shifting the entire scale a half-step up or down, providing an example from B flat minor to B minor.",
+                "Another technique is incorporating double stops, for which he illustrates an example using the well-known shape four in C sharp minor."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "D'Addario",
+          "CAGED system",
+          "minor pentatonic scales",
+          "blue note"
+        ],
+        "attribution_confidence": "high"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2436,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=SG_mlwiD-PQ"
+  }
+}

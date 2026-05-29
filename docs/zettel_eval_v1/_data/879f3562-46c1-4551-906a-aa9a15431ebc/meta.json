@@ -1,0 +1,163 @@
+{
+  "workspace_zettel_id": "879f3562-46c1-4551-906a-aa9a15431ebc",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "9021e570-ce11-45f0-b73c-77ac3e2984c5",
+  "normalized_url": "https://www.youtube.com/watch?v=eOGG_5FzlJ4",
+  "title": "Microdosing Psilocybin Benefits Practice",
+  "source_type": "youtube",
+  "publication_date": "2026-05-18",
+  "captured_at": "2026-05-18T08:28:24.311453+00:00",
+  "ai_summary_len": 4716,
+  "body_md_len": 3691,
+  "content_hash_hex": "9870340fc783d8a2e51d28708699a34bc193e7a2decda443e9fcb399409f5cff",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=eOGG_5FzlJ4",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "gemini_filedata",
+        "model": "gemini-2.5-flash",
+        "video_id": "eOGG_5FzlJ4",
+        "key_index": 1,
+        "tier_used": "gemini_filedata",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 71405
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 71405,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 71405
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "total_latency_ms": 18739,
+      "confidence_reason": "transcript via tier=gemini_filedata len=12279",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2963,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "microdosing",
+          "psilocybin",
+          "mental-health",
+          "self-improvement",
+          "dr-james-fadiman",
+          "psychedelic-therapy",
+          "nootropics",
+          "explainer",
+          "personal-experiment",
+          "walkthrough"
+        ],
+        "guests": null,
+        "speakers": [
+          "Dr. James Fadiman",
+          "Irene Dubin",
+          "Tradd"
+        ],
+        "mini_title": "Microdosing Psilocybin Benefits Practice",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this walkthrough, Dr. James Fadiman argues that microdosing psilocybin, defined as taking sub-perceptual doses intermittently, is presented as a method to potentially improve various aspects of life, from mental well-being to daily functioning, based on self-reported data and expert observations. The closing point is that microdosing psilocybin is presented as a practice with a growing body of anecdotal evidence suggesting various benefits for well-being and daily function, though its legal s",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "explainer",
+          "confidence": 0.812
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "walkthrough",
+          "thesis": "Microdosing psilocybin, defined as taking sub-perceptual doses intermittently, is presented as a method to potentially improve various aspects of life, from mental well-being to daily functioning, based on self-reported data and expert observations.",
+          "demonstrations": [],
+          "closing_takeaway": "Microdosing psilocybin is presented as a practice with a growing body of anecdotal evidence suggesting various benefits for well-being and daily function, though its legal status necessitates caution and reliance on self-reported data and expert observations. Further research and data collection, such as through platforms like microdosing.com, are crucial for a comprehensive understanding of its effects.",
+          "chapters_or_segments": [
+            {
+              "title": "Historical Context and Microdosing Definition",
+              "bullets": [
+                "Psychoactive mushrooms have a history spanning thousands of years, with Fly Agaric considered the oldest intoxicant.",
+                "Indigenous ceremonies in Mexico have long utilized psilocybin mushrooms for their effects.",
+                "A \"heroic dose\" of 5 grams of psilocybin can profoundly alter reality for several hours.",
+                "Johns Hopkins research found that a synthesized equivalent dose significantly reduced depression and anxiety after a single session.",
+                "Dr. James Fadiman coined the term \"microdosing,\" defining it as taking 5-10% of a regular dose intermittently."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Reported Benefits and Mechanisms",
+              "bullets": [
+                "Fadiman's initial data, gathered from self-reported surveys due to legal constraints, listed numerous benefits.",
+                "Reported improvements included reduced anxiety, depression, headaches, PMS, and migraines, with some users experiencing 80-90% reduction in migraines.",
+                "Users also reported enhanced learning, focus, work quality, and a reduction in procrastination.",
+                "Potential mechanisms for microdosing's effects include a placebo response, systemic support like a vitamin, mitochondrial support, or increased neuroplasticity.",
+                "Unintended benefits frequently reported were healthier eating, more exercise, and decreased use of substances like opiates, tobacco, alcohol, and caffeine."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Expert Perspectives and Dosing Guidance",
+              "bullets": [
+                "Microdosing coaches assist individuals in identifying their optimal \"sweet spot\" dose, aiming for benefits without noticeable psychoactive effects.",
+                "Dr. Fadiman critiqued a recent study that found no effect, suggesting its use of healthy individuals limited measurable improvement.",
+                "Psychedelic psychotherapist Irene Dubin observes that her clients report improved mood and reduced chronic pain from sub-perceptual doses.",
+                "Dubin notes that these beneficial effects typically become apparent after one to two weeks of consistent microdosing.",
+                "Expert Tradd suggests that macrodoses are more effective for addressing root problems, a sentiment the narrator acknowledges but finds intimidating for some."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Personal Experience and Resources",
+              "bullets": [
+                "The narrator's personal 25-day microdosing trial yielded several positive outcomes.",
+                "These benefits included better organization, an improved mood, and easier completion of monotonous tasks.",
+                "The narrator also experienced a reduction in negative self-talk during the trial period.",
+                "A slight decrease in complex problem-solving ability was noted, comparable to the effect of consuming half a glass of alcohol.",
+                "Due to legal status, the narrator cannot recommend microdosing but directs interested individuals to Dr. Fadiman's book and the forthcoming app at microdosing.com for data collection."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Fly Agaric",
+          "Psilocybin mushrooms",
+          "Johns Hopkins study",
+          "Dr. James Fadiman's book",
+          "microdosing.com"
+        ],
+        "attribution_confidence": "high"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2963,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=eOGG_5FzlJ4"
+  }
+}

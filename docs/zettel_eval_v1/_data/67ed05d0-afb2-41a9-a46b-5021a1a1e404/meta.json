@@ -1,0 +1,146 @@
+{
+  "workspace_zettel_id": "67ed05d0-afb2-41a9-a46b-5021a1a1e404",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "95592dc7-c027-497b-8e3c-50acd74f3880",
+  "normalized_url": "https://gwern.net/silk-road",
+  "title": "Silk Road 1: Operations, Ideology, and Vulnerabilities",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:29:21.682177+00:00",
+  "ai_summary_len": 4372,
+  "body_md_len": 3909,
+  "content_hash_hex": "786a7dd4db69faffe1dc5d0fdf9e6df6b21d226a109a626d9041003cd6a73a9a",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://gwern.net/silk-road",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "Silk Road 1: Theory & Practice · Gwern.net",
+        "description": "History, background, visiting, ordering, using, & analyzing the drug market Silk Road 1",
+        "route_subtype": "page",
+        "og_description": "History, background, visiting, ordering, using, & analyzing the drug market Silk Road 1",
+        "route_supported": true
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "total_latency_ms": 33351,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2524,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Silk Road 1",
+          "Darknet Markets",
+          "Bitcoin",
+          "Tor",
+          "Cypherpunk",
+          "Online Marketplaces",
+          "Drug Trade",
+          "Cryptocurrency",
+          "Operational Security",
+          "Scams"
+        ],
+        "mini_title": "Silk Road 1: Operations, Ideology, and Vulnerabilities",
+        "brief_summary": "Silk Road 1 (SR1) was a pioneering online darknet marketplace operating on Tor and using Bitcoin, founded on cypherpunk principles. Despite public scrutiny and various competitors, it flourished until its 2013 bust. Its design incorporated anonymizing networks, cryptography, and escrow to mitigate risks, though vulnerabilities like DDoS attacks and 'early finalization' scams existed. Law enforcement found high product purity, and the article details user experiences, market analyses, and recommendations for future darknet operations.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "SR1 was an online drug marketplace rooted in the cypherpunk movement's economic and cryptographic principles.",
+              "Operated as a Tor hidden service and used Bitcoin exclusively.",
+              "Gained public attention from US Senators Schumer and Manchin after a 2011 Gawker article.",
+              "Flourished until its bust on 2013-10-02."
+            ],
+            "heading": "Overview and History of Silk Road 1",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "SR1 size estimates varied significantly across different analyses.",
+              "Monitoring reviews suggested ~100 daily transactions at ~$150 each over two years.",
+              "Christin 2013's 8-month analysis (2011–2012) calculated a $1.2m monthly turnover (~$15m annually) and $92k monthly commissions by July 2012.",
+              "A DHS estimate suggested Mt. Gox moved $60m/month to darknet markets in May 2013.",
+              "Blockchain analysis found one possible SR1 address with ₿450,825 ($2.88m) on 2012-06-23, implying >$28m total turnover at a 5-10% commission.",
+              "Competitors included BlackMarket Reloaded (BMR), which grew to ~$700k monthly turnover by Feb 2013 before a temporary shutdown.",
+              "Atlantis launched in March 2013, turned over >$500k by June, but shut down in Sept 2013 citing an FBI leak about Tor vulnerabilities.",
+              "Sheep Marketplace started in early 2013 and exit-scammed with >₿39,644 in Nov 2013.",
+              "Deepbay also reportedly stole user funds."
+            ],
+            "heading": "Market Size and Competitors",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The cypherpunk paradigm provided the ideological foundation, summarized as replacing centralized coercive systems with decentralized voluntary ones enforced by math and economics.",
+              "Bitcoin solved the double-spend problem decentrally through proof-of-work, making it a suitable currency for SR1.",
+              "SR1's design, resembling Timothy C. May's 1994 \"Cyphernomicon,\" used an anonymizing network, pseudonyms, public-key cryptography, seller bonds, public ratings, and crucial escrow services to align incentives."
+            ],
+            "heading": "Ideological and Technical Foundations",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The failure to use escrow, known as \"early finalization\" (FE), was a primary mechanism for scams, exemplified by the Tony76 scam in April 2012 which netted over $50,000.",
+              "FBI lab tests of over 70 purchases found high purity in 54 of 56 tested samples.",
+              "A DHS agent testified that of >50 orders, all but 1-2 delivered the advertised drug.",
+              "Leaked law enforcement reports indicated SR1 had strong operational security, with PGP being a major obstacle.",
+              "The author identified DDoS attacks and mass creation of fake accounts as primary vulnerabilities.",
+              "A single individual's DDoS had previously taken the site down for weeks."
+            ],
+            "heading": "Operational Aspects and Security",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The author detailed personal experiences using Tor and Bitcoin mixers to purchase selegiline, Adderall, and armodafinil.",
+              "The process involved vetting sellers, encrypting addresses with PGP, and receiving discreetly packaged goods.",
+              "A detailed case study on purchasing LSD demonstrated a systematic approach to evaluating sellers using a table compiled on 2012-09-03.",
+              "The LSD case study applied statistical analysis (binomial proportion confidence intervals) to feedback scores to create a risk-weighted value metric (μg/₿), and compared prices to a Dutch bulk seller."
+            ],
+            "heading": "User Experience and Case Studies",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The article speculated on future developments like information markets and assassination markets.",
+              "Skepticism was expressed about assassination markets due to a trust-bootstrapping problem.",
+              "A post-mortem section offered recommendations for future darknet market operators, including aggressive data deletion, mandatory PGP, pre-committed shutdown plans, and a nested VM server architecture."
+            ],
+            "heading": "Future Speculations and Recommendations",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "An analysis estimated Ross Ulbricht's (Dread Pirate Roberts) fortune at ₿500k-614k after expenses.",
+              "An investigation into a rumor that seller \"KingOfClubs\" was a federal mole was included.",
+              "An analysis of Bitcoin exchange risk found a ~1% chance of loss per month funds are held on an exchange."
+            ],
+            "heading": "Additional Analyses (Appendices)",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2524,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://gwern.net/silk-road"
+  }
+}

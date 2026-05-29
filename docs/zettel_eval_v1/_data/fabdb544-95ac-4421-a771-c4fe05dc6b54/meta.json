@@ -1,0 +1,139 @@
+{
+  "workspace_zettel_id": "fabdb544-95ac-4421-a771-c4fe05dc6b54",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "1d3120b2-4d3e-4a7f-9d38-6d8cd5bd99c6",
+  "normalized_url": "https://quantum.country/search",
+  "title": "Grover's Quantum Search Algorithm",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:31:08.41544+00:00",
+  "ai_summary_len": 3477,
+  "body_md_len": 3186,
+  "content_hash_hex": "ac211c0fc655c1b7f87223c819cfddd1cc92ce3f06410d4d7804694008fb6ab2",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://quantum.country/search",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        },
+        {
+          "role": "repair",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "How the quantum search algorithm works",
+        "route_subtype": "page",
+        "og_description": "An explanation of how the quantum search algorithm works, & introduction to the design of quantum algorithms",
+        "route_supported": true,
+        "twitter_description": "An explanation of how the quantum search algorithm works, & introduction to the design of quantum algorithms"
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 47545,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 4974,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Quantum Computing",
+          "Grover's Algorithm",
+          "Search Algorithm",
+          "Quantum Speedup",
+          "Unstructured Search",
+          "Quantum Oracle"
+        ],
+        "mini_title": "Grover's Quantum Search Algorithm",
+        "brief_summary": "Grover's algorithm provides a quadratic speedup for unstructured search problems, finding a solution in O(√N) time compared to classical O(N), by leveraging quantum parallelism and interference through a series of geometric rotations.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Grover's quantum search algorithm finds a single solution in an unstructured search space of N items.",
+              "It examines the search space approximately (π/4)√N times, achieving a quadratic speedup over classical computers.",
+              "Classical algorithms require N/2 examinations on average and N in the worst case.",
+              "For a search space of 10^12 items, Grover's algorithm reduces the number of checks from a trillion to under 800,000.",
+              "The algorithm's O(√N) performance is provably optimal."
+            ],
+            "heading": "Core Argument and Speedup",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The algorithm is useful for problems with little exploitable structure.",
+              "Examples include breaking a 12-digit code, solving variations of the Traveling Salesperson Problem (TSP), or protein folding.",
+              "It is not efficient for structured database searches where classical binary search (O(log N)) is faster."
+            ],
+            "heading": "Applicability and Limitations",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The algorithm's core is the 'Grover iteration', a process repeated approximately (π/4)√N times."
+            ],
+            "heading": "Algorithm Mechanics: Grover Iteration",
+            "sub_sections": {
+              "Initialization": [
+                "The search register is placed into an equal superposition of all N states, |s⟩, using Hadamard gates."
+              ],
+              "Clean Computation": [
+                "For the process to work, the black box must perform a 'clean computation', leaving no garbage information in ancillary qubits that would prevent quantum interference.",
+                "This is achieved via 'uncomputation', a three-step process (compute, copy, uncompute) originally developed for energy-efficient classical computing."
+              ],
+              "Geometric Rotation": [
+                "Each iteration performs a geometric rotation of the state vector by an angle of 2θ (where sin(θ) = 1/√N) towards the solution state |w⟩.",
+                "This rotation is achieved by performing two reflections: first, a reflection about the solution state |w⟩, and second, a reflection about the initial superposition state |s⟩."
+              ],
+              "Reflection about |s⟩": [
+                "The reflection about |s⟩ is achieved by applying Hadamard gates, reflecting about the |0...0⟩ state, and applying Hadamard gates again."
+              ],
+              "Reflection about |w⟩ (Oracle)": [
+                "The reflection about |w⟩ is implemented using a 'search black box' or 'oracle', which is a quantum circuit that recognizes a solution.",
+                "This black box applies the transformation |x⟩|q⟩ → |x⟩|q ⊕ f(x)⟩, where f(x)=1 if x is the solution.",
+                "Using a 'phase trick' with an ancilla qubit initialized to |−⟩, the black box applies a -1 phase to the solution state |w⟩ while leaving others unchanged, constituting the reflection."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "After approximately (π/4)√N iterations, a measurement of the search register yields the correct solution with a high probability.",
+              "The probability of success is at least 1 - 4/N (e.g., >96% for N≥100).",
+              "If the measurement fails, the result can be checked and the algorithm rerun, with the average number of total runs being less than 4/3."
+            ],
+            "heading": "Outcome and Probability",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The underlying mechanism is quantum parallelism and interference, where amplitudes of non-solution states destructively interfere while the solution state's amplitude is constructively reinforced.",
+              "The essay itself is presented in a 'mnemonic medium' that uses spaced-repetition questions to help readers commit the concepts to long-term memory."
+            ],
+            "heading": "Underlying Principles and Presentation",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 4974,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://quantum.country/search"
+  }
+}

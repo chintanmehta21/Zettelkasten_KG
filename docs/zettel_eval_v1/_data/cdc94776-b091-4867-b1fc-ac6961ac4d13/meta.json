@@ -1,0 +1,133 @@
+{
+  "workspace_zettel_id": "cdc94776-b091-4867-b1fc-ac6961ac4d13",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "4f3c31c1-d74b-4413-bc03-1093c74ed883",
+  "normalized_url": "https://www.reddit.com/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025",
+  "title": "r/neuroscience solicit community opinions most interesting",
+  "source_type": "reddit",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:39:17.029548+00:00",
+  "ai_summary_len": 3721,
+  "body_md_len": 3231,
+  "content_hash_hex": "f33ebdb1ad8d55da4978a737d9e4a6f46c0c9804a5eb8c7e540178c71c95c714",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.reddit.com/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025",
+      "author": "NickHalper",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "reddit",
+      "raw_metadata": {
+        "score": 168,
+        "title": "Best Neuroscience Discoveries of the Year - 2025",
+        "author": "NickHalper",
+        "permalink": "/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025/",
+        "subreddit": "neuroscience",
+        "num_comments": 21,
+        "route_subtype": "reddit",
+        "route_supported": true,
+        "pullpush_enabled": true,
+        "pullpush_fetched": 0,
+        "nested_reply_count": 14,
+        "comment_divergence_pct": 66.67,
+        "rendered_comment_count": 7
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-flash-rate-limited",
+      "total_latency_ms": 21910,
+      "confidence_reason": "json endpoint ok; rendered=7/21 divergence=66.67%",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2822,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "r-neuroscience",
+          "q-and-a",
+          "huntington-s-disease",
+          "neurodegenerative-diseases",
+          "visual-snow-syndrome",
+          "ptsd",
+          "multiple-sclerosis",
+          "brain-mapping",
+          "glymphatic-system",
+          "virtual-reality"
+        ],
+        "op_author": "u/NickHalper",
+        "mini_title": "r/neuroscience solicit community opinions most interesting",
+        "_dense_verify": {
+          "missing_fact_count": 0
+        },
+        "brief_summary": "OP's main point was To solicit community opinions on the most interesting or impactful neuroscience discoveries of 2025. The dominant replies focused on Advancements in Neurodegenerative Disease Treatment. Consensus stayed around advancements in neurodegenerative disease treatment while improved understanding of neurological conditions. Dissent centered on The claim of a confirmed Phase III breakthrough for Huntington's disease is. Caveat: removed or missing comments may limit what is visible in the thread.",
+        "route_subtype": "reddit",
+        "route_supported": true,
+        "detailed_summary": {
+          "op_intent": "To solicit community opinions on the most interesting or impactful neuroscience discoveries of 2025.",
+          "reply_clusters": [
+            {
+              "theme": "Advancements in Neurodegenerative Disease Treatment",
+              "examples": [
+                "Positive topline results from a pivotal Phase III trial for Huntington's disease treatment (UniQure)."
+              ],
+              "reasoning": "Significant progress in clinical trials for conditions like Huntington's disease offers hope for new therapies."
+            },
+            {
+              "theme": "Improved Understanding of Neurological Conditions",
+              "examples": [
+                "Scientists finding cellular brain changes tied to PTSD (Yale).",
+                "Studies linking gut microbiome changes to Multiple Sclerosis (Yale).",
+                "Increased research and awareness for Visual Snow Syndrome."
+              ],
+              "reasoning": "New research is uncovering cellular mechanisms for conditions like PTSD and potential microbial links for MS, alongside increased awareness for conditions like Visual Snow Syndrome."
+            },
+            {
+              "theme": "Methodological Innovations and Data-Driven Discoveries",
+              "examples": [
+                "Extensive brain mapping work providing bigger and better models.",
+                "Functional connectomics papers generating valuable data for further research.",
+                "New VR methods for behavioral training in head-fixed mice."
+              ],
+              "reasoning": "Development of advanced research tools and large-scale data collection are providing new avenues for understanding brain structure and function, even if immediate conceptual breakthroughs are not always apparent."
+            },
+            {
+              "theme": "Foundational Brain Mechanisms and Speculative Theories",
+              "examples": [
+                "Research into the glymphatic system for potential diagnoses and treatments.",
+                "Hypothesis on non-relativistic spin waves in levo tryptophan mega networks as information mechanisms."
+              ],
+              "reasoning": "Ongoing exploration of fundamental brain processes, such as the glymphatic system, and the emergence of highly speculative, unproven theories about information processing in the brain."
+            }
+          ],
+          "counterarguments": [
+            "The claim of a confirmed Phase III breakthrough for Huntington's disease is questioned by one user, who states it's still Phase I/II and requires a properly randomized Phase III with internal controls to confirm.",
+            "The link between MS and two microbes is cautioned due to a small population size in the study, and it's clarified that the study indicates a 'link' not a 'cause'."
+          ],
+          "moderation_context": "Rendered comments covered only part of the thread (7/21 visible; divergence 66.67%).",
+          "unresolved_questions": [
+            "How to accurately predict the long-term impact of current neuroscience discoveries, given past trends where initial excitement (e.g., amyloid research) did not lead to expected outcomes?",
+            "Does the increasing volume of mapping data truly provide new insights beyond what was already known, or does it primarily allow for recycling existing paradigms?",
+            "What are the underlying mechanisms of Visual Snow Syndrome, and what early interventions could reduce symptom severity, given the lack of understanding among general practitioners?",
+            "Can the highly speculative theory of non-relativistic spin waves in levo tryptophan mega networks as the true information mechanism of the brain be mathematically described or proven?"
+          ]
+        }
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2822,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.reddit.com/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025"
+  }
+}

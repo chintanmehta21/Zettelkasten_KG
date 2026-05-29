@@ -1,0 +1,178 @@
+{
+  "workspace_zettel_id": "e00c622f-4402-4be9-a01f-b4cadde09f1b",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "a1da9daf-c16f-48eb-b0db-773514414881",
+  "normalized_url": "https://www.youtube.com/watch?v=AGglJehON5g",
+  "title": "Python Function Overloading Techniques",
+  "source_type": "youtube",
+  "publication_date": "2026-05-23",
+  "captured_at": "2026-05-23T04:38:39.53086+00:00",
+  "ai_summary_len": 4521,
+  "body_md_len": 4194,
+  "content_hash_hex": "95904fa26ee2c11cd02c43dbf439dbb861b4adacd7ebcff2ade76fcea75a9f1b",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=AGglJehON5g",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "video_id": "AGglJehON5g",
+        "tier_used": "metadata_only",
+        "quality_flag": "thin",
+        "tier_results": [
+          {
+            "tier": "tier_timeout",
+            "reason": "tier exceeded remaining budget 90000ms",
+            "status": "timeout",
+            "latency_ms": 90001
+          },
+          {
+            "tier": "budget_exhausted",
+            "reason": "budget 90000ms exceeded",
+            "status": "skipped",
+            "latency_ms": 90001
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 0,
+        "all_tier_results": [
+          {
+            "tier": "tier_timeout",
+            "reason": "tier exceeded remaining budget 90000ms",
+            "status": "timeout",
+            "latency_ms": 90001
+          },
+          {
+            "tier": "budget_exhausted",
+            "reason": "budget 90000ms exceeded",
+            "status": "skipped",
+            "latency_ms": 90001
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 18028,
+      "confidence_reason": "All transcript tiers failed; metadata-only fallback (composite capped at 75)",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2756,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "python",
+          "function-overloading",
+          "singledispatch",
+          "functools",
+          "programming",
+          "type-dispatch",
+          "python-tutorial",
+          "coding-tips",
+          "software-development",
+          "tutorial"
+        ],
+        "guests": null,
+        "speakers": [
+          "The speaker"
+        ],
+        "mini_title": "Python Function Overloading Techniques",
+        "_dense_verify": {
+          "format_label": "tutorial",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this tutorial, The speaker argues that python does not support traditional function overloading like c++ or java, but the `functools.singledispatch` decorator offers a powerful mechanism for type-based function dispatch, enabling similar polymorphic behavior. The closing point is that the `@singledispatch` decorator is python's idiomatic and robust solution for implementing type-based function dispatch, offering a clear and maintainable alternative to traditional overloading found in other la",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "commentary",
+          "confidence": 0.2
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "tutorial",
+          "thesis": "Python does not support traditional function overloading like C++ or Java, but the `functools.singledispatch` decorator offers a powerful mechanism for type-based function dispatch, enabling similar polymorphic behavior.",
+          "demonstrations": [
+            "Demonstrating how defining `add(a, b)` then `add(a, b, c)` overwrites the first function, making it inaccessible.",
+            "Illustrating the `TypeError` that occurs when an overwritten function is called with the wrong number of arguments.",
+            "Showing the use of default parameters with an example like `def add(a, b, c=0)` to handle optional arguments.",
+            "Providing a comprehensive example of `@singledispatch` with a base function and registered functions for `int`, `list`, and `str` types.",
+            "Demonstrating the fallback behavior to the default `@singledispatch` implementation when an unregistered type, such as `float`, is passed."
+          ],
+          "closing_takeaway": "The `@singledispatch` decorator is Python's idiomatic and robust solution for implementing type-based function dispatch, offering a clear and maintainable alternative to traditional overloading found in other languages. It effectively extends a function's behavior based on the type of its initial argument.",
+          "chapters_or_segments": [
+            {
+              "title": "Python's Default Function Behavior",
+              "bullets": [
+                "Python does not possess built-in function overloading capabilities, unlike languages such as C++ or Java.",
+                "When a function is defined multiple times with the same name, the most recent definition completely overwrites all prior versions.",
+                "This means only the last defined function is accessible for execution.",
+                "Attempting to call an overwritten function with an argument signature that no longer matches the active definition will result in a `TypeError`.",
+                "For instance, defining `add(a, b)` and then `add(a, b, c)` makes the two-argument version inaccessible, causing errors if called."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Using Default Parameters",
+              "bullets": [
+                "A common strategy to accommodate a varying number of arguments in Python is to utilize default parameters.",
+                "This method allows a single function definition to accept optional arguments, providing flexibility.",
+                "For example, `def add(a, b, c=0)` can be invoked with either two or three arguments.",
+                "While useful for optional arguments, this approach fundamentally differs from true type-based overloading found in other languages.",
+                "It provides argument flexibility but does not dispatch based on the type of the arguments themselves."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Introducing `functools.singledispatch`",
+              "bullets": [
+                "Python provides the `@singledispatch` decorator, found within the `functools` module, to achieve type-based overloading.",
+                "This decorator allows a function to exhibit different behaviors depending on the data type of its *first* argument.",
+                "The pattern involves creating a base function, decorated with `@singledispatch`, which serves as a default implementation or fallback.",
+                "For each specific type requiring unique handling, a separate function is created and decorated with `@base_function_name.register(type)`.",
+                "The names of these registered functions are typically set to `_` because they are not directly invoked but rather dispatched to by the decorator."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Practical Application of `singledispatch`",
+              "bullets": [
+                "Consider a function named `my_func` that can be registered to process `int`, `list`, and `str` types distinctly.",
+                "When `my_func` is called, `@singledispatch` intelligently directs the call to the appropriate registered function based on the type of the first argument.",
+                "If an argument of an unregistered type, such as a `float`, is passed, the default implementation defined by the initial `@singledispatch` decorated function is executed.",
+                "This mechanism offers a clean and Pythonic way to implement polymorphism without resorting to verbose `if-elif-else` constructs for type checking.",
+                "It enhances code readability and maintainability by centralizing type-specific logic."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "functools",
+          "@singledispatch",
+          "TypeError",
+          "C++",
+          "Java"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2756,
+      "extraction_confidence": "low",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=AGglJehON5g"
+  }
+}

@@ -1,0 +1,9 @@
+# Caches + runtime outputs — regenerable, never commit.
+_cache/
+runs/
+analysis/
+
+# Per-zettel filter patches written by 02_run_judge.py --wz-filter
+# (rerun artifacts; the canonical config.json/telemetry.json under runs/
+# is the source of truth and is already excluded above).
+patches/

@@ -1,0 +1,131 @@
+{
+  "generated_at": "2026-05-28T12:34:04.373999+00:00",
+  "naruto_auth_id": "f2105544-b73d-4946-8329-096d82f070d3",
+  "total_topup_urls": 41,
+  "found_count": 28,
+  "missing_count": 13,
+  "missing": [
+    {
+      "url": "https://www.densediscovery.com/issues/381",
+      "normalized_url": "https://www.densediscovery.com/issues/381",
+      "section": "newsletter",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://gwern.net/spaced-repetition",
+      "normalized_url": "https://gwern.net/spaced-repetition",
+      "section": "web",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.lesswrong.com/posts/fbrz9xhKpEeTKw5zL/irretrievability-or-murphy-s-curse-of-oneshotness-upon-asi",
+      "normalized_url": "https://www.lesswrong.com/posts/fbrz9xhKpEeTKw5zL/irretrievability-or-murphy-s-curse-of-oneshotness-upon-asi",
+      "section": "web",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://github.com/OpenBB-finance/OpenBBTerminal",
+      "normalized_url": "https://github.com/OpenBB-finance/OpenBBTerminal",
+      "section": "github",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://github.com/microsoft/EconML",
+      "normalized_url": "https://github.com/microsoft/EconML",
+      "section": "github",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.reddit.com/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025/",
+      "normalized_url": "https://www.reddit.com/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025/",
+      "section": "reddit",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.reddit.com/r/MachineLearning/comments/1tdje2d/arxiv_implements_1year_ban_for_papers_containing/",
+      "normalized_url": "https://www.reddit.com/r/MachineLearning/comments/1tdje2d/arxiv_implements_1year_ban_for_papers_containing/",
+      "section": "reddit",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.reddit.com/r/Defcon/comments/1p5nvdr/famous_fictional_hackers/",
+      "normalized_url": "https://www.reddit.com/r/Defcon/comments/1p5nvdr/famous_fictional_hackers/",
+      "section": "reddit",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.reddit.com/r/darknet/comments/1ohbzod/what_kind_of_communities_exist_on_the_dark_web/",
+      "normalized_url": "https://www.reddit.com/r/darknet/comments/1ohbzod/what_kind_of_communities_exist_on_the_dark_web/",
+      "section": "reddit",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.reddit.com/r/badeconomics/comments/1mxgdxa/how_money_works_does_not_understand_how_housing/",
+      "normalized_url": "https://www.reddit.com/r/badeconomics/comments/1mxgdxa/how_money_works_does_not_understand_how_housing/",
+      "section": "reddit",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.reddit.com/r/AskEconomics/comments/1oghgwl/eli5_the_richest_person_in_1993_had_a_networth_of/",
+      "normalized_url": "https://www.reddit.com/r/AskEconomics/comments/1oghgwl/eli5_the_richest_person_in_1993_had_a_networth_of/",
+      "section": "reddit",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://www.reddit.com/r/AskEconomics/comments/1q37pg4/why_isnt_russia_collapsing/",
+      "normalized_url": "https://www.reddit.com/r/AskEconomics/comments/1q37pg4/why_isnt_russia_collapsing/",
+      "section": "reddit",
+      "soft_deleted_present": false
+    },
+    {
+      "url": "https://reddit.com/r/IAmA/comments/blv3r8/im_ray_dalio_founder_of_bridgewater_associates_im",
+      "normalized_url": "https://reddit.com/r/IAmA/comments/blv3r8/im_ray_dalio_founder_of_bridgewater_associates_im",
+      "section": "reddit",
+      "soft_deleted_present": false
+    }
+  ],
+  "found_sample": [
+    {
+      "url": "https://www.hubermanlab.com/newsletter/improve-working-memory-attention",
+      "normalized_url": "https://www.hubermanlab.com/newsletter/improve-working-memory-attention",
+      "section": "newsletter",
+      "workspace_zettel_id": "ac60e521-4b1a-455c-9441-2fe8f0e499c1",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "33957f76-2c8a-483f-9c49-9e93f9a3becb",
+      "source_type": "web",
+      "title": "Dopamine and Working Memory Enhancement",
+      "ai_summary_len": 3093,
+      "body_md_len": 2662,
+      "wz_created_at": "2026-05-28T09:24:29.684406+00:00",
+      "canon_created_at": "2026-05-28T09:24:28.294346+00:00"
+    },
+    {
+      "url": "https://www.hubermanlab.com/newsletter/how-to-improve-learning-performance-by-developing-a-growth-mindset",
+      "normalized_url": "https://www.hubermanlab.com/newsletter/how-to-improve-learning-performance-by-developing-a-growth-mindset",
+      "section": "newsletter",
+      "workspace_zettel_id": "3dd541c2-b0ad-4e8e-83fc-033da9712ad2",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "dd3194c7-0660-4ab7-a7b2-a0b9dbd26740",
+      "source_type": "web",
+      "title": "Growth Mindset & Stress",
+      "ai_summary_len": 1902,
+      "body_md_len": 1577,
+      "wz_created_at": "2026-05-28T09:25:19.479447+00:00",
+      "canon_created_at": "2026-05-28T09:25:17.51427+00:00"
+    },
+    {
+      "url": "https://www.hubermanlab.com/newsletter/breathwork-protocols-for-health-focus-stress",
+      "normalized_url": "https://www.hubermanlab.com/newsletter/breathwork-protocols-for-health-focus-stress",
+      "section": "newsletter",
+      "workspace_zettel_id": "55bf9ba4-078d-4d18-a5a8-82e771ec67f0",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "3178d3ee-1fff-4eec-a9ba-1a3a557797af",
+      "source_type": "web",
+      "title": "Huberman Lab: Breathing Protocols",
+      "ai_summary_len": 2784,
+      "body_md_len": 2524,
+      "wz_created_at": "2026-05-28T09:24:33.140029+00:00",
+      "canon_created_at": "2026-05-28T09:24:32.287543+00:00"
+    }
+  ]
+}

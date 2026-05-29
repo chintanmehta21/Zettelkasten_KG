@@ -1,0 +1,265 @@
+{
+  "workspace_zettel_id": "c54e4852-6eca-42a0-b619-527456d907c0",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "39cc4810-40e2-45f8-b983-0373698a2442",
+  "normalized_url": "https://github.com/athensresearch/athens",
+  "title": "athensresearch/athens",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:38:21.321046+00:00",
+  "ai_summary_len": 3244,
+  "body_md_len": 2764,
+  "content_hash_hex": "1fe885cc39e224679d5ba19cad50e700a358dc98a7f10d86cf918ed71a037e91",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/athensresearch/athens",
+      "author": "athensresearch",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "athens",
+        "forks": 398,
+        "owner": "athensresearch",
+        "stars": 6301,
+        "topics": [
+          "hacktoberfest",
+          "knowledge-base",
+          "knowledge-graph",
+          "knowledge-management",
+          "memex",
+          "notetaking",
+          "tools-for-thought"
+        ],
+        "license": "NOASSERTION",
+        "has_demo": false,
+        "language": "Clojure",
+        "releases": [
+          {
+            "name": "v2.1.0-beta.5",
+            "tag_name": "v2.1.0-beta.5",
+            "prerelease": true,
+            "published_at": "2022-10-10T10:18:33Z"
+          },
+          {
+            "name": "v2.1.0-beta.4",
+            "tag_name": "v2.1.0-beta.4",
+            "prerelease": true,
+            "published_at": "2022-09-27T21:19:34Z"
+          },
+          {
+            "name": "v2.1.0-beta.3",
+            "tag_name": "v2.1.0-beta.3",
+            "prerelease": true,
+            "published_at": "2022-08-22T10:48:51Z"
+          },
+          {
+            "name": "v2.1.0-beta.2",
+            "tag_name": "v2.1.0-beta.2",
+            "prerelease": true,
+            "published_at": "2022-08-22T10:20:18Z"
+          },
+          {
+            "name": "v2.1.0-beta.1",
+            "tag_name": "v2.1.0-beta.1",
+            "prerelease": true,
+            "published_at": "2022-08-22T10:19:23Z"
+          }
+        ],
+        "full_name": "athensresearch/athens",
+        "has_tests": true,
+        "languages": [
+          [
+            "Clojure",
+            81.4623249523798
+          ],
+          [
+            "TypeScript",
+            15.820410726091039
+          ],
+          [
+            "JavaScript",
+            1.7332242571701981
+          ],
+          [
+            "CSS",
+            0.5265842960512216
+          ],
+          [
+            "Shell",
+            0.23654635082878767
+          ],
+          [
+            "HTML",
+            0.17913042953267302
+          ],
+          [
+            "Dockerfile",
+            0.039062146244570085
+          ],
+          [
+            "Ruby",
+            0.0027168417017088935
+          ]
+        ],
+        "pages_url": "https://athensresearch.github.io/athens/",
+        "updated_at": "2026-05-24T19:02:31Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 1,
+        "extra_doc_files": [
+          "CHANGELOG.md",
+          "CODE_OF_CONDUCT.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "Athens is a knowledge management tool built on a graph database, designed for teams to capture and synthesize information. The repository contains a `docs_dir` for project documentation and `tests` for testing, supporting its development and explanation."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 13687,
+      "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2283,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-athensresearch-athens",
+          "javascript",
+          "unmaintained",
+          "open-source",
+          "knowledge-graph",
+          "collaborative",
+          "clojure",
+          "typescript",
+          "graph-database",
+          "desktop-app"
+        ],
+        "mini_title": "athensresearch/athens",
+        "owner_login": "athensresearch",
+        "_dense_verify": {
+          "archetype": "app_example",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "Athens is an unmaintained, open-source, collaborative knowledge graph application built primarily with Clojure, TypeScript, JavaScript, React, and Click, designed for teams to capture and synthesize knowledge using a graph database. It was available as a browser-based demo and a free desktop app. Users can adopt it by using the desktop app or the demo. Core public interfaces documented are @gmail.com and /summary.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Athens is an unmaintained, open-source, collaborative knowledge graph application.",
+              "Written primarily in Clojure (81.5%), with TypeScript (15.8%) and JavaScript (1.7%).",
+              "Backed by YC W21.",
+              "Designed for teams to capture and synthesize knowledge using a graph database.",
+              "Offered a browser-based demo (changes not saved) and a free, open-source desktop app."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Clojure",
+              "TypeScript",
+              "JavaScript",
+              "react",
+              "click"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Core application logic and backend primarily in Clojure.",
+              "Frontend components developed with TypeScript and JavaScript, likely using React.",
+              "Utilizes a graph database for knowledge storage and retrieval."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Knowledge Graph Core",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The README explicitly documents the following public interfaces:",
+              "- @gmail.com",
+              "- /summary"
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "@gmail.com",
+              "/summary"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "No explicit installation or configuration steps are detailed in the summary for the desktop app or self-hosting.",
+              "An unofficial, unsupported tool at `github.com/bshepherdson/athens-export` is available for converting pages to markdown in a Logseq-compatible format (effectiveness may vary).",
+              "Project documentation is not guaranteed to be up-to-date."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "Unofficial `athens-export` tool for data migration (unsupported, effectiveness varies).",
+              "Documentation status uncertain."
+            ]
+          },
+          {
+            "bullets": [
+              "The project is unmaintained.",
+              "Last release was v2.1.0-beta.5 on 2022-10-10.",
+              "v2.1.0-beta.5 included UI features like improved notifications and dark mode, alongside bug fixes and refactors.",
+              "Open issues at archival included dependency bumps, feature requests for TLS support (#2419), page-specific search (#2420), and an API for scripting (#2366).",
+              "Bug reports at archival included Safari compatibility (#2423) and Roam Research import failures (#2379).",
+              "Contributor Covenant Code of Conduct in place.",
+              "Code of Conduct enforcement handled by researchathens@gmail.com."
+            ],
+            "heading": "Project Status and Issues",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Project Status and Issues",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=1"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.6
+        },
+        "architecture_overview": "Athens is an unmaintained, open-source, collaborative knowledge graph application designed for teams to capture and synthesize knowledge using a graph database. It is primarily written in Clojure (81.5%), with significant portions in TypeScript (15.8%) and JavaScript (1.7%). The project offered both a browser-based demo and a free, open-source desktop application, leveraging its multi-language stack to deliver a comprehensive knowledge management solution.",
+        "benchmarks_tests_examples": null
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2283,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/athensresearch/athens"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "workspace_zettel_id": "2e0447fb-1269-45c4-bff1-c618f06dfa57",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "b5df3508-f528-469b-b62c-fdf90fcb8185",
+  "normalized_url": "https://www.noahpinion.blog/p/china-is-quietly-looking-weaker",
+  "title": "Revisiting the 'Chinese Century' Thesis",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:28:57.529484+00:00",
+  "ai_summary_len": 2199,
+  "body_md_len": 1820,
+  "content_hash_hex": "0b9bb94669ecc85b64d7eb0a5d91843721279b61e052558e0c9fad8b5f785b13",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.noahpinion.blog/p/china-is-quietly-looking-weaker",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "China is quietly looking weaker - by Noah Smith",
+        "description": "Xi Jinping's paranoia, rapidly changing technology, and the limitations of China's system could cut short the Chinese Century.",
+        "route_subtype": "page",
+        "og_description": "Xi Jinping's paranoia, rapidly changing technology, and the limitations of China's system could cut short the Chinese Century.",
+        "route_supported": true,
+        "twitter_description": "Xi Jinping's paranoia, rapidly changing technology, and the limitations of China's system could cut short the Chinese Century."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 26448,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1315,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "China",
+          "Chinese Century",
+          "Japan",
+          "Economic Predictions",
+          "Geopolitics",
+          "Industrial Policy",
+          "AI",
+          "Xi Jinping",
+          "US-China Relations"
+        ],
+        "mini_title": "Revisiting the 'Chinese Century' Thesis",
+        "brief_summary": "The author, initially a proponent of a 'Chinese Century,' has recently become more skeptical, drawing parallels to Japan's economic trajectory in the 1980s. This shift is attributed to emerging challenges in China's industrial policy, the impact of AI, Xi Jinping's leadership style, and potential military vulnerabilities.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Compares current 'Chinese Century' conventional wisdom to 1980s predictions of Japanese dominance.",
+              "Ezra Vogel's 'Japan As Number One' predicted Japanese supremacy.",
+              "Bill Emmott's 1989 book 'The Sun Also Sets' more accurately predicted Japan's reversion to the mean.",
+              "Emmott identified Japan's financial weakness, aging population, and low service-sector productivity as key vulnerabilities."
+            ],
+            "heading": "Historical Parallel: Japan's Economic Trajectory",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Western skepticism of China has largely evaporated.",
+              "Attention is focused on Chinese cars, cities, and trade surpluses.",
+              "Perceived U.S. dysfunction is often contrasted with China's progress.",
+              "Most Americans believe China has or will soon overtake the U.S."
+            ],
+            "heading": "Prevailing Views on China's Rise",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Previously assessed that the 21st century would be a Chinese one, albeit with less pronounced dominance than America's in the 20th century.",
+              "Argued China's size (12 times Japan's) allows for industrial and geopolitical dominance without high per capita GDP.",
+              "Dismissed demographics and housing as major threats to China's rise."
+            ],
+            "heading": "Author's Prior Assessment of China",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "In the last couple of months, the author has grown more skeptical.",
+              "Believes China may be stumbling in ways that will become apparent in a decade or two.",
+              "This shift is based on four factors."
+            ],
+            "heading": "Recent Shift in Author's Perspective",
+            "sub_sections": {
+              "Leadership Dynamics": [
+                "Xi Jinping is entering a paranoid 'Death of Stalin' phase earlier than anticipated."
+              ],
+              "Limits of Industrial Policy": [
+                "China's industrial policy is hitting its limits faster than expected."
+              ],
+              "Potential Military Weakness": [
+                "Former President Trump's attacks on Venezuela and Iran suggest potential Chinese military weakness."
+              ],
+              "AI and Technological Advantage": [
+                "The rise of AI agents makes China's technological advantage less defensible."
+              ]
+            }
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1315,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.noahpinion.blog/p/china-is-quietly-looking-weaker"
+  }
+}

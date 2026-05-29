@@ -1,0 +1,266 @@
+{
+  "workspace_zettel_id": "881865c9-2e11-4935-9f9e-16588e0dc9d4",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "12027f62-6142-412e-a59c-00e20ec1ee20",
+  "normalized_url": "https://github.com/psf/requests",
+  "title": "psf/requests",
+  "source_type": "github",
+  "publication_date": "2026-05-17",
+  "captured_at": "2026-05-17T16:39:46.820309+00:00",
+  "ai_summary_len": 3875,
+  "body_md_len": 3330,
+  "content_hash_hex": "e572043bdb9259559bd0289ea5ee680f710727d892cdfd1e70b4d02143b44fa2",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/psf/requests",
+      "author": "psf",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "requests",
+        "forks": 9862,
+        "owner": "psf",
+        "stars": 53907,
+        "topics": [
+          "client",
+          "cookies",
+          "forhumans",
+          "http",
+          "humans",
+          "python",
+          "python-requests",
+          "requests"
+        ],
+        "license": "Apache-2.0",
+        "has_demo": false,
+        "language": "Python",
+        "releases": [
+          {
+            "name": "v2.33.1",
+            "tag_name": "v2.33.1",
+            "prerelease": false,
+            "published_at": "2026-03-30T16:12:09Z"
+          },
+          {
+            "name": "v2.33.0",
+            "tag_name": "v2.33.0",
+            "prerelease": false,
+            "published_at": "2026-03-25T16:38:25Z"
+          },
+          {
+            "name": "v2.32.5",
+            "tag_name": "v2.32.5",
+            "prerelease": false,
+            "published_at": "2025-08-18T20:33:27Z"
+          },
+          {
+            "name": "v2.32.4",
+            "tag_name": "v2.32.4",
+            "prerelease": false,
+            "published_at": "2025-06-09T18:22:07Z"
+          },
+          {
+            "name": "v2.32.3",
+            "tag_name": "v2.32.3",
+            "prerelease": false,
+            "published_at": "2024-05-29T15:39:40Z"
+          }
+        ],
+        "full_name": "psf/requests",
+        "has_tests": true,
+        "languages": [
+          [
+            "Python",
+            99.29932067101068
+          ],
+          [
+            "Makefile",
+            0.7006793289893248
+          ]
+        ],
+        "pages_url": null,
+        "updated_at": "2026-04-22T21:13:07Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 10,
+        "extra_doc_files": [],
+        "route_supported": true,
+        "architecture_overview": "The Requests repository provides a simple HTTP library, accessible via `import requests`. Its `tests` directory ensures the library's functionality, while `docs_dir` contains its documentation."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 28863,
+      "confidence_reason": "repo metadata and README fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2541,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-psf-requests",
+          "python",
+          "library",
+          "http-client",
+          "http",
+          "networking",
+          "api-client",
+          "web-development",
+          "requests",
+          "open-source"
+        ],
+        "mini_title": "psf/requests",
+        "owner_login": "psf",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "psf/requests is a popular Python HTTP/1.1 library for simplifying HTTP requests. It is built on Python and simplifies HTTP requests by automating query string and form data encoding, offering features like connection pooling and session management. Users adopt it by installing it via `pip install requests`. Core public interfaces include the `json` method, `verify=False` parameter, and `REQUESTS_CA_BUNDLE` environment variable.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "psf/requests is a popular Python HTTP/1.1 library, described as simple and elegant.",
+              "It boasts approximately 300 million weekly downloads and is used in over 4,000,000 GitHub repositories.",
+              "The library officially supports Python 3.10+."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": [
+              "pip install requests"
+            ]
+          },
+          {
+            "bullets": [
+              "Simplifies HTTP requests by automating query string and form data encoding.",
+              "Recommends the `json` method for modern use.",
+              "Provides connection pooling.",
+              "Offers cookie persistence in sessions.",
+              "Includes browser-style SSL verification.",
+              "Supports various authentication methods, including Basic and Digest.",
+              "Performs automatic content decompression.",
+              "Facilitates multi-part file uploads.",
+              "Supports SOCKS proxies.",
+              "Allows setting timeouts for requests.",
+              "Enables streaming downloads.",
+              "Supports `.netrc` for authentication."
+            ],
+            "heading": "Features",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Features",
+            "public_interfaces": [
+              "json",
+              "verify=False",
+              "REQUESTS_CA_BUNDLE"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The library's primary function is to simplify HTTP requests.",
+              "It handles query string and form data encoding automatically.",
+              "Underlying mechanisms include connection pooling and session management for cookie persistence."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Installation is performed via `pip install requests`.",
+              "Cloning the repository requires a specific git flag: `git clone -c fetch.fsck.badTimezone=ignore` to address a known commit timestamp issue."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "pip install requests"
+            ]
+          },
+          {
+            "bullets": [
+              "Major effort to add inline type annotations (#7271, #7272).",
+              "New project initiated to localize documentation (#7357).",
+              "Numerous documentation clarifications for timeouts, error handling, and behavior with forked processes.",
+              "Fixed an issue where `REQUESTS_CA_BUNDLE` overrides `verify=False` (#7384).",
+              "Addressed incorrect handling of leading slashes in S3 URLs (#7315).",
+              "Resolved malformed chunked requests with `None` data (#7217).",
+              "Corrected incorrect `Content-Length` for `StringIO` with multi-byte characters (#7201).",
+              "Fixed `no_proxy` being ignored on redirects (#7194).",
+              "Rectified a regression in v2.32 affecting DMTF Redfish URLs (#7188).",
+              "Added RFC 7616 support for non-Latin credentials in DigestAuth (#7232)."
+            ],
+            "heading": "Recent Development / Bug Fixes",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Recent Development / Bug Fixes",
+            "public_interfaces": [
+              "REQUESTS_CA_BUNDLE",
+              "verify=False"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The repository contains a `tests` directory.",
+              "A `docs_dir` is present for documentation.",
+              "Recent development includes efforts to clarify documentation regarding timeouts, error handling, and behavior in forked processes."
+            ],
+            "heading": "Tests / Documentation",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Tests / Documentation",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=1"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.6
+        },
+        "architecture_overview": "psf/requests is a Python HTTP/1.1 library designed to simplify HTTP requests. It automates query string and form data encoding, and manages underlying HTTP complexities such as connection pooling, cookie persistence within sessions, and various authentication methods. The library provides a high-level interface for common HTTP operations, abstracting away lower-level networking details.",
+        "benchmarks_tests_examples": [
+          "The repository includes a `tests` directory.",
+          "A `docs_dir` exists for documentation."
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2541,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/psf/requests"
+  }
+}
