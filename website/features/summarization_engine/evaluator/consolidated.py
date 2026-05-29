@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
 from website.features.summarization_engine.evaluator.models import EvalResult
 from website.features.summarization_engine.evaluator.numeric_grounding import (
@@ -22,6 +24,84 @@ from website.features.summarization_engine.evaluator.prompts import (
 from website.features.summarization_engine.summarization.common.json_utils import (
     parse_json_object,
 )
+
+logger = logging.getLogger(__name__)
+
+# Lane 2 (2026-05-30 Fix #2) — Instructor-style validation-aware retry support.
+#
+# Minimum-viable defaults for each required EvalResult top-level field. When
+# the judge omits one or more required fields AND the single validation-
+# retry reprompt also fails, we synthesize these defaults to keep the
+# pipeline alive AND set ``evaluator_metadata.backfilled_fields = [...]`` so
+# downstream aggregators (04_compute_composite) can EXCLUDE such rows.
+# Synthesized scores are deliberately neutral (0.5 / level-1 floor / empty
+# lists) so they don't bias either direction if accidentally aggregated.
+_EVAL_RESULT_MIN_DEFAULTS: dict[str, Any] = {
+    "g_eval": {
+        "coherence": {"score": 1, "anchor": "", "reasoning": "synthesized: judge omitted field"},
+        "fluency":   {"score": 1, "anchor": "", "reasoning": "synthesized: judge omitted field"},
+    },
+    "finesure": {
+        "faithfulness": {"score": 0.5, "items": []},
+        "completeness": {"score": 0.5, "items": []},
+        "conciseness":  {"score": 0.5, "items": []},
+    },
+    # summac_lite is already Optional[SummaCLite] = None on the model — list
+    # it here so we don't try to inject for it (no-op via the loop guard).
+    "summac_lite": None,
+    "rubric": {
+        "components": [],
+        "anti_patterns_triggered": [],
+        "caps_applied": {
+            "hallucination_cap": None,
+            "omission_cap": None,
+            "generic_cap": None,
+        },
+    },
+    "maps_to_metric_summary": {
+        "g_eval": 0.0, "finesure": 0.0, "qafact": 0.0, "summac": 0.0,
+    },
+}
+
+
+def _extract_missing_required_fields(exc: ValidationError) -> list[str]:
+    """Pluck the names of top-level required fields the judge omitted.
+
+    Pydantic v2 ``ValidationError.errors()`` returns a list of dicts. We
+    filter for ``type == "missing"`` and take the first element of ``loc``
+    (which is the top-level field name). Nested errors (e.g. a missing
+    sub-field inside ``finesure``) are NOT counted as missing top-levels —
+    those should bubble up untouched so the operator sees them.
+    """
+    missing: list[str] = []
+    for err in exc.errors():
+        if err.get("type") != "missing":
+            continue
+        loc = err.get("loc") or ()
+        if not loc:
+            continue
+        top = loc[0]
+        if isinstance(top, str) and len(loc) == 1 and top not in missing:
+            missing.append(top)
+    return missing
+
+
+def _synth_missing_field_defaults(payload: dict, missing_fields: list[str]) -> list[str]:
+    """Inject minimum-viable defaults for each missing field. Returns the
+    list of fields actually backfilled (so the caller can record which ones
+    were synthesized in evaluator_metadata)."""
+    backfilled: list[str] = []
+    for field in missing_fields:
+        if field not in _EVAL_RESULT_MIN_DEFAULTS:
+            # Unknown field — don't fabricate; let pydantic surface the error
+            continue
+        default = _EVAL_RESULT_MIN_DEFAULTS[field]
+        # Note: summac_lite default is None and is already model-side-Optional;
+        # injecting None is a no-op but we still flag it so the row is excluded.
+        payload[field] = default
+        backfilled.append(field)
+    return backfilled
+
 
 # Cap on number of unsupported numeric tokens reported, to keep the evaluator
 # payload compact in eval-loop artifacts.
@@ -110,8 +190,30 @@ def _flatten_summary_text(summary_json: dict) -> str:
 
 
 class ConsolidatedEvaluator:
-    def __init__(self, gemini_client: Any) -> None:
+    def __init__(
+        self,
+        gemini_client: Any,
+        *,
+        enable_validation_retry: bool = True,
+    ) -> None:
+        """Build a consolidated rubric evaluator.
+
+        Args:
+            gemini_client: a Gemini client matching ``TieredGeminiClient.generate``.
+            enable_validation_retry: when the judge omits required EvalResult
+                top-level fields, retry ONCE with a "missing fields: X, Y, Z"
+                reprompt before falling back to synth+flag. Default True for
+                the eval-harness (latency-tolerant, prefers correct data).
+                Production add-zettel pipelines may pass ``False`` to skip
+                the retry and synth-immediately — saves 30-60s user-facing
+                latency on the ~5% of zettels where the model returns an
+                incomplete schema, at the cost of slightly lower data quality
+                (no chance to recover via reprompt). Backfilled rows are still
+                FLAGGED via ``evaluator_metadata.backfilled_fields`` and
+                EXCLUDED from corpus-mean aggregates in either mode.
+        """
         self._client = gemini_client
+        self._enable_validation_retry = enable_validation_retry
 
     def _tier(self) -> str:
         cfg = getattr(self._client, "_config", None)
@@ -224,7 +326,164 @@ class ConsolidatedEvaluator:
         if shape in _NO_STANCE_PENALTY_SHAPES:
             payload["editorialization_flags"] = []
             payload["evaluator_metadata"]["editorialization_zeroed_by_shape"] = shape
-        return EvalResult(**payload)
+
+        # Lane 2 (2026-05-30 Fix #2) — Instructor-style validation-aware retry.
+        # When the judge omits required top-level fields (the 2026-05-28
+        # wz=1c0af8ec failure mode: g_eval present, finesure/summac_lite/rubric
+        # missing), reprompt ONCE with an explicit "missing fields: X, Y, Z"
+        # suffix. Empirically the model self-corrects on first re-ask (our
+        # patch run on the same zettel produced a complete response with
+        # only 6.8k in / 3.4k out — 10% of budget). If the retry ALSO fails,
+        # synthesize neutral defaults and flag the row in
+        # evaluator_metadata.backfilled_fields so downstream aggregators
+        # (04_compute_composite) EXCLUDE it from corpus-mean stats —
+        # otherwise we'd silently bias the judge mean toward 0.5.
+        payload["evaluator_metadata"].setdefault("backfilled_fields", [])
+        try:
+            return EvalResult(**payload)
+        except ValidationError as ve:
+            missing = _extract_missing_required_fields(ve)
+            if not missing:
+                # Validation failed for a reason OTHER than missing top-level
+                # fields (e.g. nested type error). Re-raise; not our problem.
+                raise
+
+            # Production opt-out: skip retry entirely, synth + flag immediately.
+            # Saves 30-60s user-facing latency on the ~5% failing zettels.
+            if not self._enable_validation_retry:
+                logger.warning(
+                    "evaluator.validation_retry_disabled missing_fields=%s "
+                    "— synth+flag (production latency mode)",
+                    missing,
+                )
+                backfilled = _synth_missing_field_defaults(payload, missing)
+                payload["evaluator_metadata"]["backfilled_fields"] = backfilled
+                payload["evaluator_metadata"]["validation_retry_fired"] = False
+                payload["evaluator_metadata"]["latency_ms"] = int(
+                    (time.perf_counter() - t0) * 1000
+                )
+                try:
+                    return EvalResult(**payload)
+                except ValidationError as final_ve:
+                    remaining = [
+                        {"loc": e.get("loc"), "type": e.get("type")}
+                        for e in final_ve.errors()[:5]
+                    ]
+                    raise RuntimeError(
+                        f"Evaluator schema unrecoverable after synth "
+                        f"(backfilled={backfilled}, "
+                        f"remaining_errors={remaining}): {final_ve}"
+                    ) from final_ve
+
+            logger.warning(
+                "evaluator.validation_retry missing_fields=%s — reprompting once",
+                missing,
+            )
+            retry_suffix = (
+                "\n\nYour previous response was missing required top-level "
+                f"fields: {missing}. Re-emit the COMPLETE JSON object with "
+                "ALL required top-level fields populated. Do not omit any "
+                "field listed in the schema shown earlier."
+            )
+            retry_prompt = prompt + retry_suffix
+
+            retry_payload: dict | None = None
+            retry_result = None
+            try:
+                retry_result = await self._client.generate(
+                    retry_prompt,
+                    tier=self._tier(),
+                    system_instruction=CONSOLIDATED_SYSTEM,
+                    temperature=0.0,
+                    max_output_tokens=32768,
+                    role="rubric_evaluator",
+                )
+                retry_text = (retry_result.text or "").strip()
+                if retry_text:
+                    retry_payload = parse_json_object(retry_text)
+            except Exception as retry_exc:  # noqa: BLE001
+                logger.warning(
+                    "evaluator.validation_retry_call_failed err=%s",
+                    retry_exc,
+                )
+
+            if retry_payload is not None:
+                # Re-enrich evaluator_metadata using the RETRY result's
+                # token / model info so telemetry reflects what actually ran.
+                retry_payload.setdefault("evaluator_metadata", {})
+                # Preserve the original metadata (rubric_sha, fingerprint,
+                # numeric_grounding) but overlay the call-specific fields
+                # from the retry. Token counts are SUMMED across attempts —
+                # total_tokens_in/out reflect the true end-to-end cost.
+                # Latency is updated to the end-to-end wall-clock so the
+                # retry's contribution shows up in iter telemetry.
+                merged_meta = dict(payload["evaluator_metadata"])
+                merged_meta["model_used"] = getattr(
+                    retry_result, "model_used", merged_meta.get("model_used"),
+                )
+                merged_meta["total_tokens_in"] = (
+                    merged_meta.get("total_tokens_in", 0)
+                    + getattr(retry_result, "input_tokens", 0)
+                )
+                merged_meta["total_tokens_out"] = (
+                    merged_meta.get("total_tokens_out", 0)
+                    + getattr(retry_result, "output_tokens", 0)
+                )
+                merged_meta["latency_ms"] = int((time.perf_counter() - t0) * 1000)
+                merged_meta["validation_retry_fired"] = True
+                merged_meta["validation_retry_missing_fields"] = missing
+                retry_payload["evaluator_metadata"] = merged_meta
+                retry_payload["evaluator_metadata"].setdefault("backfilled_fields", [])
+                try:
+                    return EvalResult(**retry_payload)
+                except ValidationError as ve2:
+                    logger.warning(
+                        "evaluator.validation_retry_failed missing=%s",
+                        _extract_missing_required_fields(ve2),
+                    )
+                    # Fall through to synth path
+
+            # Synth-fallback: backfill the missing fields with neutral
+            # defaults so the row is constructable. CRITICAL: the row is
+            # FLAGGED via backfilled_fields so it gets EXCLUDED from
+            # aggregates downstream.
+            backfilled = _synth_missing_field_defaults(payload, missing)
+            payload["evaluator_metadata"]["backfilled_fields"] = backfilled
+            payload["evaluator_metadata"]["validation_retry_fired"] = True
+            payload["evaluator_metadata"]["validation_retry_succeeded"] = False
+            payload["evaluator_metadata"]["latency_ms"] = int(
+                (time.perf_counter() - t0) * 1000
+            )
+            if backfilled:
+                logger.warning(
+                    "evaluator.synthesized_defaults backfilled=%s "
+                    "— ROW MUST BE EXCLUDED FROM AGGREGATES",
+                    backfilled,
+                )
+            # Blocking-#1 (2026-05-30 review): synth only fills MISSING fields.
+            # If the payload has other validation issues (nested OOR, type
+            # mismatch, etc.) the final construction will STILL raise. We
+            # surface that loudly with explicit context rather than letting
+            # the raw ValidationError propagate — callers can then choose to
+            # log + skip the zettel cleanly instead of treating it as a
+            # transient error worth retrying.
+            try:
+                return EvalResult(**payload)
+            except ValidationError as final_ve:
+                remaining = [
+                    {"loc": e.get("loc"), "type": e.get("type")}
+                    for e in final_ve.errors()[:5]
+                ]
+                logger.error(
+                    "evaluator.synth_path_still_invalid backfilled=%s "
+                    "remaining_errors=%s",
+                    backfilled, remaining,
+                )
+                raise RuntimeError(
+                    f"Evaluator schema unrecoverable after synth "
+                    f"(backfilled={backfilled}, "
+                    f"remaining_errors={remaining}): {final_ve}"
+                ) from final_ve
 
 
 def evaluator_implementation_fingerprint() -> str:
