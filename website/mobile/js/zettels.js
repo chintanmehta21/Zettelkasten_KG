@@ -302,6 +302,15 @@
     qs('#zettels-anon-signin').addEventListener('click', () => location.assign('/m/profile'));
     window.addEventListener('popstate', () => { qs('#zettels-detail').hidden = true; });
 
+    // Item 6: a sibling tab claimed this anon session on sign-in → reload so the
+    // now-owned zettels show here too.
+    if (typeof BroadcastChannel === 'function') {
+      try {
+        const bc = new BroadcastChannel('zk-auth');
+        bc.onmessage = (ev) => { if (ev && ev.data && ev.data.type === 'anon-claimed') loadZettels(); };
+      } catch (e) { void e; }
+    }
+
     loadZettels();
   }
 
