@@ -2,7 +2,7 @@
 //
 // Canonical endpoints (NOT /api/profile — that was redundant with /api/me):
 //   GET   /api/me           → { id, email, name, avatar_url, profile_source }
-//   PUT   /api/me/avatar    → body { avatar_id: 0..59 } → writes core.profiles.avatar_url
+//   PUT   /api/me/avatar    → body { avatar_id: 0..99 } → writes core.profiles.avatar_url
 //
 // Session is read from window.ZKAuth (auth-core.js stores in localStorage,
 // not cookies); auth-state-change events trigger re-render.
