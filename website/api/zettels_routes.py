@@ -1656,6 +1656,11 @@ async def claim_anon_session(
 
     # Quota loop (consume-then-insert). require_entitlement consumes atomically;
     # the per-candidate action_id makes each consume idempotent under retries.
+    # Accepted trade-off: if a concurrent ingestion lands the same canonical in
+    # the new user's workspace between peek and commit, commit's ON CONFLICT DO
+    # NOTHING skips that row while the unit was already consumed — a tiny,
+    # rare quota burn with no refund path (refund would be a pricing-semantics
+    # change; out of scope per the pricing-module authority).
     affordable_canonical_ids: list[str] = []
     user_dict = {"sub": new_user_sub}
     for candidate in candidates:

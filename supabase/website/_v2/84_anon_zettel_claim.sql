@@ -59,9 +59,15 @@ BEGIN
     INSERT INTO content.anon_sessions (id, ip_hash, ua_hash)
         VALUES (p_anon_sid, p_ip_hash, p_ua_hash)
         ON CONFLICT (id) DO UPDATE SET last_seen_at = now();
+    -- Caller contract: the add-zettel handler calls this with the server-
+    -- generated id of a JUST-persisted anon (Zoro) row. The anon_sid IS NULL
+    -- guard makes tagging stamp-once and defends a future SECURITY DEFINER
+    -- caller from re-stamping an authed user's row (which would expose it to a
+    -- claim).
     UPDATE content.workspace_zettels
         SET anon_sid = p_anon_sid
-        WHERE id = p_workspace_zettel_id;
+        WHERE id = p_workspace_zettel_id
+          AND anon_sid IS NULL;
 END $$;
 
 GRANT EXECUTE ON FUNCTION content.tag_anon_zettel(uuid, uuid, text, text) TO service_role;
@@ -82,7 +88,7 @@ DECLARE
 BEGIN
     PERFORM 1 FROM content.anon_sessions s
         WHERE s.id = p_anon_sid
-          AND s.claimed_by_user IS NULL
+          AND s.claimed_at IS NULL                       -- immutable sentinel; see commit_anon_claim
           AND s.created_at > now() - interval '24 hours';
     IF NOT FOUND THEN RETURN; END IF;
 
@@ -120,17 +126,21 @@ CREATE OR REPLACE FUNCTION content.commit_anon_claim(
 ) RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = content, core, public AS $$
 DECLARE
-    v_new_ws  uuid;
-    v_count   integer := 0;
-    v_claimed uuid;
-    v_created timestamptz;
+    v_new_ws     uuid;
+    v_count      integer := 0;
+    v_claimed_at timestamptz;
+    v_created    timestamptz;
 BEGIN
-    SELECT claimed_by_user, created_at INTO v_claimed, v_created
+    -- claimed_at is the first-claim-wins sentinel (set once, never nulled). We
+    -- key off it rather than claimed_by_user because that FK is ON DELETE SET
+    -- NULL — deleting the claiming profile would otherwise reset the guard and
+    -- make an already-claimed session re-claimable within the 24h window.
+    SELECT claimed_at, created_at INTO v_claimed_at, v_created
         FROM content.anon_sessions
         WHERE id = p_anon_sid
         FOR UPDATE;
     IF NOT FOUND THEN RETURN 0; END IF;
-    IF v_claimed IS NOT NULL THEN RETURN 0; END IF;                       -- first-claim-wins
+    IF v_claimed_at IS NOT NULL THEN RETURN 0; END IF;                    -- first-claim-wins
     IF v_created <= now() - interval '24 hours' THEN RETURN 0; END IF;    -- window
     IF p_canonical_ids IS NULL OR array_length(p_canonical_ids, 1) IS NULL THEN
         -- nothing affordable, but the session is now spoken for
