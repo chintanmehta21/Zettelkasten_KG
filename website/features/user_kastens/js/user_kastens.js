@@ -68,7 +68,8 @@
         if (!profile) {
           var u = _session.user || {};
           var meta = u.user_metadata || {};
-          profile = { name: meta.full_name || u.email || 'User', email: u.email || '', avatar_url: meta.avatar_url || '' };
+          // R6: drop the (user-modifiable/external) JWT avatar read; ZKHeader resolves curated.
+          profile = { name: meta.full_name || u.email || 'User', email: u.email || '', avatar_url: '' };
         }
         await window.ZKHeader.boot(_token, { profile: profile });
       } catch (e) {

@@ -97,6 +97,14 @@
     if (refs.avatarFb) refs.avatarFb.classList.add('hidden');
   }
 
+  /** Seed the shared ZKAvatar SoT without re-broadcasting (the header already
+   *  painted itself). Other surfaces read ZKAvatar.current() / subscribe. R6. */
+  function seedZKAvatar(profileId, url) {
+    if (window.ZKAvatar && window.ZKAvatar.isCurated(url)) {
+      window.ZKAvatar.set(profileId || null, url, { silent: true });
+    }
+  }
+
   /** Terminal fallback: show user initial (or generic glyph if no name). */
   function commitInitial(profile) {
     if (!refs.avatarFb) return;
@@ -113,38 +121,29 @@
     refs.avatarFb.classList.remove('hidden');
   }
 
-  /** Pick the URL we'll attempt: server > localStorage > random. Persist random to server + cache. */
-  async function resolveAvatarUrl(profile, getToken) {
+  /** Pick the URL we'll attempt: server > localStorage > random (display-only).
+   *  R6 (2026-05-30): for AUTHED users we no longer client-side-assign a random
+   *  avatar and PUT it back — /api/me (R5) always returns a curated avatar_url
+   *  (the DB default-avatar trigger guarantees one), so that fire-and-forget
+   *  self-write was dead and raced the user's real pick. Authed users with no
+   *  server/cache URL fall to a random preset for DISPLAY only (no PUT); anon
+   *  visitors keep the per-load random preset. */
+  function resolveAvatarUrl(profile) {
     var profileId = (profile && profile.id) || null;
     var serverUrl = profile && profile.avatar_url;
     if (serverUrl && AVATAR_PATH_RE.test(serverUrl)) {
       if (profileId) writeCached(profileId, serverUrl);
       return { url: serverUrl, source: 'server' };
     }
-    // PR2: skip cache lookup AND write when anon (profileId === null) so
-    // every anon page-load picks a fresh random avatar per spec §8.
     if (profileId) {
       var cached = readCached(profileId);
       if (cached) return { url: cached, source: 'cache' };
     }
-
-    // Assign a deterministic-ish random avatar
+    // Display-only random preset (no server write). Authed users effectively
+    // never reach here post-R5 since /api/me always returns a curated URL.
     var randomId = Math.floor(Math.random() * AVATAR_COUNT);
     var url = avatarUrlFor(randomId);
     if (profileId) writeCached(profileId, url);
-    // Fire-and-forget persist to server (only for authed users)
-    if (getToken && profileId) {
-      try {
-        var token = typeof getToken === 'function' ? await getToken() : getToken;
-        if (token) {
-          zkFetch('/api/me/avatar', {
-            method: 'PUT',
-            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ avatar_id: randomId })
-          }).catch(function () { /* non-blocking */ });
-        }
-      } catch (_) { /* non-blocking */ }
-    }
     return { url: url, source: 'random', id: randomId };
   }
 
@@ -152,10 +151,12 @@
   async function loadAvatar(profile, getToken) {
     if (!refs.avatarImg) return;
     try {
-      var picked = await resolveAvatarUrl(profile || {}, getToken);
+      var picked = resolveAvatarUrl(profile || {});
+      var pid = (profile && profile.id) || null;
       try {
         await preload(picked.url);
         commitImage(picked.url);
+        seedZKAvatar(pid, picked.url);
         return;
       } catch (err) {
         // Retry once with cache-bust (handles stale 304/CORS edge cases)
@@ -163,6 +164,7 @@
           var bustUrl = picked.url + '?v=' + Date.now();
           await preload(bustUrl);
           commitImage(picked.url); // commit the clean URL now that we've proven it's reachable
+          seedZKAvatar(pid, picked.url);
           return;
         } catch (err2) {
           console.warn('[ZKHeader] avatar preload failed twice for', picked.url, err2 && err2.message);
@@ -172,8 +174,9 @@
               var rid = Math.floor(Math.random() * AVATAR_COUNT);
               var rurl = avatarUrlFor(rid);
               await preload(rurl);
-              writeCached((profile && profile.id) || null, rurl);
+              writeCached(pid, rurl);
               commitImage(rurl);
+              seedZKAvatar(pid, rurl);
               return;
             } catch (_) { /* fall through */ }
           }
@@ -275,10 +278,21 @@
     }
   }
 
+  var _zkAvatarSubBound = false;
   function initBasics() {
     resolveRefs();
     bindBackButton();
     bindAvatarDropdown();
+    // R6: re-render the small header avatar when ANY surface (or another tab
+    // via R3 BroadcastChannel) changes the SoT. immediate:false — boot paint is
+    // owned by loadAvatar; this handles later changes. commitImage is idempotent
+    // and we never call set() here, so no loop.
+    if (window.ZKAvatar && !_zkAvatarSubBound) {
+      _zkAvatarSubBound = true;
+      window.ZKAvatar.subscribe(function (detail) {
+        if (detail && detail.url) commitImage(detail.url);
+      }, { immediate: false });
+    }
   }
 
   if (document.readyState === 'loading') {
@@ -326,31 +340,54 @@
     },
 
     /**
-     * Force-update the visible avatar to a specific ID (used by the home picker).
-     * Does its own preload; never breaks the display on failure.
+     * Force-update the visible avatar to a specific ID (used by the profile picker).
+     * Updates the small header img + localStorage cache + shared ZKAvatar SoT
+     * optimistically, then AWAITS the PUT and REJECTS on failure so the caller
+     * can roll back and surface an error. (R2, 2026-05-30: previously the PUT was
+     * fire-and-forget with a silent `.catch(()=>{})`, so a 401/404/500 was
+     * invisible — the picker toasted success while nothing persisted.)
+     *
+     * @param {number} avatarId
+     * @param {Function|string} getToken
+     * @param {string|null} profileId  - cache-key owner; null falls back to 'anon'
+     * @param {{signal?: AbortSignal}} [options] - abort an in-flight PUT on rapid re-pick
+     * @returns {Promise<{avatar_url: string}>} resolves on persisted save; rejects on failure
      */
-    setAvatarById: async function (avatarId, getToken, profileId) {
+    setAvatarById: async function (avatarId, getToken, profileId, options) {
+      options = options || {};
       var url = avatarUrlFor(avatarId);
-      try {
-        await preload(url);
-        writeCached(profileId || null, url);
-        commitImage(url);
-      } catch (_) {
+      // Preload first so we never commit a broken image.
+      try { await preload(url); } catch (_) {
         console.warn('[ZKHeader] setAvatarById preload failed for id', avatarId);
       }
-      // Persist (non-blocking)
-      if (getToken) {
-        try {
-          var token = typeof getToken === 'function' ? await getToken() : getToken;
-          if (token) {
-            zkFetch('/api/me/avatar', {
-              method: 'PUT',
-              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ avatar_id: avatarId })
-            }).catch(function () {});
-          }
-        } catch (_) {}
+      // Commit the shared surfaces (small header img + cache + ZKAvatar SoT)
+      // and return, with NO persistence, only in the token-less visual path
+      // (localhost stub / anon). R2: the picker owns the optimistic hero
+      // preview; the header + SoT must NOT show an unsaved avatar, so for the
+      // authed path we commit ONLY after the PUT confirms (below).
+      function commitShared() {
+        writeCached(profileId || null, url);
+        commitImage(url);
+        if (window.ZKAvatar) window.ZKAvatar.set(profileId || null, url);
       }
+      if (!getToken) { commitShared(); return { avatar_url: url }; }
+      var token = typeof getToken === 'function' ? await getToken() : getToken;
+      if (!token) { commitShared(); return { avatar_url: url }; }
+      // Persist FIRST — errors propagate to the caller and NOTHING is committed,
+      // so the header/SoT never display an unsaved pick on failure.
+      var resp = await zkFetch('/api/me/avatar', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_id: avatarId }),
+        signal: options.signal
+      });
+      if (!resp.ok) {
+        var err = new Error('avatar PUT failed: ' + resp.status);
+        err.status = resp.status;
+        throw err;
+      }
+      commitShared();
+      return await resp.json().catch(function () { return { avatar_url: url }; });
     },
 
     /** PR2: called by a page when an anon visitor signs in mid-session
