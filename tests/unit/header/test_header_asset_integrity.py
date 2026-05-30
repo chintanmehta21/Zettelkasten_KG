@@ -7,12 +7,12 @@ without any user-visible signal — defaults degrade to the initial-letter
 fallback. This test is the post-deploy guard: every asset the header
 relies on must respond 200 with non-zero Content-Length.
 
-Asset inventory (verified 2026-05-12):
+Asset inventory (verified 2026-05-30):
   * ``/header/js/header.js`` — script.
   * ``/header/css/header.css`` — stylesheet.
-  * ``/artifacts/avatars/avatar_NN.svg`` for NN in [00, 59] (60 files).
+  * ``/artifacts/avatars/avatar_NN.svg`` for NN in [00, 119] (120 files).
 
-Concurrency: all 62 HEAD requests issue via ``asyncio.gather`` against the
+Concurrency: all 122 HEAD requests issue via ``asyncio.gather`` against the
 in-process ASGI app. Wall-clock is ~1-2s vs ~30s serial — keeps CI green
 without burning a Playwright runner.
 """
@@ -34,7 +34,7 @@ os.environ.setdefault(
 )
 
 
-AVATAR_COUNT = 60  # matches header.js AVATAR_COUNT — must stay in sync.
+AVATAR_COUNT = 120  # matches header.js AVATAR_COUNT — must stay in sync.
 
 HEADER_ASSETS = [
     "/header/js/header.js",
@@ -103,6 +103,8 @@ async def test_avatar_pool_size_matches_header_js_constant(app):
         # AVATAR_COUNT was bumped but the SVGs were never authored.
         sentinel = f"/artifacts/avatars/avatar_{AVATAR_COUNT:02d}.svg"
         resp = await client.head(sentinel)
-        assert resp.status_code in (404, 405), (
+        # Strictly 404: the sentinel proves avatar_120.svg has no backing file.
+        # A 405 would mask a misconfigured mount that never proves absence.
+        assert resp.status_code == 404, (
             f"unexpected status for sentinel {sentinel}: {resp.status_code}"
         )

@@ -21,7 +21,7 @@
       return window.ZK.isCuratedAvatarUrl(url);
     }
     return typeof url === "string"
-      && /^\/artifacts\/avatars\/avatar_(0[0-9]|[1-5][0-9])\.svg$/.test(url);
+      && /^\/artifacts\/avatars\/avatar_(0\d|[1-9]\d|1[01]\d)\.svg$/.test(url);
   }
   function safeAvatarUrl(url) {
     return isCuratedAvatarUrl(url) ? url : "/artifacts/avatars/avatar_00.svg";

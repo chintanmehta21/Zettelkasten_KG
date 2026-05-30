@@ -8,15 +8,17 @@
 //
 // Exposes:
 //   window.ZK.renderAvatar(targetEl, { size?: number, anon?: boolean })
-//   window.ZK.avatarUrls()        -> array of all 60 curated paths
+//   window.ZK.avatarUrls()        -> array of all 120 curated paths
 //   window.ZK.isCuratedAvatarUrl  -> shared validator (used by profile.js etc.)
 
 (function () {
   "use strict";
 
   const ZORO_AVATAR = "/artifacts/avatars/avatar_00.svg";
-  const CURATED_RE = /^\/artifacts\/avatars\/avatar_(0[0-9]|[1-5][0-9])\.svg$/;
-  const ALL_AVATARS = Array.from({ length: 60 }, (_, i) =>
+  // Exact bound to the 120 on-disk assets (avatar_00..avatar_119) — mirrors
+  // website/app.py::_CURATED_AVATAR_RE. Must stay in sync with that gate.
+  const CURATED_RE = /^\/artifacts\/avatars\/avatar_(0\d|[1-9]\d|1[01]\d)\.svg$/;
+  const ALL_AVATARS = Array.from({ length: 120 }, (_, i) =>
     `/artifacts/avatars/avatar_${String(i).padStart(2, "0")}.svg`
   );
 

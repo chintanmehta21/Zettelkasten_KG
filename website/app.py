@@ -274,8 +274,12 @@ def _render_with_mobile_shell(
     return HTMLResponse(content=rendered, headers=_HTML_CACHE_HEADERS)
 
 
+# Exact bound to the 120 on-disk assets (avatar_00..avatar_119): 0\d=00-09,
+# [1-9]\d=10-99, 1[01]\d=100-119. Keeps the XSS gate tightly scoped to files
+# that exist — a future AVATAR_COUNT bump that forgets to author SVGs fails
+# the gate rather than passing dead/preload URLs.
 _CURATED_AVATAR_RE = re.compile(
-    r"^/artifacts/avatars/avatar_[0-9]{2,3}\.svg$"
+    r"^/artifacts/avatars/avatar_(0\d|[1-9]\d|1[01]\d)\.svg$"
 )
 
 
