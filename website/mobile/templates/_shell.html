@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://icmnskseuoteyirljswd.supabase.co">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106" as="script" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/m/css/mobile.css?v=20260524a">
+  <link rel="stylesheet" href="/m/css/mobile.css?v=20260530a">
   <!--ZK_MOBILE_PRELOAD-->
 </head>
 <body class="<!--ZK_MOBILE_BODY_CLASS-->">
@@ -85,9 +85,23 @@
     </a>
   </footer>
 
+  <!-- iOS Add-to-Home-Screen instructions (iOS has no beforeinstallprompt).
+       Lives in the shell so the header install icon works on every /m/* page. -->
+  <div class="m-ios-install-sheet" id="ios-install-sheet" hidden>
+    <div class="m-ios-install-sheet-card">
+      <h3>Install on iOS</h3>
+      <ol>
+        <li>Tap the Share icon in Safari's bottom bar.</li>
+        <li>Choose <strong>Add to Home Screen</strong>.</li>
+        <li>Tap <strong>Add</strong>.</li>
+      </ol>
+      <button type="button" class="m-btn" id="ios-install-close">Got it</button>
+    </div>
+  </div>
+
   <script src="/m/js/hamburger-sheet.js?v=20260525a"></script>
   <script src="/m/js/shell.js?v=20260524a"></script>
-  <script src="/m/js/install-prompt.js?v=20260525a"></script>
+  <script src="/m/js/install-prompt.js?v=20260530a"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
