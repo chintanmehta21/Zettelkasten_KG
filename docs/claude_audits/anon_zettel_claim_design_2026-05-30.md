@@ -264,4 +264,28 @@ operator's stated intent.
 
 ---
 
-**Next step:** operator reviews this spec → approves (or amends §7.4 / §8 / caps) → build proceeds via `make-plan`→`do` with the §11 matrix as the TDD contract.
+---
+
+## 15. Phase-0 reconciliation (verified 2026-05-30 — supersedes earlier assumptions)
+
+These were confirmed against live code and **change the design**; the migration (`84_*`) and later phases follow THIS, not the earlier text:
+
+1. **Cookie = opaque server-validated UUID, NOT HMAC** (operator decision). No signing-secret infra exists; the claim validates the cookie's UUID against `anon_sid` persisted on Zoro rows — a forged value matches nothing. HttpOnly+Secure+SameSite=Lax. Supersedes §5.1's "HMAC-signed".
+2. **`anon_sid` is tagged via a dedicated `content.tag_anon_zettel(...)` call, NOT by modifying `content.upsert_workspace_zettel`.** That universal RPC (every ingestion path) is left untouched → zero blast radius on the authed write path. Supersedes §6's "pass into upsert".
+3. **No OAuth `state` echo** — Supabase owns `state` (PKCE); `/auth/callback` is static HTML. The `zk_anon_sid` cookie (SameSite=Lax, same-origin `redirectTo`) survives the round-trip and is the carrier. Supersedes §5.3 step 1.
+4. **New-user default workspace already exists at first sign-in** via a `core.profiles` AFTER-INSERT trigger (`core.create_personal_workspace`) — no bootstrap code. `get_default_workspace_id` = earliest `core.workspace_members` by `added_at`.
+5. **Quota gate = `require_entitlement(Meter.ZETTEL.value, …)`** → `get_functional_gates().reserve_and_consume(profile_id, feature, action_id)` (request-free, raises 402). `consume_entitlement` is a no-op. Catch-the-402 to cap. Confirms §8.
+6. **Rate-limit is a hand-rolled in-process sliding window** (`zettels_routes.py:_check_rate_limit`, 10/60s, not parameterised). Add a sibling `_check_claim_rate_limit` (3/60s) — no slowapi.
+7. **Migrations apply by lexical filename sort** (no manifest); next file = `84_*`. After applying, **regenerate `expected_schema.json`** (drift snapshot) or the schema-drift gate fails deploy — operator step.
+8. **`added_via` CHECK** only allowed `telegram|website|share|migration`; `84_*` extends it with `claim`. The claim RPCs (`peek_claimable_anon_zettels`, `commit_anon_claim`) are SECURITY DEFINER, service_role-granted, and use the real partial unique index `uq_workspace_zettel_active` for `ON CONFLICT … WHERE deleted_at IS NULL`.
+
+### Build progress (PR #125)
+- [x] Phase 0 verification + reconciliation
+- [x] **Migration `84_anon_zettel_claim.sql` (+ down)** — column, partial index, CHECK extend, `anon_sessions`, `tag_anon_zettel`, `peek_claimable_anon_zettels`, `commit_anon_claim`, GRANTs
+- [ ] Persist tagging: call `tag_anon_zettel` after a Zoro-anon write (persist.py) + repo wrapper
+- [ ] `zk_anon_sid` opaque-UUID cookie middleware (_middleware.py)
+- [ ] `POST /api/zettels/claim-anon-session`: peek → quota loop (consume-then-insert) → `commit_anon_claim`; `_check_claim_rate_limit`
+- [ ] Client: mirror sid → localStorage, send on `/add`, sign-in claim hook, BroadcastChannel
+- [ ] Tests (§11 matrix) — unit runnable locally; integration operator/CI (needs test DB)
+
+**Next step:** continue the build phases above on PR #125; the migration is operator-applied to prod (never auto-run) and the operator regenerates `expected_schema.json` after applying.
