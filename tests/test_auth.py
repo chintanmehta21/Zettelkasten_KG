@@ -191,6 +191,10 @@ class TestMeEndpoint:
 
     @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
     def test_authenticated_returns_profile(self, mock_secret, auth_client):
+        # R5 (2026-05-30): /api/me NEVER echoes the JWT user_metadata.avatar_url
+        # (user-modifiable external URL — privacy/XSS surface) and never returns
+        # "". This is the jwt_fallback path (v2 off in tests); it now serves the
+        # curated default regardless of the external value in the claim.
         token = _make_jwt({
             "sub": "550e8400-e29b-41d4-a716-446655440000",
             "email": "user@example.com",
@@ -202,7 +206,9 @@ class TestMeEndpoint:
         assert data["id"] == "550e8400-e29b-41d4-a716-446655440000"
         assert data["email"] == "user@example.com"
         assert data["name"] == "Test User"
-        assert data["avatar_url"] == "https://img.test/a.png"
+        assert data["avatar_url"] == "/artifacts/avatars/avatar_00.svg"
+        # Security: the external IdP URL must never be reflected into the response.
+        assert "img.test" not in data["avatar_url"]
 
     def test_unauthenticated_returns_401(self, auth_client):
         resp = auth_client.get("/api/me")
