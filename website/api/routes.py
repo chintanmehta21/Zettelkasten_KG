@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
@@ -245,6 +245,27 @@ def _enrich_graph_with_analytics(
     return graph_dict
 
 
+# R5 (avatar reconcile, 2026-05-30): DB-as-source-of-truth for the avatar, with
+# READ-TIME curation. /api/me NEVER echoes the JWT user_metadata.avatar_url (a
+# user-modifiable, external URL — Supabase re-writes it on every OAuth login, so
+# a one-time strip isn't durable) and NEVER returns "". It serves the stored
+# curated value only if it matches the curated allowlist, else a curated default.
+# Regex mirrors website/app.py::_CURATED_AVATAR_RE (0-119) — kept in lockstep.
+DEFAULT_AVATAR_URL = "/artifacts/avatars/avatar_00.svg"
+_CURATED_AVATAR_RE = re.compile(r"^/artifacts/avatars/avatar_(0\d|[1-9]\d|1[01]\d)\.svg$")
+
+
+def _curate_avatar_url(value: str | None) -> str:
+    """Return ``value`` iff it is a curated preset path, else the curated default.
+
+    Read-time gate: closes the recurring re-population hole where an OAuth
+    provider rewrites ``user_metadata.avatar_url`` (and any non-curated value
+    that reaches ``core.profiles.avatar_url``) so an external/attacker-supplied
+    URL can never reach an ``<img src>`` via ``/api/me``.
+    """
+    return value if (value and _CURATED_AVATAR_RE.match(value)) else DEFAULT_AVATAR_URL
+
+
 class AvatarUpdateRequest(BaseModel):
     avatar_id: int
 
@@ -353,6 +374,7 @@ async def auth_config():
 @router.get("/me")
 async def me(
     request: Request,
+    response: Response,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """Return the authenticated user's profile.
@@ -370,7 +392,10 @@ async def me(
     set in ``User_Activity``. Never blocks the response.
     """
     metadata = user.get("user_metadata", {})
-    avatar_url = metadata.get("avatar_url", "")
+
+    # R4a: personalized identity payload — never store it in the browser HTTP
+    # cache or any intermediate (Cloudflare honours `private`; it ignores Vary).
+    response.headers["Cache-Control"] = "private, no-store"
 
     # v2 path: read profile from core.profiles via CoreRepository.
     if use_supabase_v2():
@@ -459,7 +484,8 @@ async def me(
                     "id": user["sub"],
                     "email": profile.get("email") or user.get("email", "") or "",
                     "name": profile.get("display_name") or metadata.get("full_name", "") or "",
-                    "avatar_url": profile.get("avatar_url") or avatar_url or "",
+                    # R5: read-time curation — DB value if curated, else default.
+                    "avatar_url": _curate_avatar_url(profile.get("avatar_url")),
                     "profile_source": "v2",  # Y3 (T4.9)
                 }
 
@@ -474,7 +500,8 @@ async def me(
         "id": user["sub"],
         "email": user.get("email", ""),
         "name": metadata.get("full_name", ""),
-        "avatar_url": avatar_url,
+        # R5: never echo the (user-modifiable, external) JWT avatar — curated default.
+        "avatar_url": DEFAULT_AVATAR_URL,
         "profile_source": "jwt_fallback",
     }
 
@@ -500,12 +527,45 @@ async def update_avatar(
     if not _is_supabase_uuid(user.get("sub")):
         raise HTTPException(status_code=400, detail="v2 avatar update requires UUID auth subject")
 
+    metadata = user.get("user_metadata", {}) or {}
     scope = get_supabase_v2_scope(user["sub"])
     if scope is None:
-        raise HTTPException(status_code=404, detail="No v2 profile scope")
+        # R1: JIT self-heal — mirror GET /api/me. Before this, a missed
+        # gotrue trigger (no core.workspace_members row) made the PUT 404 on
+        # every save while GET self-healed, so the picker's save silently
+        # failed. Symmetric verb handling (RFC 9110 §9.2.2); allowlist → 403.
+        try:
+            get_v2_client().schema("core").rpc(
+                "ensure_provisioned",
+                {
+                    "p_auth_user_id": user["sub"],
+                    "p_email": user.get("email"),
+                    "p_display_name": metadata.get("full_name") or metadata.get("name"),
+                },
+            ).execute()
+        except Exception as exc:  # noqa: BLE001 — surface allowlist; warn on others
+            code = getattr(exc, "code", None)
+            if code is None:
+                args = getattr(exc, "args", ())
+                if args:
+                    code = getattr(args[0], "code", None)
+            if code == "42501" or "allowlist" in str(exc).lower():
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "code": "allowlist_denied",
+                        "message": (
+                            "Account is not on the active allowlist. "
+                            "Contact support if you believe this is an error."
+                        ),
+                    },
+                )
+            logger.warning("ensure_provisioned RPC failed for %s: %s", user["sub"], exc)
+        scope = get_supabase_v2_scope(user["sub"])
+        if scope is None:
+            raise HTTPException(status_code=404, detail="No v2 profile scope")
     _content_repo, profile_id, _workspace_id = scope
 
-    from website.core.supabase_v2.repositories.core_repository import CoreRepository
     core_repo = CoreRepository()
     updated = core_repo.update_avatar(profile_id, avatar_url)
     if not updated:
