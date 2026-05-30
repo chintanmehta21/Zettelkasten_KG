@@ -19,6 +19,13 @@ describe('quota gate wiring — Home & My Zettels', () => {
     expect(HOME.indexOf('ZKQuotaGate.precheck'))
       .toBeLessThan(HOME.indexOf('ZKAddZettel.add'));
   });
+  it('home.js precheck runs before any optimistic-UI/button mutation', () => {
+    const i = HOME.indexOf('ZKQuotaGate.precheck');
+    const firstMutation = HOME.indexOf('addSubmitBtn.disabled = true');
+    expect(i).toBeGreaterThan(-1);
+    expect(firstMutation).toBeGreaterThan(-1);
+    expect(i).toBeLessThan(firstMutation);
+  });
   it('user_zettels.js calls precheck and uses extractQuotaDetail', () => {
     expect(ZETTELS).toMatch(/ZKQuotaGate\.precheck\s*\(/);
     expect(ZETTELS).toMatch(/ZKQuotaGate\.extractQuotaDetail\s*\(/);
