@@ -921,6 +921,12 @@
   }
 
   async function addZettel(url, existingPricingActionId, file) {
+    if (window.ZKQuotaGate && typeof window.ZKQuotaGate.precheck === 'function') {
+      var _proceed = await window.ZKQuotaGate.precheck({
+        feature: 'zettel', token: _token, source: 'my-zettels:add-zettel'
+      });
+      if (!_proceed) { if (addUrlInput) addUrlInput.value = ''; return; }
+    }
     var isDocument = Boolean(file);
     var pricingActionId = existingPricingActionId || (isDocument && window.ZKAddZettel && typeof window.ZKAddZettel.makeActionId === 'function'
       ? window.ZKAddZettel.makeActionId('zettels-document')
@@ -1050,7 +1056,8 @@
       if (skeleton && skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer);
       applyFilters();
-      var quotaDetail = err && err.detail && err.detail.code === 'quota_exhausted' ? err.detail : null;
+      var quotaDetail = (window.ZKQuotaGate && window.ZKQuotaGate.extractQuotaDetail)
+        ? window.ZKQuotaGate.extractQuotaDetail(err) : null;
       if (quotaDetail && window.ZKQuotaGate) {
         await window.ZKQuotaGate.show({
           detail: quotaDetail,
