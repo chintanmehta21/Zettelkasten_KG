@@ -5,7 +5,7 @@
  * localStorage cache, notifies subscribers, syncs cross-tab, and bridges to the
  * existing zk:avatar-changed event so it unifies with the mobile surfaces.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -16,10 +16,17 @@ const SRC = readFileSync(
 
 function loadZKAvatar() {
   delete window.ZKAvatar;
+  // jsdom has no BroadcastChannel; Node's native one leaks across re-evals and
+  // delivers Node MessageEvents into jsdom's dispatchEvent (→ uncaught TypeError,
+  // non-zero vitest exit). Stub it undefined so the module uses the storage-event
+  // fallback path here — the real BroadcastChannel path only matters in browsers.
+  vi.stubGlobal('BroadcastChannel', undefined);
   // eslint-disable-next-line no-new-func
   new Function(SRC)();
   return window.ZKAvatar;
 }
+
+afterEach(() => { vi.unstubAllGlobals(); });
 
 const PID = '550e8400-e29b-41d4-a716-446655440000';
 const CURATED = '/artifacts/avatars/avatar_99.svg';   // 99 in [0,119]

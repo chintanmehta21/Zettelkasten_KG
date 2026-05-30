@@ -168,8 +168,11 @@
     var profileId = (profile && profile.id) || (session && session.user && session.user.id) || null;
     var candidate = profile && profile.avatar_url;
     if (window.ZKAvatar) return window.ZKAvatar.resolve(profileId, candidate);
-    return (typeof candidate === 'string' && candidate.indexOf('/artifacts/avatars/') === 0)
-      ? candidate : DEFAULT_AVATAR;
+    // Fallback when ZKAvatar isn't loaded: anchored curated check (0-119),
+    // matching app.py::_CURATED_AVATAR_RE — a prefix check would accept
+    // traversal/attacker-suffixed strings.
+    var CURATED = /^\/artifacts\/avatars\/avatar_(0\d|[1-9]\d|1[01]\d)\.svg$/;
+    return (typeof candidate === 'string' && CURATED.test(candidate)) ? candidate : DEFAULT_AVATAR;
   }
 
   var _avatarSubBound = false;
