@@ -962,6 +962,9 @@
   }
 
   function setStatus(text, isError) {
+    // Guard: status line is ancillary — never let its absence abort the
+    // streamed-answer render path that calls setStatus on completion/error.
+    if (!els.status) return;
     els.status.textContent = text;
     els.status.classList.toggle('error', !!isError);
   }
@@ -989,6 +992,9 @@
   }
 
   function scrollTranscript() {
+    // Guard: the auto-scroll is a nicety — a streamed answer must still render
+    // even if the transcript container isn't resolved (partial DOM / rename).
+    if (!els.transcript) return;
     els.transcript.scrollTop = els.transcript.scrollHeight;
   }
 
