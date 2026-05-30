@@ -25,7 +25,9 @@
   // Shared with desktop header.js (CACHE_KEY_PREFIX) so a no-avatar user picks
   // the same random avatar on both surfaces until the server value is persisted.
   const CACHE_KEY_PREFIX = "zk-avatar-url-";
-  const ALL_AVATARS = Array.from({ length: AVATAR_COUNT }, (_, i) =>
+  // Literal `length: 120` (not AVATAR_COUNT) is pinned by
+  // tests/unit/website/test_avatar_picker_bounds.py as the shared-pool guard.
+  const ALL_AVATARS = Array.from({ length: 120 }, (_, i) =>
     `/artifacts/avatars/avatar_${String(i).padStart(2, "0")}.svg`
   );
 
