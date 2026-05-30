@@ -962,6 +962,8 @@
   }
 
   function setStatus(text, isError) {
+    // Guard: status line is optional chrome — never NPE the stream over it.
+    if (!els.status) return;
     els.status.textContent = text;
     els.status.classList.toggle('error', !!isError);
   }
@@ -989,6 +991,9 @@
   }
 
   function scrollTranscript() {
+    // Guard: a missing transcript (DOM not resolved / torn down mid-stream)
+    // must not crash the SSE handler — scroll is cosmetic.
+    if (!els.transcript) return;
     els.transcript.scrollTop = els.transcript.scrollHeight;
   }
 

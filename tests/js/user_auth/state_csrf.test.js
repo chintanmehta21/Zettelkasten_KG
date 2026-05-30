@@ -32,8 +32,17 @@ const AUTH_CORE_JS = readFileSync(
 );
 
 describe('UA-04 OAuth state CSRF — SDK delegation invariants', () => {
-  it('callback.html uses exchangeCodeForSession (SDK state check)', () => {
-    expect(CALLBACK_HTML).toMatch(/exchangeCodeForSession\s*\(/);
+  it('callback.html delegates the code exchange to the SDK with PKCE state enforcement', () => {
+    // callback.html no longer calls exchangeCodeForSession() explicitly:
+    // `detectSessionInUrl: true` makes createClient() auto-exchange the ?code=,
+    // and `flowType: 'pkce'` enforces the single-use code_verifier (the CSRF
+    // protection). Re-calling exchangeCodeForSession would burn the verifier and
+    // surface a spurious failure (supabase/auth-js#1026, #782). State validation
+    // is still fully SDK-delegated — we assert the two knobs that enforce it.
+    expect(CALLBACK_HTML).toMatch(/detectSessionInUrl\s*:\s*true/);
+    expect(CALLBACK_HTML).toMatch(/flowType\s*:\s*['"]pkce['"]/);
+    // And it must NOT hand-roll the exchange (that would bypass PKCE/state).
+    expect(CALLBACK_HTML).not.toMatch(/exchangeCodeForSession\s*\(/);
   });
 
   it('callback.html does NOT hand-roll a hash parser around access_token', () => {
@@ -48,7 +57,12 @@ describe('UA-04 OAuth state CSRF — SDK delegation invariants', () => {
     // before throwing, so an attacker forging a state cannot land on /home.
     expect(CALLBACK_HTML).toMatch(/spinnerEl\.style\.display\s*=\s*['"]none/);
     expect(CALLBACK_HTML).toMatch(/errorEl\.style\.display\s*=\s*['"]block/);
-    expect(CALLBACK_HTML).toMatch(/if\s*\(\s*result\.error\s*\)\s*throw\s+result\.error/);
+    // The SDK exchange error (from initialize()) is thrown, not swallowed, so a
+    // failed/forged exchange lands in the catch → error toast, never a redirect.
+    expect(CALLBACK_HTML).toMatch(/initResult\.error/);
+    expect(CALLBACK_HTML).toMatch(/throw new Error\(\s*['"]OAuth exchange failed/);
+    // The redirect only runs on the success path (after the session check).
+    expect(CALLBACK_HTML).toMatch(/window\.location\.replace\s*\(\s*returnTo\s*\)/);
   });
 
   it('auth-core.js enables detectSessionInUrl so SDK enforces state on restore', () => {

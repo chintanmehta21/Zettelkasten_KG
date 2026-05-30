@@ -125,6 +125,11 @@ describe('UR-04 citation XSS — buildCitations must use textContent, not innerH
     const body = document.createElement('div');
     body.className = 'rag-message-body';
     article.appendChild(body);
+    // Production assistant nodes always carry .rag-message-meta (createMessageNode);
+    // the done-handler clears it. Include it so the node mirrors reality.
+    const meta = document.createElement('div');
+    meta.className = 'rag-message-meta';
+    article.appendChild(meta);
     document.body.appendChild(article);
 
     const encoder = new TextEncoder();

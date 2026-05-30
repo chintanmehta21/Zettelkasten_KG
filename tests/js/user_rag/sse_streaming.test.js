@@ -257,8 +257,10 @@ describe('UR-03 503 retry UX (Retry-After honored, no infinite spinner)', () => 
     // the spinner for arbitrarily long.
     expect(USER_RAG_SRC).toMatch(/retryAfter > 30/);
     // Default to 5s when header is missing or invalid (matches server's
-    // hard-coded `Retry-After: 5` in chat_routes.py:495/545).
-    expect(USER_RAG_SRC).toMatch(/Retry-After[^)]+\|\| '5'/);
+    // hard-coded `Retry-After: 5` in chat_routes.py:495/545). The source reads
+    // `response.headers.get('Retry-After') || '5'`; the prior `[^)]+` form
+    // could not cross the `)` in `get('Retry-After')` and never matched.
+    expect(USER_RAG_SRC).toMatch(/Retry-After'\)\s*\|\|\s*'5'/);
   });
 
   it('source contract: composer busy state is released on terminal error (no infinite spinner)', () => {
