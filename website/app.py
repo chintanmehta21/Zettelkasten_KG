@@ -723,18 +723,29 @@ def create_app(lifespan=None) -> FastAPI:
         app, "/vendor", STATIC_DIR / "vendor", "vendor"
     )
 
-    # Avatars — long-cache immutable static files (60 SVGs under /artifacts/avatars/).
+    # Avatars — long-cache static files (60 SVGs under /artifacts/avatars/).
     # Mounted BEFORE the broad /artifacts catch-all so this subpath is matched first.
+    #
+    # R4b (2026-05-30): dropped `immutable`. The filenames (avatar_NN.svg) are
+    # NOT content-hashed and the URLs are persisted verbatim in
+    # core.profiles.avatar_url + matched by a strict regex in header.js, so a
+    # query-string cache-buster can't be retrofitted without lockstep changes
+    # across DB + regex + 3 JS call-sites. With `immutable`, a redesigned SVG
+    # would be invisible to every cached client for up to a year. Long max-age +
+    # stale-while-revalidate keeps the cache-hit win while letting a redesign
+    # propagate within max-age (served stale-then-fresh, no blocking revalidate).
     AVATARS_DIR = Path(__file__).parent / "artifacts" / "avatars"
 
-    class _ImmutableStaticFiles(StaticFiles):
+    class _LongCacheStaticFiles(StaticFiles):
         async def get_response(self, path: str, scope):  # type: ignore[override]
             resp = await super().get_response(path, scope)
             if resp.status_code == 200:
-                resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+                resp.headers["Cache-Control"] = (
+                    "public, max-age=2592000, stale-while-revalidate=86400"
+                )
             return resp
 
-    app.mount("/artifacts/avatars", _ImmutableStaticFiles(directory=str(AVATARS_DIR)), name="avatars")
+    app.mount("/artifacts/avatars", _LongCacheStaticFiles(directory=str(AVATARS_DIR)), name="avatars")
 
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")

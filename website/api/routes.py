@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
@@ -245,6 +245,15 @@ def _enrich_graph_with_analytics(
     return graph_dict
 
 
+# R5 (2026-05-30): DB-as-source-of-truth for the avatar. /api/me NEVER returns
+# an empty avatar_url — when core.profiles.avatar_url is null (or we fell back
+# off the v2 path), serve the curated default so the frontend renders a stable
+# preset instead of interpreting "" as "wiped". Migration 78 already strips the
+# non-curated JWT user_metadata.avatar_url, so reading the JWT claim here would
+# only ever yield "" for migrated users — we drop that read entirely.
+DEFAULT_AVATAR_URL = "/artifacts/avatars/avatar_00.svg"
+
+
 class AvatarUpdateRequest(BaseModel):
     avatar_id: int
 
@@ -353,6 +362,7 @@ async def auth_config():
 @router.get("/me")
 async def me(
     request: Request,
+    response: Response,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """Return the authenticated user's profile.
@@ -370,7 +380,12 @@ async def me(
     set in ``User_Activity``. Never blocks the response.
     """
     metadata = user.get("user_metadata", {})
-    avatar_url = metadata.get("avatar_url", "")
+
+    # R4a (2026-05-30): personalized identity payload — must not be stored by the
+    # browser HTTP cache or any intermediate (Cloudflare honours `private`; it
+    # ignores Vary). Without this, fetch's default `cache:'default'` could serve
+    # a stale /api/me on a sibling page right after an avatar save.
+    response.headers["Cache-Control"] = "private, no-store"
 
     # v2 path: read profile from core.profiles via CoreRepository.
     if use_supabase_v2():
@@ -459,7 +474,8 @@ async def me(
                     "id": user["sub"],
                     "email": profile.get("email") or user.get("email", "") or "",
                     "name": profile.get("display_name") or metadata.get("full_name", "") or "",
-                    "avatar_url": profile.get("avatar_url") or avatar_url or "",
+                    # R5: DB is the only avatar source; curated default if null.
+                    "avatar_url": profile.get("avatar_url") or DEFAULT_AVATAR_URL,
                     "profile_source": "v2",  # Y3 (T4.9)
                 }
 
@@ -474,7 +490,8 @@ async def me(
         "id": user["sub"],
         "email": user.get("email", ""),
         "name": metadata.get("full_name", ""),
-        "avatar_url": avatar_url,
+        # R5: never echo the (post-78-stripped) JWT avatar — serve curated default.
+        "avatar_url": DEFAULT_AVATAR_URL,
         "profile_source": "jwt_fallback",
     }
 
