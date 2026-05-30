@@ -46,3 +46,13 @@
 .zk-sheet-cell.is-selected { background: rgba(20,184,166,0.14); color: var(--m-teal, #14b8a6); }
 .zk-sheet-cell:active { background: rgba(255,255,255,0.06); }
 .zk-sheet-cell-label { flex: 1; font-size: 16px; }
+
+/* Source-type accent colours — parity with the desktop capture dropdown
+   (static/css/style.css .item-*). Auto-detect keeps the default text colour.
+   :not(.is-selected) so the selected cell still goes teal, matching desktop's
+   .dropdown-item.active override. */
+.zk-sheet-cell:not(.is-selected).zk-sheet-cell--youtube    .zk-sheet-cell-label { color: hsl(355, 45%, 68%); }
+.zk-sheet-cell:not(.is-selected).zk-sheet-cell--github     .zk-sheet-cell-label { color: hsl(192, 35%, 62%); }
+.zk-sheet-cell:not(.is-selected).zk-sheet-cell--reddit     .zk-sheet-cell-label { color: hsl(28, 45%, 68%); }
+.zk-sheet-cell:not(.is-selected).zk-sheet-cell--newsletter .zk-sheet-cell-label { color: hsl(205, 40%, 68%); }
+.zk-sheet-cell:not(.is-selected).zk-sheet-cell--web        .zk-sheet-cell-label { color: hsl(220, 14%, 62%); }
