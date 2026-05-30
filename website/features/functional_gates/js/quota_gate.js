@@ -27,6 +27,7 @@
 
   var ROOT_ID = 'zk-quota-gate-root';
   var _activeResolve = null;
+  var _snapInFlight = {};  // de-dupe concurrent pre-checks by feature+token
 
   function ensureRoot() {
     var existing = document.getElementById(ROOT_ID);
@@ -193,10 +194,58 @@
     return !!(detail && detail.code === 'quota_exhausted' && detail.meter);
   }
 
+  // Pre-flight balance check. Resolves true => proceed (sufficient, unknown,
+  // or any non-verdict = FAIL-OPEN); false => blocked (well-formed
+  // effective_available <= 0) and the modal has been shown. The authoritative
+  // atomic server gate still runs on the action regardless — this is advisory
+  // UX only. A successful "0" payload is a VERDICT, never a fail-open.
+  function precheck(opts) {
+    opts = opts || {};
+    var feature = opts.feature;
+    var token = opts.token || '';
+    var source = opts.source;
+    var key = feature + '|' + token;
+    if (_snapInFlight[key]) return _snapInFlight[key];
+
+    var p = (function () {
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 1500) : null;
+      return Promise.resolve()
+        .then(function () {
+          return window.fetch('/api/quota/snapshot?feature=' + encodeURIComponent(feature), {
+            headers: token ? { Authorization: 'Bearer ' + token } : {},
+            signal: ctrl ? ctrl.signal : undefined
+          });
+        })
+        .then(function (resp) {
+          if (timer) clearTimeout(timer);
+          if (!resp || !resp.ok) return null;          // non-2xx => fail-open
+          return resp.json();
+        })
+        .then(function (body) {
+          var avail = (body && typeof body.effective_available === 'number')
+            ? body.effective_available : null;
+          if (avail !== null && avail <= 0) {
+            window.ZKQuotaGate.show({ detail: { code: 'quota_exhausted', meter: feature }, source: source });
+            return false;                              // verdict: blocked
+          }
+          return true;                                 // sufficient OR unknown
+        })
+        .catch(function () { if (timer) clearTimeout(timer); return true; });  // transport/timeout => fail-open
+    })();
+
+    _snapInFlight[key] = p;
+    p.then(function () {
+      setTimeout(function () { delete _snapInFlight[key]; }, 250);
+    }, function () { delete _snapInFlight[key]; });
+    return p;
+  }
+
   window.ZKQuotaGate = {
     show: show,
     close: function () { closeWith('programmatic'); },
     isQuotaDetail: isQuotaDetail,
-    extractQuotaDetail: extractQuotaDetail
+    extractQuotaDetail: extractQuotaDetail,
+    precheck: precheck
   };
 })();
