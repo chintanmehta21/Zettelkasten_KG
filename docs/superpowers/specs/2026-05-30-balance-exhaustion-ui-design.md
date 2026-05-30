@@ -223,9 +223,9 @@ in a follow‑up.
 - **Caching:** `Cache-Control: private, no-store` (belt‑and‑suspenders; `private` keeps it
   out of Cloudflare/Caddy shared caches, `no-store` forbids any storage — sweep‑check C/D,
   RFC 9111 §3.5/§5.2.2.5).
-- **Abuse (recommended, see §8 decision):** a light **per‑subject** (JWT `sub`, not IP)
-  in‑process rate limit satisfies OWASP API4; reuse the `functional_gates/upload_rate_limit.py`
-  token‑bucket pattern. Negligible droplet footprint (no Redis).
+- **Abuse:** a per‑subject rate limit (OWASP API4) is **deferred to a follow‑up** per
+  operator decision 2026‑05‑30 (§8). The endpoint ships auth‑required + cheap read; revisit
+  if QPS/abuse ever appears (`pg_stat_statements`).
 
 Placement: new `website/api/quota_routes.py`, registered in `website/app.py` alongside
 the other API routers. (Thin adapter; the balance logic stays in `functional_gates`.)
@@ -293,14 +293,8 @@ Authority at all times: billing.pricing_reserve_and_consume (atomic, idempotent 
   tolerant arms get deleted in its Contract phase** (sweep‑check B).
 - Wiring `user_kastens` / `kasten_modal` / `user_rag` through `guard` (they already
   handle their sync 402; can adopt `extractQuotaDetail` later).
-
-### 8.1 Open decision (operator) — endpoint rate limit
-
-Sweep‑check D recommends a light per‑subject in‑process rate limit on
-`GET /api/quota/snapshot` (OWASP API4). It's cheap (reuse `upload_rate_limit.py`), but it
-is a discrete addition beyond the original spec → **operator call: include now or defer.**
-Default if unanswered: **include** (low cost, scale‑proofing) — but flagged here, not
-assumed silently.
+- **Per‑subject rate limit on `GET /api/quota/snapshot`** (OWASP API4, sweep‑check D) —
+  deferred per operator decision 2026‑05‑30.
 
 ## 9. Sweep‑check verdicts (research round 2, 2026‑05‑30)
 
