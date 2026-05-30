@@ -306,7 +306,7 @@ def test_add_zettel_helper_is_async_only_and_cache_busted():
     ]
     for path in pages:
         text = path.read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260522a" in text, path
+        assert "/js/add_zettel_api.js?v=20260530a" in text, path
 
 
 def test_add_zettel_pages_reference_fresh_surface_scripts():
@@ -463,7 +463,7 @@ def test_poll_accepted_budget_covers_worst_case_and_respects_retry_after():
         "poll backoff cap must be 20000ms (ADR-1 server-guided backoff)"
     )
     assert "Retry-After" in js or "retry-after" in js, "must honor Retry-After"
-    # add_zettel_api.js cache-buster bumped to 20260522a (ADR-1).
+    # add_zettel_api.js cache-buster bumped to 20260530a (ADR-1).
     for rel in [
         "website/static/index.html",
         "website/mobile/index.html",
@@ -471,7 +471,7 @@ def test_poll_accepted_budget_covers_worst_case_and_respects_retry_after():
         "website/features/user_zettels/index.html",
     ]:
         html = (ROOT / rel).read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260522a" in html, rel
+        assert "/js/add_zettel_api.js?v=20260530a" in html, rel
 
 
 def test_katex_vendored_and_arxiv_gated_in_popup_pages_only():
