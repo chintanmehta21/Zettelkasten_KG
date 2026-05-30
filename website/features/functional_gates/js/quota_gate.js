@@ -153,6 +153,42 @@
     });
   }
 
+  // Single shared recognizer for the quota_exhausted condition across every
+  // shape the error can arrive in. EXACT equality only (never substring) so a
+  // future `quota_*` sibling (e.g. a soft-limit warning) cannot false-match.
+  // Always returns the canonical underscore dict {code:'quota_exhausted',
+  // meter, ...} or null.
+  // NOTE: tolerates two wire spellings of the quota code (top-level
+  // 'quota-exhausted' slug + nested detail.code 'quota_exhausted') during the
+  // quota-code canonicalization migration. Remove the slug arms after the
+  // server canonicalization PR ships and its deprecation window closes
+  // (tracking: server wire-format canonicalization follow-up, spec §8).
+  function _asQuota(meter, recs) {
+    return { code: 'quota_exhausted', meter: meter, recommended_products: recs };
+  }
+  function extractQuotaDetail(x) {
+    if (!x || typeof x !== 'object') return null;
+    // 1. direct canonical dict
+    if (x.code === 'quota_exhausted' && x.meter) return x;
+    // 2. error/body whose .detail is the canonical dict (sync + normalized async)
+    var d = x.detail;
+    if (d && typeof d === 'object' && d.code === 'quota_exhausted' && d.meter) return d;
+    // 3. raw failed-op body: { error: <problem> }
+    var p = (x.error && typeof x.error === 'object') ? x.error : null;
+    if (p) {
+      if (p.detail && typeof p.detail === 'object'
+          && p.detail.code === 'quota_exhausted' && p.detail.meter) return p.detail;
+      if (p.code === 'quota-exhausted' && p.detail && p.detail.meter) {
+        return _asQuota(p.detail.meter, p.detail.recommended_products);
+      }
+    }
+    // 4. hyphen-slug at this level with nested meter
+    if (x.code === 'quota-exhausted' && d && typeof d === 'object' && d.meter) {
+      return _asQuota(d.meter, d.recommended_products);
+    }
+    return null;
+  }
+
   function isQuotaDetail(detail) {
     return !!(detail && detail.code === 'quota_exhausted' && detail.meter);
   }
@@ -160,6 +196,7 @@
   window.ZKQuotaGate = {
     show: show,
     close: function () { closeWith('programmatic'); },
-    isQuotaDetail: isQuotaDetail
+    isQuotaDetail: isQuotaDetail,
+    extractQuotaDetail: extractQuotaDetail
   };
 })();
