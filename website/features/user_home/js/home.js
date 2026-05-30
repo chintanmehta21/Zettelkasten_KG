@@ -1330,6 +1330,19 @@
       if (typer) { try { typer.update(tick); } catch (e) { void e; } }
     };
 
+    // Pre-flight balance gate (advisory; server stays authoritative). On a
+    // well-formed exhausted verdict the modal is shown and we abort before any
+    // skeleton/network work. Fail-open on any non-verdict.
+    if (window.ZKQuotaGate && typeof window.ZKQuotaGate.precheck === 'function') {
+      var _proceed = await window.ZKQuotaGate.precheck({
+        feature: 'zettel', token: token, source: 'home:add-zettel'
+      });
+      if (!_proceed) {
+        if (addError) addError.textContent = '';
+        return;
+      }
+    }
+
     // Start API call immediately (runs in parallel with animation)
     var apiPromise = isDocument
       ? window.ZKAddZettel.uploadDocument({
@@ -1491,7 +1504,8 @@
       // addZettel() which creates a fresh skeleton.
       if (typer) { try { typer.detach(); } catch (te) { void te; } }
       if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
-      var quotaDetail = e && e.detail && e.detail.code === 'quota_exhausted' ? e.detail : null;
+      var quotaDetail = (window.ZKQuotaGate && window.ZKQuotaGate.extractQuotaDetail)
+        ? window.ZKQuotaGate.extractQuotaDetail(e) : null;
       if (quotaDetail && window.ZKQuotaGate) {
         await window.ZKQuotaGate.show({
           detail: quotaDetail,
