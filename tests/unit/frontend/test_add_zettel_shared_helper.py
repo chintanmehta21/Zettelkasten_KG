@@ -14,7 +14,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2].parent
 ADD_ZETTEL_ASSET_VERSION = "20260518b"
 # Mobile surface diverged in iter mobile-1a Phase 4 (skeleton typewriter port).
-ADD_ZETTEL_MOBILE_ASSET_VERSION = "20260524a"
+# Bumped 2026-05-30 with the anon just-captured deep-link fix (item 5).
+ADD_ZETTEL_MOBILE_ASSET_VERSION = "20260530a"
 
 
 _NODE = shutil.which("node")
@@ -358,10 +359,11 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     # mobile.css link moved to the shared shell template in iter mobile-1a Phase 1.
-    assert "/m/css/mobile.css?v=20260524a" in (
+    # Bumped 2026-05-30 with the mobile UI batch (SW v5 + CSS import cache-bust).
+    assert "/m/css/mobile.css?v=20260530a" in (
         ROOT / "website" / "mobile" / "templates" / "_shell.html"
     ).read_text(encoding="utf-8")
-    assert "/m/js/summarizer.js?v=20260524a" in (
+    assert "/m/js/summarizer.js?v=20260530a" in (
         ROOT / "website" / "mobile" / "index.html"
     ).read_text(encoding="utf-8")
 
