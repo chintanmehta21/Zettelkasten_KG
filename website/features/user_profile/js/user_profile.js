@@ -665,9 +665,10 @@
 
   // R2 (2026-05-30): await the PUT before closing the modal, roll back the
   // optimistic preview on failure, keep the modal open for retry, and surface
-  // the error in an aria-live region. AbortController defuses the rapid-re-pick
-  // race so a late failure from pick #1 can't clobber pick #2. Mirrors the
-  // mobile picker (website/mobile/js/profile.js).
+  // the error in an aria-live region. Rapid re-pick is guarded primarily by the
+  // `avatarSaving` mutex (a second pick mid-save is ignored); the AbortController
+  // is belt-and-suspenders that cancels the in-flight PUT if that path is ever
+  // reached. Mirrors the mobile picker (website/mobile/js/profile.js).
   async function handleAvatarPick(id, btnEl) {
     if (!_token) {
       // localhost stub / no session: visual-only, no persistence path.
