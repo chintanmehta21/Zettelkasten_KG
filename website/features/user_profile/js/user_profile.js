@@ -595,6 +595,11 @@
 
   /* ─── Avatar picker ─────────────────────────────────────────────────── */
 
+  // First-row count for fetchpriority="high"; modal grid is 8-col on desktop
+  // (matches .profile-avatar-grid-modal). Below-fold rows get loading="lazy"
+  // + fetchpriority="low" per web.dev fetch-priority guidance.
+  const AVATAR_EAGER_COUNT = 8;
+
   function renderAvatarGrid() {
     if (!avatarGridEl) return;
     avatarGridEl.innerHTML = '';
@@ -606,7 +611,10 @@
       btn.setAttribute('aria-checked', i === _currentAvatarId ? 'true' : 'false');
       btn.setAttribute('aria-label', 'Avatar ' + i);
       btn.dataset.avatarId = String(i);
-      btn.innerHTML = '<img src="/artifacts/avatars/avatar_' + String(i).padStart(2, '0') + '.svg" alt="" />';
+      const isEager = i < AVATAR_EAGER_COUNT;
+      const loadAttr = isEager ? '' : ' loading="lazy"';
+      const prioAttr = isEager ? ' fetchpriority="high"' : ' fetchpriority="low"';
+      btn.innerHTML = '<img src="/artifacts/avatars/avatar_' + String(i).padStart(2, '0') + '.svg"' + loadAttr + prioAttr + ' alt="" />';
       btn.addEventListener('click', () => handleAvatarPick(i, btn));
       avatarGridEl.appendChild(btn);
     }
