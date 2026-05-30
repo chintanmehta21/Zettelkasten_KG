@@ -41,6 +41,14 @@ describe('ZKQuotaGate.extractQuotaDetail', () => {
     expect(d.meter).toBe('rag_question');
   });
 
+  it('normalizes a raw body whose error.code is the slug and detail lacks a code (branch 3b)', () => {
+    const d = g.extractQuotaDetail({ status: 'failed', error: {
+      code: 'quota-exhausted', detail: { meter: 'zettel', recommended_products: ['zettel_10'] } } });
+    expect(d.code).toBe('quota_exhausted');
+    expect(d.meter).toBe('zettel');
+    expect(d.recommended_products).toEqual(['zettel_10']);
+  });
+
   it('returns null for near-misses (no false positives)', () => {
     expect(g.extractQuotaDetail({ detail: { code: 'quota_warning', meter: 'zettel' } })).toBeNull();
     expect(g.extractQuotaDetail({ detail: { code: 'insufficient-content' }, title: 'quota? no' })).toBeNull();
