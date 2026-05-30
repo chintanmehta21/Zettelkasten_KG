@@ -2,6 +2,9 @@
      refresh-and-retry on 401. Loaded BEFORE any page script so the wrapper is
      installed before the first fetch call. Bumped versions invalidate the PWA SW cache. -->
 <script src="/js/zk_fetch.js?v=20260526c"></script>
+<!-- ZKAvatar — shared source of truth for the current user's avatar (R6).
+     MUST load before header.js + page scripts so they can seed/subscribe. -->
+<script src="/header/js/zk_avatar.js?v=20260530b"></script>
 
 <header class="header zk-header" data-zk-header>
     <div class="zk-header-start">

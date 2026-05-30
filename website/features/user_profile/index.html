@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260526b">
     <link rel="stylesheet" href="/header/css/header.css?v=20260526b">
-    <link rel="stylesheet" href="/profile/css/user_profile.css?v=20260527a">
+    <link rel="stylesheet" href="/profile/css/user_profile.css?v=20260530b">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106"></script>
 </head>
 <body>
@@ -232,6 +232,7 @@
                     <div>
                         <h2 class="profile-avatar-dialog-title" id="avatar-modal-title">Choose your avatar</h2>
                         <p class="profile-avatar-dialog-sub">Pick the icon that represents you. Saved automatically.</p>
+                        <p class="profile-avatar-error" id="avatar-error" role="alert" hidden></p>
                     </div>
                     <button type="button" class="profile-avatar-dialog-close" data-close-avatar aria-label="Close">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -248,6 +249,11 @@
 
     <script src="/static/js/zk_skeleton_typewriter.js?v=20260527a" defer></script>
     <script src="/static/js/zk_stats_cache.js?v=20260527a" defer></script>
-    <script type="module" src="/profile/js/user_profile.js?v=20260527a"></script>
+    <!-- The profile page was missing header.js, so window.ZKHeader was undefined
+         and the avatar picker's setAvatarById() was silently skipped — the hero
+         updated optimistically but nothing persisted. Load it (classic script,
+         runs before the deferred module) so the picker can actually save. -->
+    <script src="/header/js/header.js?v=20260530b"></script>
+    <script type="module" src="/profile/js/user_profile.js?v=20260530b"></script>
 </body>
 </html>

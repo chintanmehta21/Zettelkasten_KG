@@ -48,6 +48,9 @@
   let _client = null;
   let _token = '';
   let _currentAvatarId = null;
+  let _profileId = null;        // cache-key owner for ZKHeader.setAvatarById (was null → 'anon')
+  let avatarSaving = false;     // guards against concurrent picker saves
+  let _avatarAbort = null;      // AbortController for the in-flight avatar PUT
 
   let listEl;
   let emptyEl;
@@ -166,6 +169,7 @@
       avatarGridRendered = true;
     }
     _lastFocusBeforeModal = document.activeElement;
+    setAvatarError(null);
     avatarOverlayEl.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     // Move focus inside the dialog for keyboard users.
@@ -622,43 +626,98 @@
     }
   }
 
-  async function handleAvatarPick(id, btnEl) {
-    if (!_token) return;
-    if (id === _currentAvatarId) {
-      closeAvatarModal();
-      return;
-    }
-    _currentAvatarId = id;
+  function setAvatarError(msg) {
+    const el = $('avatar-error');
+    if (!el) return;
+    if (msg) { el.textContent = msg; el.hidden = false; }
+    else { el.textContent = ''; el.hidden = true; }
+  }
+
+  function selectAvatarOption(btnEl) {
     avatarGridEl.querySelectorAll('.profile-avatar-option').forEach((el) => {
       el.classList.remove('selected');
       el.setAttribute('aria-checked', 'false');
     });
-    btnEl.classList.add('selected');
-    btnEl.setAttribute('aria-checked', 'true');
+    if (btnEl) {
+      btnEl.classList.add('selected');
+      btnEl.setAttribute('aria-checked', 'true');
+    }
+  }
 
-    // Update the hero avatar preview optimistically.
+  function paintHero(id) {
     const heroImg = $('hero-avatar-img');
     const heroFallback = $('hero-avatar-fallback');
-    if (heroImg) {
-      heroImg.src = '/artifacts/avatars/avatar_' + String(id).padStart(2, '0') + '.svg';
-      heroImg.hidden = false;
-      if (heroFallback) heroFallback.style.display = 'none';
-    }
+    if (!heroImg) return;
+    heroImg.src = '/artifacts/avatars/avatar_' + String(id).padStart(2, '0') + '.svg';
+    heroImg.hidden = false;
+    if (heroFallback) heroFallback.style.display = 'none';
+  }
 
-    // Close the modal first so the toast lands over the dimmed page, not
-    // behind the backdrop. The PUT /api/me/avatar request continues in flight.
-    closeAvatarModal();
+  // Revert the hero to its no-avatar fallback glyph. Used on a failed save when
+  // there was no previous avatar to roll back to (prevId === null) — otherwise
+  // the optimistic paintHero(id) would leave the hero on the unsaved avatar.
+  function restoreHeroFallback() {
+    const heroImg = $('hero-avatar-img');
+    const heroFallback = $('hero-avatar-fallback');
+    if (heroImg) { heroImg.hidden = true; heroImg.removeAttribute('src'); }
+    if (heroFallback) heroFallback.style.display = '';
+  }
+
+  // R2 (2026-05-30): await the PUT before closing the modal, roll back the
+  // optimistic preview on failure, keep the modal open for retry, and surface
+  // the error in an aria-live region. AbortController defuses the rapid-re-pick
+  // race so a late failure from pick #1 can't clobber pick #2. Mirrors the
+  // mobile picker (website/mobile/js/profile.js).
+  async function handleAvatarPick(id, btnEl) {
+    if (!_token) {
+      // localhost stub / no session: visual-only, no persistence path.
+      _currentAvatarId = id;
+      selectAvatarOption(btnEl);
+      paintHero(id);
+      closeAvatarModal();
+      return;
+    }
+    if (id === _currentAvatarId) {
+      closeAvatarModal();
+      return;
+    }
+    if (avatarSaving) return;
+
+    const prevId = _currentAvatarId;
+    const prevBtn = avatarGridEl.querySelector('.profile-avatar-option.selected');
+
+    if (_avatarAbort) { try { _avatarAbort.abort(); } catch (_) {} }
+    _avatarAbort = new AbortController();
+    const myAbort = _avatarAbort;
+
+    avatarSaving = true;
+    setAvatarError(null);
+    selectAvatarOption(btnEl);
+    if (btnEl) btnEl.classList.add('saving');
+    paintHero(id);
 
     try {
-      if (window.ZKHeader && typeof window.ZKHeader.setAvatarById === 'function') {
-        // Persists to core.profiles.avatar_url via PUT /api/me/avatar; the
-        // shared header also re-renders its small avatar from the same call.
-        await window.ZKHeader.setAvatarById(id, _token, null);
-        showToast('Avatar updated.');
+      if (!(window.ZKHeader && typeof window.ZKHeader.setAvatarById === 'function')) {
+        throw new Error('header unavailable');
       }
+      // Persists to core.profiles.avatar_url via PUT /api/me/avatar; the shared
+      // header re-renders its small avatar from the same call. Rejects on failure.
+      await window.ZKHeader.setAvatarById(id, _token, _profileId, { signal: myAbort.signal });
+      if (myAbort.signal.aborted) return;
+      _currentAvatarId = id;
+      if (btnEl) btnEl.classList.remove('saving');
+      avatarSaving = false;
+      closeAvatarModal();
+      showToast('Avatar updated.');
     } catch (err) {
+      if (err && err.name === 'AbortError') return;
       console.error('[user_profile] avatar update failed:', err);
-      showToast('Avatar update failed.');
+      if (btnEl) btnEl.classList.remove('saving');
+      avatarSaving = false;
+      selectAvatarOption(prevBtn);
+      if (prevId !== null && prevId !== undefined) paintHero(prevId);
+      else restoreHeroFallback();  // no previous avatar → revert to the fallback glyph
+      setAvatarError('Couldn’t save that avatar. Check your connection and try again.');
     }
   }
 
@@ -750,6 +809,7 @@
 
     const idMatch = profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
     if (idMatch) _currentAvatarId = parseInt(idMatch[1], 10);
+    _profileId = (profile && profile.id) || null;
 
     renderHero(profile, session);
     // Avatar grid is rendered lazily on first modal open; no init cost.

@@ -230,8 +230,11 @@
 </div>
 
     <script src="/browser-cache/js/cache.js?v=20260413a"></script>
+    <!-- R6: shared avatar SoT, loaded before auth.js so the landing avatar
+         validates curated-only and refreshes when the picker saves elsewhere. -->
+    <script src="/header/js/zk_avatar.js?v=20260530b"></script>
     <script src="/auth/js/auth-core.js?v=20260530a"></script>
-    <script src="/auth/js/auth.js?v=20260524a"></script>
+    <script src="/auth/js/auth.js?v=20260530b"></script>
     <script src="/js/add_zettel_api.js?v=20260530a"></script>
     <script src="/js/app.js?v=20260518b"></script>
 </body>
