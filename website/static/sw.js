@@ -1,7 +1,7 @@
 // Service Worker — Zettelkasten mobile shell cache (iter mobile-1a Phase 6)
 // Placeholder icons: teal-on-dark 'Z'. Replace icons before shipping to stores.
 
-const CACHE = 'zk-shell-v4';  // v4: drop ignoreSearch on /m/js/ + /m/css/ + /static/ so cache-busters actually invalidate (Vedant OAuth incident 2026-05-26)
+const CACHE = 'zk-shell-v5';  // v5: precache the rest of the critical mobile JS (install/avatar/summarizer/sheet) + manifest so the shell hydrates on bad networks; activate purges v4 and any stale assets behind "UI doesn't show up properly" reports. v4: drop ignoreSearch on /m/js/ + /m/css/ + /static/ so cache-busters actually invalidate (Vedant OAuth incident 2026-05-26)
 
 const SHELL_URLS = [
   '/m/',
@@ -9,9 +9,16 @@ const SHELL_URLS = [
   '/m/css/mobile.css',
   '/m/js/shell.js',
   '/m/js/auth-modal.js',
+  // Core mobile JS — precached so the shell + install affordance hydrate even
+  // on a flaky first paint (rural 2G/3G) and offline.
+  '/m/js/install-prompt.js',
+  '/m/js/avatar.js',
+  '/m/js/summarizer.js',
+  '/m/js/hamburger-sheet.js',
   // Shared static (loaded by mobile via /js/ mount) — added for offline shell completeness (A-2).
   '/js/add_zettel_api.js',
   '/js/zk_skeleton_typewriter.js',
+  '/manifest.webmanifest',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',
   '/static/icons/apple-touch-icon-180.png',
