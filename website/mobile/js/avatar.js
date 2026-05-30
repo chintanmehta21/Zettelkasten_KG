@@ -26,7 +26,6 @@
   // the same random avatar on both surfaces until the server value is persisted.
   const CACHE_KEY_PREFIX = "zk-avatar-url-";
   const ALL_AVATARS = Array.from({ length: AVATAR_COUNT }, (_, i) =>
-
     `/artifacts/avatars/avatar_${String(i).padStart(2, "0")}.svg`
   );
 
@@ -111,7 +110,12 @@
     if (opts.anon) return avatarUrlFor(Math.floor(Math.random() * AVATAR_COUNT));
 
     const me = await fetchMe();
-    if (me && isCuratedAvatarUrl(me.avatar_url)) return me.avatar_url;
+    if (me && isCuratedAvatarUrl(me.avatar_url)) {
+      // Warm the shared cache (parity with desktop header.js) so the next load
+      // — and the other surface — skip the /api/me round-trip.
+      if (me.id) writeCached(me.id, me.avatar_url);
+      return me.avatar_url;
+    }
 
     const profileId = me && me.id;
     if (profileId) {
