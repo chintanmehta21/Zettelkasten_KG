@@ -32,3 +32,19 @@ describe('quota gate wiring — Home & My Zettels', () => {
     expect(ZETTELS).not.toMatch(/err\.detail\.code\s*===\s*['"]quota_exhausted['"]/);
   });
 });
+
+describe('quota gate wiring — Mobile', () => {
+  const MOBILE = readFileSync(
+    resolve(__dirname, '../../../website/mobile/js/summarizer.js'), 'utf8');
+  const INDEX = readFileSync(
+    resolve(__dirname, '../../../website/mobile/index.html'), 'utf8');
+
+  it('summarizer.js calls precheck and extractQuotaDetail', () => {
+    expect(MOBILE).toMatch(/ZKQuotaGate\.precheck\s*\(/);
+    expect(MOBILE).toMatch(/ZKQuotaGate\.extractQuotaDetail\s*\(/);
+  });
+  it('index.html loads the quota gate assets', () => {
+    expect(INDEX).toMatch(/quota_gate\.js/);
+    expect(INDEX).toMatch(/quota_gate\.css/);
+  });
+});
