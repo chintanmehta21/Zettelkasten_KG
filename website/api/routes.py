@@ -486,26 +486,58 @@ async def update_avatar(
 ):
     """Update the authenticated user's avatar.
 
-    Phase 8.5.R3 v2 port: writes to ``core.profiles.avatar_url`` via the
-    authenticated profile id (resolved from JWT ``sub``). The product surface
-    is a preset-picker (avatar_id ∈ [0, 59]) mapping to pre-built SVG assets
-    under ``/artifacts/avatars/``. No file upload, no Pillow re-encode — the
-    R-B research's full upload pipeline is overkill for this product shape.
-
-    v1 fallback retired: pre-v2, this called ``KGRepository.update_user_avatar``
-    against ``public.kg_users``. That table was dropped in Phase 6.
+    R1 (avatar overhaul, 2026-05-30): mirror ``GET /api/me``'s JIT
+    ``ensure_provisioned`` self-heal. Before R1 the PUT silently 404'd when
+    the gotrue trigger chain missed a ``core.workspace_members`` row; users
+    could read /api/me (which self-heals) but every avatar save failed —
+    the frontend swallowed it (header.js:350 ``.catch(()=>{})``) so the user
+    saw a green "Avatar updated." toast while nothing persisted. Symmetric
+    verb handling per RFC 9110 §9.2.2; idempotent RPC, allowlist surfaces 403.
     """
     avatar_url = f"/artifacts/avatars/avatar_{body.avatar_id:02d}.svg"
 
     if not _is_supabase_uuid(user.get("sub")):
         raise HTTPException(status_code=400, detail="v2 avatar update requires UUID auth subject")
 
+    metadata = user.get("user_metadata", {}) or {}
     scope = get_supabase_v2_scope(user["sub"])
     if scope is None:
-        raise HTTPException(status_code=404, detail="No v2 profile scope")
+        # JIT self-heal: trigger-chain missed workspace_members; mirror GET path.
+        try:
+            get_v2_client().schema("core").rpc(
+                "ensure_provisioned",
+                {
+                    "p_auth_user_id": user["sub"],
+                    "p_email": user.get("email"),
+                    "p_display_name": (
+                        metadata.get("full_name") or metadata.get("name")
+                    ),
+                },
+            ).execute()
+        except Exception as exc:  # noqa: BLE001 — surface allowlist; warn on others
+            code = getattr(exc, "code", None)
+            if code is None:
+                args = getattr(exc, "args", ())
+                if args:
+                    code = getattr(args[0], "code", None)
+            if code == "42501" or "allowlist" in str(exc).lower():
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "code": "allowlist_denied",
+                        "message": (
+                            "Account is not on the active allowlist. "
+                            "Contact support if you believe this is an error."
+                        ),
+                    },
+                )
+            logger.warning("ensure_provisioned RPC failed for %s: %s", user["sub"], exc)
+        scope = get_supabase_v2_scope(user["sub"])
+        if scope is None:
+            raise HTTPException(status_code=404, detail="No v2 profile scope")
+
     _content_repo, profile_id, _workspace_id = scope
 
-    from website.core.supabase_v2.repositories.core_repository import CoreRepository
     core_repo = CoreRepository()
     updated = core_repo.update_avatar(profile_id, avatar_url)
     if not updated:
