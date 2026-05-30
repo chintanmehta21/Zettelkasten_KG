@@ -15,7 +15,7 @@
 
   var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
 
-  var AVATAR_COUNT = 100;
+  var AVATAR_COUNT = 120;
   var AVATAR_PATH_RE = /\/artifacts\/avatars\/avatar_\d+\.svg/;
   var CACHE_KEY_PREFIX = 'zk-avatar-url-';
 

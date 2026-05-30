@@ -275,7 +275,7 @@ def _render_with_mobile_shell(
 
 
 _CURATED_AVATAR_RE = re.compile(
-    r"^/artifacts/avatars/avatar_[0-9]{2}\.svg$"
+    r"^/artifacts/avatars/avatar_[0-9]{2,3}\.svg$"
 )
 
 
