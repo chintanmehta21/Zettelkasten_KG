@@ -595,9 +595,11 @@
 
   /* ─── Avatar picker ─────────────────────────────────────────────────── */
 
-  // First-row count for fetchpriority="high"; modal grid is 8-col on desktop
-  // (matches .profile-avatar-grid-modal). Below-fold rows get loading="lazy"
-  // + fetchpriority="low" per web.dev fetch-priority guidance.
+  // Upper-bound on first-row eager cells for fetchpriority="high". The modal
+  // grid is 8-col at wide viewport, 6-col ≤540px, 5-col ≤380px (see
+  // .profile-avatar-grid-modal); 8 covers the full first row at wide and
+  // over-eagers harmlessly by 2-3 at narrow. Rest get loading="lazy" +
+  // fetchpriority="low" per web.dev fetch-priority guidance.
   const AVATAR_EAGER_COUNT = 8;
 
   function renderAvatarGrid() {

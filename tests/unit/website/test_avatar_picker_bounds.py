@@ -49,6 +49,10 @@ def test_curated_avatar_regex_accepts_valid_ids(url: str) -> None:
     "url",
     [
         "/artifacts/avatars/avatar_0.svg",        # 1-digit
+        "/artifacts/avatars/avatar_120.svg",      # one past the pool (no file)
+        "/artifacts/avatars/avatar_199.svg",      # in 3-digit space, no file
+        "/artifacts/avatars/avatar_200.svg",      # 2xx, no file
+        "/artifacts/avatars/avatar_999.svg",      # max 3-digit, no file
         "/artifacts/avatars/avatar_1000.svg",     # 4-digit
         "/artifacts/avatars/avatar_abc.svg",      # non-numeric
         "/artifacts/avatars/avatar_-1.svg",       # signed
@@ -111,6 +115,21 @@ def test_mobile_picker_emits_priority_hints() -> None:
     assert "MOBILE_EAGER_COUNT = 4" in src, "mobile first-row eager count must be 4"
     assert 'fetchpriority="high"' in src, "first-row cells need fetchpriority=high"
     assert 'fetchpriority="low"' in src, "below-fold cells need fetchpriority=low"
+
+
+def test_shared_avatar_renderer_sized_to_120() -> None:
+    # avatar.js is the shared mobile+desktop renderer; window.ZK.avatarUrls()
+    # feeds the mobile picker. It has its own pool size + curated regex that
+    # must stay in sync with website/app.py::_CURATED_AVATAR_RE.
+    src = _read("mobile/js/avatar.js")
+    assert "length: 120" in src, "shared avatar pool must be 120"
+    assert r"0\d|[1-9]\d|1[01]\d" in src, "shared curated regex must bound to 0-119"
+
+
+def test_mobile_profile_curated_regex_bounds_to_119() -> None:
+    # profile.js has an inline isCuratedAvatarUrl gate guarding selectAvatar.
+    src = _read("mobile/js/profile.js")
+    assert r"0\d|[1-9]\d|1[01]\d" in src, "mobile selectAvatar gate must bound to 0-119"
 
 
 # ──────────────────────────────────────────────────────────────────────────

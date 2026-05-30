@@ -6,7 +6,7 @@ Asserts:
 - The endpoint is self-only by JWT sub (no cross-tenant attack surface for
   this preset-picker shape — there's no path parameter / target-user input).
 - B's PUT updates B's own profile, never A's.
-- avatar_id ∈ [0, 59] preset → ``/artifacts/avatars/avatar_NN.svg`` URL.
+- avatar_id ∈ [0, 119] preset → ``/artifacts/avatars/avatar_NN.svg`` URL.
 """
 from __future__ import annotations
 
