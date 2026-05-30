@@ -47,14 +47,14 @@ async def _seed_tagged_anon_zettel(
     *,
     source_workspace_id: uuid.UUID,
     anon_sid: uuid.UUID,
-    session_created_at: str | None = None,
+    age_hours: int | None = None,
 ) -> tuple[uuid.UUID, uuid.UUID]:
     """Insert a canonical + source workspace_zettel, then tag it with anon_sid.
 
     Returns (canonical_zettel_id, workspace_zettel_id). Uses tag_anon_zettel so
     the session ledger row is created exactly as the capture path would create
-    it. ``session_created_at`` (an ISO/SQL timestamptz literal) optionally
-    back-dates the anon_sessions row to exercise the 24h window.
+    it. ``age_hours`` optionally back-dates the anon_sessions row by that many
+    hours (server-side) to exercise the 24h window.
     """
     cz = uuid.uuid4()
     wz = uuid.uuid4()
@@ -83,12 +83,15 @@ async def _seed_tagged_anon_zettel(
     # tag via the RPC under test (creates anon_sessions row + stamps anon_sid).
     ContentRepository().tag_anon_zettel(wz, anon_sid, ip_hash="iphash", ua_hash="uahash")
 
-    if session_created_at is not None:
+    if age_hours is not None:
+        # asyncpg cannot bind a SQL-expression string as a timestamptz param;
+        # pass an integer to make_interval and let Postgres compute the
+        # back-dated timestamp against its own clock (matches the RPC's now()).
         async with pool.acquire() as conn:
             await conn.execute(
-                "UPDATE content.anon_sessions SET created_at = $2::timestamptz "
-                "WHERE id = $1",
-                anon_sid, session_created_at,
+                "UPDATE content.anon_sessions "
+                "SET created_at = now() - make_interval(hours => $2) WHERE id = $1",
+                anon_sid, age_hours,
             )
     return cz, wz
 
@@ -177,7 +180,7 @@ async def test_24h_window_excludes_stale_session(asyncpg_pool, mint_user):
         asyncpg_pool,
         source_workspace_id=source.workspace_ids[0],
         anon_sid=anon_sid,
-        session_created_at="now() - interval '25 hours'",
+        age_hours=25,
     )
 
     repo = ContentRepository()
