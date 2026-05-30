@@ -114,6 +114,32 @@ _HF_TOKEN_LOADED = _load_hf_token_from_new_envs()
 HARD_FAIL_CONTRADICT_THRESHOLD = 0.7
 
 
+def route_verdict(nli_flag: bool, judge_n: int) -> tuple[str, str]:
+    """OR-with-review routing — the combination strategy adopted 2026-05-30.
+
+    REPLACES the prior strict/LOOSE AND-gate. Deep-research verdict
+    (docs/claude_audits/nli_judge_combination_strategy_2026-05-30.md, adversarially
+    verified): no SOTA framework strict-ANDs two grounding verifiers, and LLM
+    judges systematically UNDER-report contradictions (FaithJudge / leniency
+    bias) — so requiring the judge to ALSO fire lets a judge false-negative
+    silently veto a correct NLI catch (proven on wz=1c0af8ec: NLI 0.66, judge 9
+    → AND cleared a real hallucination). OR-with-review never lets one signal
+    veto the other:
+        both fire         -> "hard_fail"  (high-confidence; auto-fail)
+        exactly one fires -> "review"      (route to human queue; reason tags which)
+        neither           -> "clean"
+    Returns (route, review_reason) where review_reason ∈ {"", "nli_only", "judge_only"}.
+    """
+    jflag = judge_n > 0
+    if nli_flag and jflag:
+        return "hard_fail", ""
+    if nli_flag and not jflag:
+        return "review", "nli_only"
+    if (not nli_flag) and jflag:
+        return "review", "judge_only"
+    return "clean", ""
+
+
 def _decode_softmax_row(claim: str, row: list[float], model_name: str = "") -> dict:
     """Decode one softmax row into the canonical per-claim dict.
 
@@ -422,10 +448,68 @@ class MiniCheckPredictor:
         return results
 
 
-def _extract_claims(payload: dict, summary_json: dict | None) -> list[str]:
-    """Pick claim list: prefer atomic_facts from cache; fall back to splitting detailed_summary by sentences."""
-    # The per_zettel payload stores atomic_facts_sha256 — not the facts themselves.
-    # For pragmatic v1, derive claims from the detailed_summary via NLTK sentence-split.
+def _load_atomic_facts_from_cache(url: str, source_type: str) -> list[str] | None:
+    """Read cached atomic_facts WITHOUT invoking the Gemini extractor.
+
+    Same FsContentCache + key tuple the production extractor uses
+    (see ``website/.../evaluator/atomic_facts.py::extract_atomic_facts``).
+    Zero API cost on hit; returns ``None`` on miss/error so callers can
+    fall back to the regex path. Atomic_facts is the industry-standard
+    claim source per FActScore (EMNLP 2023), RAGAS, FineSurE (ACL 2024),
+    DeepEval — clean propositions decontextualized of markdown structure,
+    eliminating the format-noise + context-stripping NLI false-positive
+    cluster that dominated the iter-003-nli sweep (verified 2026-05-30).
+    """
+    if not url or not source_type:
+        return None
+    try:
+        from website.features.summarization_engine.core.cache import FsContentCache
+        from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION
+    except ImportError:
+        return None
+    try:
+        cache = FsContentCache(root=CACHE, namespace="atomic_facts")
+        hit = cache.get((url, source_type, PROMPT_VERSION))
+    except Exception:
+        return None
+    if not hit or "facts" not in hit:
+        return None
+    claims = [
+        (f.get("claim") or "").strip()
+        for f in (hit.get("facts") or [])
+        if isinstance(f, dict)
+    ]
+    claims = [c for c in claims if c]
+    return claims or None
+
+
+def _extract_claims(payload: dict, summary_json: dict | None,
+                     meta_json: dict | None = None) -> tuple[list[str], str]:
+    """Pick claim list and report its provenance.
+
+    Tier 1 (preferred): cached atomic_facts — clean propositions matching
+    FActScore/RAGAS/FineSurE industry standard, populated by the consolidated
+    evaluator at iter-002 cost (no new API call here).
+
+    Tier 2 (fallback): regex sentence-split on detailed_summary — legacy
+    path retained for cache misses. Produces noisy fragments
+    (`'1.'`, `'## Header'`, decontextualized bullets) that fire NLI
+    false-positives; only used when atomic_facts unavailable.
+
+    Returns (claims, provenance) where ``provenance`` is either
+    ``"atomic_facts"`` or ``"regex_fallback"``. Caller stamps it onto
+    the per_zettel JSON for audit.
+    """
+    # Tier 1: atomic_facts cache hit
+    if meta_json:
+        atomic_claims = _load_atomic_facts_from_cache(
+            url=meta_json.get("normalized_url", ""),
+            source_type=meta_json.get("source_type", ""),
+        )
+        if atomic_claims:
+            return atomic_claims[:60], "atomic_facts"
+
+    # Tier 2: regex fallback (legacy path; kept for cache misses)
     summary_text = ""
     if summary_json:
         summary_text = summary_json.get("detailed_summary") or summary_json.get("brief_summary") or ""
@@ -435,7 +519,7 @@ def _extract_claims(payload: dict, summary_json: dict | None) -> list[str]:
     # Naive sentence split (avoid NLTK download in fake-NLI path)
     import re
     sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", summary_text) if s.strip()]
-    return sents[:60]  # cap at 60 per nli_config.yaml claim_segmentation.max_claims_per_zettel
+    return sents[:60], "regex_fallback"  # cap per nli_config.yaml claim_segmentation.max_claims_per_zettel
 
 
 def _augment_one(payload: dict, predictor, batch_size: int = 8) -> dict:
@@ -446,6 +530,7 @@ def _augment_one(payload: dict, predictor, batch_size: int = 8) -> dict:
     data_dir = DATA / wz_id
     source_path = data_dir / "source_text.md"
     summary_path = data_dir / "summary.json"
+    meta_path = data_dir / "meta.json"
     if not source_path.exists():
         payload["nli"] = {"error": f"source_text.md missing for {wz_id}"}
         return payload
@@ -456,29 +541,57 @@ def _augment_one(payload: dict, predictor, batch_size: int = 8) -> dict:
             summary_json = json.loads(summary_path.read_text(encoding="utf-8", errors="replace"))
         except Exception:
             summary_json = None
-    claims = _extract_claims(payload, summary_json)
+    meta_json = None
+    if meta_path.exists():
+        try:
+            meta_json = json.loads(meta_path.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            meta_json = None
+    claims, claim_source = _extract_claims(payload, summary_json, meta_json)
     # Batched inference — ~10x faster on CPU than the per-claim path.
     per_claim = predictor.predict_batch(claims, source_text, batch_size=batch_size)
 
+    # OR-with-review routing (see route_verdict). REPLACES the prior LOOSE
+    # AND-gate, which silently cleared real hallucinations the judge caught but
+    # NLI scored just under threshold (deep-research verdict 2026-05-30). Both
+    # signals are recorded separately so the route is re-derivable without
+    # re-running NLI if the threshold is later recalibrated.
+    judge_contras = (payload.get("summac_lite") or {}).get("contradicted_sentences") or []
+    judge_contras_n = len(judge_contras)
+
     if not per_claim:
+        # No claims to score → NLI cannot fire. Route is judge-driven only.
+        route, review_reason = route_verdict(False, judge_contras_n)
         payload["nli"] = {
             "n_claims": 0, "mean_entailment": 1.0, "max_contradict": 0.0,
-            "hard_fail_flagged": False, "per_claim": [],
+            "nli_threshold_flag": False,
+            "judge_contradicted_count": judge_contras_n,
+            "route": route, "review_reason": review_reason,
+            "hard_fail_flagged": route == "hard_fail", "per_claim": [],
             "nli_model": predictor.model_name, "nli_model_revision": predictor.revision,
+            "claim_source": claim_source,
         }
         return payload
 
     mean_ent = mean(p["entail_prob"] for p in per_claim)
     max_con = max(p["contradict_prob"] for p in per_claim)
-    hard_fail = max_con >= HARD_FAIL_CONTRADICT_THRESHOLD
+    nli_flag = max_con >= HARD_FAIL_CONTRADICT_THRESHOLD
+    route, review_reason = route_verdict(nli_flag, judge_contras_n)
     payload["nli"] = {
         "n_claims": len(per_claim),
         "mean_entailment": round(mean_ent, 4),
         "max_contradict": round(max_con, 4),
-        "hard_fail_flagged": hard_fail,
+        "nli_threshold_flag": nli_flag,
+        "judge_contradicted_count": judge_contras_n,
+        "route": route,
+        "review_reason": review_reason,
+        # hard_fail_flagged retained for backward-compat with downstream
+        # readers; under OR-with-review it == (route == "hard_fail").
+        "hard_fail_flagged": route == "hard_fail",
         "per_claim": per_claim,
         "nli_model": predictor.model_name,
         "nli_model_revision": predictor.revision,
+        "claim_source": claim_source,
     }
     return payload
 
