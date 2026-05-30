@@ -22,7 +22,7 @@
     var problem = (next && typeof next.error === 'object' && next.error) ? next.error : next;
     var inner = (problem && typeof problem.detail === 'object' && problem.detail) ? problem.detail : null;
     return {
-      message: (problem && problem.title) || cleanProblemDetail(next, 'Summary failed.'),
+      message: (problem && problem.title) || cleanProblemDetail(problem, 'Summary failed.'),
       detail: inner || problem || next,
       problem: problem,
     };
