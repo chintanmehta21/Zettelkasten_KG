@@ -22,6 +22,7 @@ EXPECTED_MIDDLEWARE_ORDER: list[str] = [
     "PostResponseReleaseMiddleware",
     "AuthStatusHeadersMiddleware",
     "SessionMarkerCookieMiddleware",
+    "AnonSessionCookieMiddleware",
     "Auth401RateMonitorMiddleware",
 ]
 

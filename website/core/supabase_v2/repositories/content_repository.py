@@ -604,6 +604,85 @@ class ContentRepository:
             return None
         return UUID(str(rows[0]["id"]))
 
+    def tag_anon_zettel(
+        self,
+        workspace_zettel_id: UUID | str,
+        anon_sid: UUID | str,
+        *,
+        ip_hash: str | None = None,
+        ua_hash: str | None = None,
+    ) -> None:
+        """Stamp the anon browser-session id onto a just-persisted Zoro row and
+        upsert the session ledger row (Item 6 capture-time tagging).
+
+        Dedicated call kept OUT of ``content.upsert_workspace_zettel`` so the
+        universal ingestion RPC is never touched — only anon (Zoro) captures
+        ever invoke this. Returns nothing; the RPC is ``RETURNS void``.
+        """
+        self._client.schema("content").rpc(
+            "tag_anon_zettel",
+            {
+                "p_workspace_zettel_id": str(workspace_zettel_id),
+                "p_anon_sid": str(anon_sid),
+                "p_ip_hash": ip_hash,
+                "p_ua_hash": ua_hash,
+            },
+        ).execute()
+
+    def peek_claimable_anon_zettels(
+        self,
+        new_user: UUID | str,
+        anon_sid: UUID | str,
+    ) -> list[dict]:
+        """Read-only candidate list for the claim quota loop.
+
+        Returns up to 20 rows of ``{workspace_zettel_id, canonical_zettel_id}``
+        — the anon-tagged Zoro rows the new user does NOT already own — only
+        when the session is unclaimed AND < 24h old. Empty list otherwise (no
+        info leak). The endpoint runs the per-zettel quota gate over these and
+        passes only the affordable canonical ids to ``commit_anon_claim``.
+        """
+        response = (
+            self._client.schema("content")
+            .rpc(
+                "peek_claimable_anon_zettels",
+                {
+                    "p_new_user": str(new_user),
+                    "p_anon_sid": str(anon_sid),
+                },
+            )
+            .execute()
+        )
+        return list(response.data or [])
+
+    def commit_anon_claim(
+        self,
+        new_user: UUID | str,
+        anon_sid: UUID | str,
+        canonical_ids: list[UUID | str],
+    ) -> int:
+        """Atomic dual-row insert + first-claim-wins session mark.
+
+        ``canonical_ids`` MUST already be the affordable subset (the quota loop
+        ran first). The RPC locks the session row so concurrent claims
+        serialise — the second claimant sees ``claimed_by_user`` set and gets
+        0. Returns the number of newly-inserted ('claim'-provenance) rows.
+        """
+        response = (
+            self._client.schema("content")
+            .rpc(
+                "commit_anon_claim",
+                {
+                    "p_new_user": str(new_user),
+                    "p_anon_sid": str(anon_sid),
+                    "p_canonical_ids": [str(c) for c in canonical_ids],
+                },
+            )
+            .execute()
+        )
+        # RETURNS integer → supabase-py exposes the scalar in response.data.
+        return int(response.data or 0)
+
     def search_chunks(
         self,
         *,
