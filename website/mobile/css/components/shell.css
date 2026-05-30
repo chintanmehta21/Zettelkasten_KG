@@ -152,6 +152,19 @@
   letter-spacing: 0.01em;
 }
 
+/* Mask-based tab icons (Zettels / Kastens / Graph) reuse the SAME desktop logo
+   SVGs (/artifacts/logo-*.svg) so iconography is identical across surfaces.
+   background-color: currentColor + alpha mask = greyscale that inherits the
+   tab's color, so the active (teal) / inactive (muted) theming is preserved
+   exactly as the old inline stroke="currentColor" SVGs had it. */
+.m-tab-icon--mask {
+  width: 22px;
+  height: 22px;
+  background-color: currentColor;
+  -webkit-mask: var(--m-tab-mask) center / contain no-repeat;
+  mask: var(--m-tab-mask) center / contain no-repeat;
+}
+
 .m-tab.is-active {
   color: var(--accent);
   background: var(--accent-glow);
