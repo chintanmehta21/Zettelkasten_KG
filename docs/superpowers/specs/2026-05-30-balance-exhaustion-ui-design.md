@@ -140,27 +140,45 @@ for every existing consumer, and surfaces real failure titles generally.
 Add two pieces:
 
 **(a) Robust detail extractor** — `ZKQuotaGate.extractQuotaDetail(errOrBody)`:
-returns the `{code:'quota_exhausted', meter}` object from **any** shape:
-- `x.detail` when `x.detail.code === 'quota_exhausted'` (sync),
-- `x.detail.detail` when nested (normalized async, defensive),
-- `x.error.detail` / `x.error` when given a raw failed‑op body,
-- also accepts the top‑level slug form (`code === 'quota-exhausted'` with a nested
-  `detail`) and normalizes it.
-Returns `null` if not a quota detail. Replaces the per‑consumer
-`err.detail.code === 'quota_exhausted'` checks.
+returns a **normalized** `{code:'quota_exhausted', meter, recommended_products}` object
+from any of the known shapes, else `null`. It probes a small fixed set of locations and
+**matches by exact equality only** — never substring / `includes` / regex / prose
+(sweep‑check B: over‑broad matching could misclassify a future `quota_*` sibling such as
+a soft‑limit warning). Accepted shapes:
+- `x.detail` where `x.detail.code === 'quota_exhausted'` (sync 402),
+- `x.error.detail` where that `.code === 'quota_exhausted'` (raw failed‑op body),
+- `x.error` / top‑level `x` where `code === 'quota-exhausted'` (the hyphen slug form) **and**
+  a nested `detail.meter` is present → normalize to the underscore shape.
+It always **returns the single canonical underscore form**, so call‑sites are written
+against the end state and the deferred server canonicalization only deletes a fallback
+arm. Add a header comment: *"Tolerates two wire spellings of the quota code during the
+canonicalization migration — remove the slug/`detail.detail` arms after the server
+canonicalization PR ships and its deprecation window closes (tracking: <issue>)."*
+(sweep‑check B — RFC 9413 removal‑planning; Expand/Contract cleanup phase.) Replaces the
+per‑consumer `err.detail.code === 'quota_exhausted'` checks.
 
 **(b) Pre‑add guard** — `ZKQuotaGate.guard({ feature, token, source, action, onBlocked })`
 → `Promise`:
 1. **Pre‑flight:** `GET /api/quota/snapshot?feature=<feature>` (Authorization: Bearer
-   token). Tight timeout (~2.5s).
-   - If `effective_available <= 0` → `show({ detail: { code:'quota_exhausted', meter:feature, recommended_products } , source })`,
+   token), with a tight client timeout (~1.5s, `AbortController`). Collapse rapid
+   double‑clicks with a short in‑flight de‑dupe (~150–300ms memo keyed by
+   `feature`+token) so a double‑submit issues **one** read — TTL effectively zero, never
+   a balance cache (sweep‑check C).
+   - **Well‑formed verdict — `effective_available <= 0`** → `show({ detail: { code:'quota_exhausted', meter:feature, recommended_products } , source })`,
      call `onBlocked` if provided, and **do not** run `action`. Resolve without running.
-   - Else proceed to step 2.
-   - **Fail‑open:** any snapshot error/timeout → skip the pre‑flight verdict and proceed
-     to step 2 (the authoritative server gate + the backstop still protect correctness).
-2. **Run + backstop:** `await action()`. If it throws, run the result through
+   - **Well‑formed verdict — `effective_available > 0`** (or `null` = unknown) → proceed
+     to step 2.
+   - **Fail‑open — ONLY on a non‑verdict:** transport error / timeout / 5xx / malformed
+     body. Proceed to step 2 (authoritative server gate + backstop still protect
+     correctness). A *successful* `0` payload is a verdict, **not** an error — it must
+     show the modal, never fail open (sweep‑check A: distinguish "couldn't get an answer"
+     from "answer is zero").
+2. **Run + backstop:** `await action()`. If it throws, run the error through
    `extractQuotaDetail`; if it yields a quota detail → `show({ detail, source })` and
-   swallow (handled); otherwise rethrow so the caller's existing error UI runs.
+   swallow (handled); otherwise rethrow so the caller's existing error UI runs. The
+   backstop is **load‑bearing** — it is the only thing that surfaces the rare TOCTOU
+   denial that passed pre‑flight, so its end‑to‑end behavior (server 402, sync *and*
+   normalized‑async) is a hard test requirement, not a nicety (sweep‑check A).
 
 The guard is the **single** place the three add surfaces call. A new surface inherits
 correct behavior by calling `guard(...)`.
@@ -181,20 +199,33 @@ in a follow‑up.
 
 **New route:** `GET /api/quota/snapshot?feature=zettel` (auth required).
 
-- Resolve caller profile from the verified JWT `sub` (same pattern as
-  `require_entitlement._profile_uuid`); non‑UUID/anonymous → `{ effective_available: null }`
-  (treated as "unknown → fail‑open" by the client).
-- `feature` ∈ `functional_gates.config.FEATURES` (`zettel|kasten|rag_question`); reject
-  others with 422.
-- Call `FunctionalGates.quota_snapshot(profile_id=..., feature=...)` (read‑only; no
-  consume; no row locks).
-- Response body:
+- **Auth:** required. A missing / invalid / expired token returns a **generic `401`**
+  (uniform body — never distinguish "no token" vs "expired" vs "no profile"; sweep‑check
+  D, avoids account‑state probing).
+- **Identity:** resolve caller profile strictly from the verified JWT `sub` (same pattern
+  as `require_entitlement._profile_uuid`). **No user/object id parameter is accepted, ever**
+  — this is the strongest BOLA mitigation (`/me` pattern); adding an id param later would
+  reactivate OWASP API1 and must be a *separate* role‑checked endpoint (sweep‑check D).
+  An authenticated‑but‑non‑UUID sub (e.g. anonymous/Zoro mapping) → `{ effective_available: null }`
+  (client treats `null` as "unknown → proceed", matching `require_entitlement`'s non‑UUID skip).
+- **Input:** `feature` ∈ `functional_gates.config.FEATURES` (`zettel|kasten|rag_question`);
+  anything else → `422` (server‑side allowlist).
+- **Compute:** `FunctionalGates.quota_snapshot(profile_id=..., feature=...)` — read‑only,
+  **no consume, no row locks** (plain consistent read; `SELECT FOR UPDATE` is wrong here —
+  it dirties buffers, sweep‑check C). Wrap the read in a tight **statement timeout (~1–2s)**
+  so a stuck read fails fast (client then fails open).
+- **Response body — minimal, owner‑only (no infra disclosure):**
   ```jsonc
   { "feature": "zettel", "effective_available": 7, "remaining_plan": 5, "remaining_wallet": 2 }
   ```
-- `Cache-Control: no-store` (always fresh at gate time, per research).
-- **BOLA:** the snapshot is computed strictly for the caller's own `profile_id`; no
-  user‑supplied id is accepted.
+  Return **only** these four fields — never plan name/tier, reset timestamps, ledger ids,
+  or other workspaces' numbers (sweep‑check D API3 + the No‑Infra‑Disclosure rule).
+- **Caching:** `Cache-Control: private, no-store` (belt‑and‑suspenders; `private` keeps it
+  out of Cloudflare/Caddy shared caches, `no-store` forbids any storage — sweep‑check C/D,
+  RFC 9111 §3.5/§5.2.2.5).
+- **Abuse (recommended, see §8 decision):** a light **per‑subject** (JWT `sub`, not IP)
+  in‑process rate limit satisfies OWASP API4; reuse the `functional_gates/upload_rate_limit.py`
+  token‑bucket pattern. Negligible droplet footprint (no Redis).
 
 Placement: new `website/api/quota_routes.py`, registered in `website/app.py` alongside
 the other API routers. (Thin adapter; the balance logic stays in `functional_gates`.)
@@ -230,18 +261,26 @@ Authority at all times: billing.pricing_reserve_and_consume (atomic, idempotent 
 
 ## 7. Testing
 
-**JS (vitest/jest per repo convention):**
+**JS (confirm runner during planning — repo convention):**
 - `add_zettel_api` normalizer: sync‑402 body, async failed‑op envelope, both code
   spellings, non‑quota failure (real title surfaced, rethrows).
-- `extractQuotaDetail`: each accepted shape → quota dict; non‑quota → null.
-- `guard`: `effective_available>0` → runs action; `<=0` → popup + action NOT run;
-  snapshot error → fail‑open runs action; action throws quota → backstop popup;
-  action throws non‑quota → rethrows.
+- `extractQuotaDetail`: each accepted shape → canonical quota dict; **near‑miss negatives
+  must return null** — `quota_warning`, a non‑quota error whose `detail`/`title` prose
+  merely contains the word "quota", and a bare slug with no nested `detail.meter`
+  (sweep‑check B over‑broad‑matching guard).
+- `guard`: `effective_available>0` → runs action; `<=0` (well‑formed) → popup + action
+  **NOT** run; **`null`/unknown → runs action**; **transport error/timeout/5xx/malformed
+  → fail‑open runs action**; but **well‑formed `0` never fails open** (distinct test);
+  action throws quota → backstop popup; action throws non‑quota → rethrows;
+  double‑submit within the de‑dupe window → **one** snapshot read.
 
 **Python (pytest):**
-- `GET /api/quota/snapshot`: auth required (401 unauth); returns `effective_available`
-  for a minted user; **no consume** (balance unchanged after call); invalid `feature` →
-  422; anonymous/non‑UUID → `null`; cross‑tenant — no user‑supplied id accepted (BOLA).
+- `GET /api/quota/snapshot`: **generic 401** for missing / invalid / expired token
+  (assert identical body across all three — no state leak); returns
+  `effective_available` for a minted user; **no consume** (balance byte‑identical before
+  vs after the call); invalid `feature` → 422; authenticated non‑UUID sub → `{effective_available: null}`;
+  response contains **only** the four allowed fields (assert no plan name/timestamp/ledger
+  keys); `Cache-Control: private, no-store` present; no user‑supplied id param accepted (BOLA).
 - Reuse `tests/integration/v2` mint fixtures where a live profile is needed; otherwise
   mock `FunctionalGates.quota_snapshot`.
 
@@ -249,6 +288,47 @@ Authority at all times: billing.pricing_reserve_and_consume (atomic, idempotent 
 
 - Server admission‑402 pre‑flight before 202.
 - Server wire‑format canonicalization (single top‑level `code`, `detail` as human
-  string) — deprecation‑window migration, operator sign‑off.
+  string) — deprecation‑window migration, operator sign‑off. **This PR's
+  `extractQuotaDetail` header comment must reference the tracking issue for that PR so the
+  tolerant arms get deleted in its Contract phase** (sweep‑check B).
 - Wiring `user_kastens` / `kasten_modal` / `user_rag` through `guard` (they already
   handle their sync 402; can adopt `extractQuotaDetail` later).
+
+### 8.1 Open decision (operator) — endpoint rate limit
+
+Sweep‑check D recommends a light per‑subject in‑process rate limit on
+`GET /api/quota/snapshot` (OWASP API4). It's cheap (reuse `upload_rate_limit.py`), but it
+is a discrete addition beyond the original spec → **operator call: include now or defer.**
+Default if unanswered: **include** (low cost, scale‑proofing) — but flagged here, not
+assumed silently.
+
+## 9. Sweep‑check verdicts (research round 2, 2026‑05‑30)
+
+Four web‑search subagents validated the concrete decisions. All four returned **proceed /
+correct**; no architectural change. Verdicts + primary citations:
+
+- **A — Fail‑open on pre‑flight: CORRECT.** It is an availability gate, not an authz gate;
+  the atomic RPC is the gate of record. Conditions (met): atomic gate unconditional; 402
+  always surfaced (the normalization + backstop). Fail open only on non‑verdict, never on
+  a well‑formed `0`. *Cites:* OWASP "Fail Securely" (scoped to security controls) +
+  Authorization Cheat Sheet; Stripe rate‑limiters (fail‑open on Redis down, 2017); Google
+  SRE graceful degradation; AWS REL05‑BP01; AuthZed fail‑open/closed (2021).
+- **B — Tolerant client + deferred server canonicalization: CORRECT.** RFC 9413 sanctions
+  *documented, removal‑planned* workarounds; breaking the wire code needs a deprecation
+  window. Conditions: exact‑equality matching + tracked cleanup. *Cites:* RFC 9413 (2023);
+  RFC 9457 §3; Google AIP‑180/AIP‑193; Stripe API versioning; Pete Hodgson Expand/Contract
+  (2023); Fowler Tolerant Reader.
+- **C — Per‑submit read, no cache, `private,no-store`, no locks: CORRECT for our scale.**
+  Caching is premature (Stripe/LaunchDarkly cache to avoid *cross‑network* hops at massive
+  fan‑out; ours is a local indexed read at human pace). *Cites:* Stripe Entitlements;
+  LaunchDarkly polling→streaming; RFC 9111 §3.5/§5.2.2.5; Cloudflare cache‑control;
+  CYBERTEC "SELECT FOR UPDATE considered harmful"; Postgres §13.3.
+- **D — New read endpoint security: SAFE as designed.** JWT‑derived id w/ no id param =
+  strongest BOLA mitigation; own‑balance is owner data (API3 fine); self‑disclosure ≈
+  `RateLimit-Remaining`. Must‑dos folded into §4.3 (generic 401, allowlist, minimal
+  payload, `no-store`); rate‑limit per §8.1. *Cites:* OWASP API1/API3/API4 (2023); OWASP
+  Auth Cheat Sheet; Stripe rate‑limit headers; Authress 401/403/404.
+
+Source‑age note: a few foundational refs (Stripe 2017, Google SRE 2016‑17, Fowler 2011,
+Shkedy BOLA ~2020) are >5yr but remain the canonical, un‑superseded references; all other
+primaries are 2022‑2026.
