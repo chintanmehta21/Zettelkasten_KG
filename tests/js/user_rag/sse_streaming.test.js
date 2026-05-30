@@ -189,13 +189,18 @@ describe('UR-02 SSE reconnect via _sseRetryUsed (heartbeat-timeout path)', () =>
     const reader = idleStream.getReader();
 
     const consumed = probe.consumeSSE(reader, node);
+    // Attach the rejection expectation BEFORE advancing timers. The watchdog
+    // rejects `consumed` DURING advanceTimersByTimeAsync; if the .rejects
+    // handler is only attached afterwards, the rejection is momentarily
+    // unhandled and vitest flags an unhandled-rejection error.
+    const rejection = expect(consumed).rejects.toThrow(/heartbeat-timeout/);
 
     // Advance fake timers PAST the 15s heartbeat-timeout. The watchdog runs
     // every 5s (HEARTBEAT_CHECK_MS), so 20s guarantees a tick that sees
     // Date.now() - lastFrameMs > 15000.
     await vi.advanceTimersByTimeAsync(20000);
 
-    await expect(consumed).rejects.toThrow(/heartbeat-timeout/);
+    await rejection;
     expect(cancelReason).toBe('heartbeat-timeout');
   });
 
@@ -257,8 +262,11 @@ describe('UR-03 503 retry UX (Retry-After honored, no infinite spinner)', () => 
     // the spinner for arbitrarily long.
     expect(USER_RAG_SRC).toMatch(/retryAfter > 30/);
     // Default to 5s when header is missing or invalid (matches server's
-    // hard-coded `Retry-After: 5` in chat_routes.py:495/545).
-    expect(USER_RAG_SRC).toMatch(/Retry-After[^)]+\|\| '5'/);
+    // hard-coded `Retry-After: 5` in chat_routes.py:495/545). The source reads
+    // `response.headers.get('Retry-After') || '5'`; the prior regex used
+    // `[^)]+` which cannot cross the `)` in `get('Retry-After')`, so it never
+    // matched the real (correct) code — anchor on the actual expression.
+    expect(USER_RAG_SRC).toMatch(/get\('Retry-After'\)\s*\|\| '5'/);
   });
 
   it('source contract: composer busy state is released on terminal error (no infinite spinner)', () => {
