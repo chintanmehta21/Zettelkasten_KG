@@ -111,6 +111,10 @@
     document.getElementById("profile-signout").addEventListener("click", signOut);
   }
 
+  // First-row count for fetchpriority="high"; mobile grid is 4-col. Eager-load
+  // first row to avoid LCP regression from IntersectionObserver microtask delay.
+  var MOBILE_EAGER_COUNT = 4;
+
   function renderPicker(currentUrl) {
     var picker = document.getElementById("avatar-picker");
     var urls = (window.ZK && window.ZK.avatarUrls) ? window.ZK.avatarUrls() : [];
@@ -126,18 +130,24 @@
       });
     }, { rootMargin: "80px" }) : null;
 
-    urls.forEach(function (url) {
+    urls.forEach(function (url, i) {
       var cell = document.createElement("button");
       cell.type = "button";
       cell.className = "m-avatar-cell" + (url === currentUrl ? " is-selected" : "");
       cell.dataset.url = url;
       cell.setAttribute("aria-label", "Pick avatar " + url.replace(/^.*avatar_/, "").replace(/\.svg$/, ""));
-      cell.innerHTML = '<img data-src="' + escHtml(url) + '" width="56" height="56" alt="">';
+      var isEager = i < MOBILE_EAGER_COUNT;
+      var srcAttr = isEager
+        ? ('src="' + escHtml(url) + '" fetchpriority="high"')
+        : ('data-src="' + escHtml(url) + '" fetchpriority="low"');
+      cell.innerHTML = '<img ' + srcAttr + ' width="56" height="56" alt="">';
       cell.addEventListener("click", function () { selectAvatar(url, cell); });
       picker.appendChild(cell);
-      if (io) io.observe(cell); else {
-        var img = cell.querySelector("img");
-        if (img) img.src = img.dataset.src;
+      if (!isEager) {
+        if (io) io.observe(cell); else {
+          var img = cell.querySelector("img");
+          if (img) img.src = img.dataset.src;
+        }
       }
     });
   }

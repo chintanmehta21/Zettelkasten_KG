@@ -1,4 +1,4 @@
-/* avatar-picker.css — 4-col grid of 60 avatars on /m/profile (T11). */
+/* avatar-picker.css — 4-col grid of 120 avatars on /m/profile (T11). */
 
 .m-avatar-picker {
   display: grid;
@@ -12,6 +12,9 @@
   padding: 4px;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer;
+  /* Skip render work for off-screen cells in the 120-avatar grid. */
+  content-visibility: auto;
+  contain-intrinsic-size: 56px 56px;
 }
 .m-avatar-cell img {
   width: 100%;
