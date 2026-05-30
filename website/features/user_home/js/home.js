@@ -239,7 +239,9 @@
       profile = {
         name: meta.full_name || user.email || 'User',
         email: user.email || '',
-        avatar_url: meta.avatar_url || ''
+        // R6: don't read the (post-78-stripped, possibly external) JWT avatar.
+        // ZKHeader resolves curated cache → curated default from here.
+        avatar_url: ''
       };
       console.warn('[home] Profile fetch failed, using session data');
     }

@@ -39,7 +39,6 @@
     if (_menu) { _menu.remove(); _menu = null; return; }
 
     const email = _session?.user?.email ?? '';
-    const avatarUrl = _session?.user?.user_metadata?.avatar_url ?? '';
     const name      = _session?.user?.user_metadata?.full_name
                    || _session?.user?.user_metadata?.name
                    || email.split('@')[0]
@@ -99,10 +98,14 @@
       avatar.classList.add('is-authed');
       avatar.setAttribute('aria-label', 'Open account menu');
       if (imgEl) {
-        const avatarUrl = session.user?.user_metadata?.avatar_url;
-        if (avatarUrl) {
-          imgEl.innerHTML = `<img src="${escHtml(avatarUrl)}" alt="avatar" loading="lazy">`;
+        // R6 (2026-05-30): never paint session.user_metadata.avatar_url straight
+        // into <img src> — it can be an external (Google) or attacker-supplied
+        // URL (the curated check was bypassed here). Delegate to the shared
+        // curated renderer, which reads /api/me and only renders
+        // /artifacts/avatars/avatar_NN.svg (Zoro default on any miss).
+        if (window.ZK && typeof window.ZK.renderAvatar === 'function') {
           imgEl.classList.remove('initials');
+          window.ZK.renderAvatar(imgEl);
         } else {
           const initial = (
             session.user?.user_metadata?.full_name ||

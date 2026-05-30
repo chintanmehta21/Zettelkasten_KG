@@ -160,9 +160,26 @@
   }
 
   function buildAvatar(session, profile) {
-    if (profile && profile.avatar_url) return profile.avatar_url;
-    var meta = session && session.user ? (session.user.user_metadata || {}) : {};
-    return meta.avatar_url || DEFAULT_AVATAR;
+    // R6 (2026-05-30): curated-only. The previous fallback to
+    // session.user_metadata.avatar_url let an external (Google/Gravatar) or
+    // attacker-supplied URL paint the landing avatar. Route through ZKAvatar
+    // when present so only /artifacts/avatars/avatar_NN.svg is ever accepted;
+    // a non-curated value resolves to the cached pick or the curated default.
+    var profileId = (profile && profile.id) || (session && session.user && session.user.id) || null;
+    var candidate = profile && profile.avatar_url;
+    if (window.ZKAvatar) return window.ZKAvatar.resolve(profileId, candidate);
+    return (typeof candidate === 'string' && candidate.indexOf('/artifacts/avatars/') === 0)
+      ? candidate : DEFAULT_AVATAR;
+  }
+
+  var _avatarSubBound = false;
+  function bindAvatarSubscription(altText) {
+    if (_avatarSubBound || !window.ZKAvatar) return;
+    _avatarSubBound = true;
+    // immediate:false — updateUI already painted the current value.
+    window.ZKAvatar.subscribe(function (detail) {
+      if (detail && detail.url) applyAvatar(detail.url, altText);
+    }, { immediate: false });
   }
 
   function updateUI(session, profile) {
@@ -177,7 +194,15 @@
       if (userName) {
         userName.textContent = displayName;
       }
-      applyAvatar(buildAvatar(session, profile), displayName);
+      var avatarUrl = buildAvatar(session, profile);
+      applyAvatar(avatarUrl, displayName);
+      // R6: seed the shared SoT (silent — we just painted) + subscribe once so
+      // the landing avatar refreshes when the picker saves on another surface.
+      if (window.ZKAvatar) {
+        var pid = (profile && profile.id) || (session.user && session.user.id) || null;
+        window.ZKAvatar.set(pid, avatarUrl, { silent: true });
+        bindAvatarSubscription(displayName);
+      }
       return;
     }
 
