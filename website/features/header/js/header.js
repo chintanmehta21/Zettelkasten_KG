@@ -326,10 +326,21 @@
     },
 
     /**
-     * Force-update the visible avatar to a specific ID (used by the home picker).
-     * Does its own preload; never breaks the display on failure.
+     * Force-update the visible avatar to a specific ID (used by the profile picker).
+     * Updates the small header img + localStorage cache optimistically, then
+     * AWAITS the PUT and REJECTS on failure so the caller can roll back and
+     * surface an error. (R2, 2026-05-30: previously the PUT was fire-and-forget
+     * with a silent `.catch(()=>{})`, so a 401/404/500 was invisible — the
+     * picker toasted success while nothing persisted.)
+     *
+     * @param {number} avatarId
+     * @param {Function|string} getToken
+     * @param {string|null} profileId  - cache key owner; null falls back to 'anon'
+     * @param {{signal?: AbortSignal}} [options] - abort an in-flight PUT on rapid re-pick
+     * @returns {Promise<{avatar_url: string}>} resolves on persisted save; rejects on failure
      */
-    setAvatarById: async function (avatarId, getToken, profileId) {
+    setAvatarById: async function (avatarId, getToken, profileId, options) {
+      options = options || {};
       var url = avatarUrlFor(avatarId);
       try {
         await preload(url);
@@ -338,19 +349,22 @@
       } catch (_) {
         console.warn('[ZKHeader] setAvatarById preload failed for id', avatarId);
       }
-      // Persist (non-blocking)
-      if (getToken) {
-        try {
-          var token = typeof getToken === 'function' ? await getToken() : getToken;
-          if (token) {
-            zkFetch('/api/me/avatar', {
-              method: 'PUT',
-              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ avatar_id: avatarId })
-            }).catch(function () {});
-          }
-        } catch (_) {}
+      // Persist — AWAITED, errors propagate to the caller.
+      if (!getToken) return { avatar_url: url };  // localhost stub / anon: visual only
+      var token = typeof getToken === 'function' ? await getToken() : getToken;
+      if (!token) return { avatar_url: url };
+      var resp = await zkFetch('/api/me/avatar', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_id: avatarId }),
+        signal: options.signal
+      });
+      if (!resp.ok) {
+        var err = new Error('avatar PUT failed: ' + resp.status);
+        err.status = resp.status;
+        throw err;
       }
+      return await resp.json().catch(function () { return { avatar_url: url }; });
     },
 
     /** PR2: called by a page when an anon visitor signs in mid-session
