@@ -84,6 +84,28 @@
     window.alert(msg);
   }
 
+  // Show the quota modal for a quota error, else fall back to showError.
+  function handleAddError(submitBtn, originalLabel, err, retry) {
+    var qd = (window.ZKQuotaGate && window.ZKQuotaGate.extractQuotaDetail)
+      ? window.ZKQuotaGate.extractQuotaDetail(err) : null;
+    if (qd && window.ZKQuotaGate) {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalLabel; }
+      window.ZKQuotaGate.show({ detail: qd, source: 'mobile:add', onResume: retry });
+      return;
+    }
+    showError(submitBtn, originalLabel, err);
+  }
+
+  // Returns true if the caller should proceed (sufficient/unknown/fail-open),
+  // false if blocked (modal shown). Re-enables the button on block.
+  async function quotaProceed(submitBtn, originalLabel) {
+    if (!(window.ZKQuotaGate && typeof window.ZKQuotaGate.precheck === 'function')) return true;
+    var token = await getAuthToken();
+    var ok = await window.ZKQuotaGate.precheck({ feature: 'zettel', token: token, source: 'mobile:add' });
+    if (!ok && submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalLabel; }
+    return ok;
+  }
+
   function attach() {
     var form = document.getElementById('summarize-form');
     var picker = document.getElementById('source-picker-btn');
@@ -120,6 +142,7 @@
           if (!window.ZKAddZettel || typeof window.ZKAddZettel.uploadDocument !== 'function') {
             throw new Error('ZKAddZettel helper not loaded');
           }
+          if (!(await quotaProceed(submitBtn, originalLabel))) { fileInput.value = ''; return; }
           var token = await getAuthToken();
           var data = await window.ZKAddZettel.uploadDocument({
             file: file,
@@ -130,7 +153,7 @@
           });
           redirectAfterSuccess(data);
         } catch (err) {
-          showError(submitBtn, originalLabel, err);
+          handleAddError(submitBtn, originalLabel, err, function () { fileInput.dispatchEvent(new Event('change')); });
           fileInput.value = '';
         }
       });
@@ -150,6 +173,7 @@
         if (!window.ZKAddZettel || typeof window.ZKAddZettel.add !== 'function') {
           throw new Error('ZKAddZettel helper not loaded');
         }
+        if (!(await quotaProceed(submitBtn, originalLabel))) return;
         var token = await getAuthToken();
         var data = await window.ZKAddZettel.add({
           url: url,
@@ -160,7 +184,7 @@
         });
         redirectAfterSuccess(data);
       } catch (err) {
-        showError(submitBtn, originalLabel, err);
+        handleAddError(submitBtn, originalLabel, err, function () { form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true })); });
       }
     });
   }
