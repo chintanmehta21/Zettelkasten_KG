@@ -8,8 +8,10 @@ callers do not need to duplicate guard logic at every site.
 """
 from __future__ import annotations
 
+import logging
+import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Awaitable, Callable
 from urllib.parse import urlparse
 
 from website.features.summarization_engine.core.models import SourceType
@@ -22,11 +24,12 @@ from website.features.summarization_engine.summarization.youtube.format_classifi
     classify_format,
 )
 
+logger = logging.getLogger(__name__)
+
 _DOMAIN_RULES: list[tuple[tuple[str, ...], SourceType]] = [
     (("github.com",), SourceType.GITHUB),
     (("news.ycombinator.com",), SourceType.HACKERNEWS),
     (("arxiv.org", "ar5iv.labs.arxiv.org"), SourceType.ARXIV),
-    (("reddit.com", "redd.it"), SourceType.REDDIT),
     (("youtube.com", "youtu.be"), SourceType.YOUTUBE),
     (("linkedin.com",), SourceType.LINKEDIN),
     (("twitter.com", "x.com"), SourceType.TWITTER),
@@ -84,6 +87,58 @@ def _strip_known_mobile_prefix(host: str) -> str:
 def _looks_like_newsletter_post(path: str) -> bool:
     normalized = (path or "").rstrip("/")
     return normalized == "/p" or normalized.startswith("/p/")
+
+
+def _reddit_route(host: str, path: str) -> RouteDecision:
+    """Route a Reddit URL by path shape.
+
+    Only single-submission permalinks are supported for ingestion. Listings,
+    wikis, user pages, multireddits, and bare comment permalinks return
+    ``supported=False`` so the orchestrator refuses them at the gate instead of
+    fetching a listing and persisting an empty/garbage zettel (the old generic
+    route accepted every Reddit path and silently polluted the corpus).
+    """
+
+    def _unsupported(subtype: str) -> RouteDecision:
+        return RouteDecision(
+            SourceType.REDDIT, subtype, False, "unsupported_reddit_url_shape"
+        )
+
+    # redd.it short links always resolve to one submission (e.g. redd.it/abc123).
+    if host == "redd.it" or host.endswith(".redd.it"):
+        slug = path.strip("/")
+        if slug and "/" not in slug:
+            return RouteDecision(SourceType.REDDIT, "post_shortlink")
+        return _unsupported("unknown")
+
+    parts = [p for p in path.split("/") if p]
+
+    # /user/<name>[/m/<multi>]  or  /u/<name>...
+    if parts and parts[0] in {"user", "u"}:
+        if len(parts) >= 4 and parts[2] == "m":
+            return _unsupported("multireddit")
+        return _unsupported("user_profile")
+
+    # /comments/<id> — subreddit-less submission permalink.
+    if parts and parts[0] == "comments":
+        if len(parts) >= 2:
+            return RouteDecision(SourceType.REDDIT, "post")
+        return _unsupported("unknown")
+
+    # /r/<sub>/...
+    if len(parts) >= 2 and parts[0] == "r":
+        if len(parts) >= 3 and parts[2] == "wiki":
+            return _unsupported("wiki")
+        if len(parts) >= 4 and parts[2] == "comments":
+            # /r/<sub>/comments/<id>/<slug>/<commentid> => 6+ segments = a single
+            # comment, whose JSON shape is not a thread; refuse it.
+            if len(parts) >= 6:
+                return _unsupported("comment_permalink")
+            return RouteDecision(SourceType.REDDIT, "post")
+        # /r/<sub>[/<sort>] and any other non-thread subreddit page.
+        return _unsupported("subreddit_listing")
+
+    return _unsupported("unknown")
 
 
 def detect_source_type(url: str) -> SourceType:
@@ -200,6 +255,14 @@ def detect_route_decision(url: str) -> RouteDecision:
             None if "/status/" in path else "unsupported_twitter_url_shape",
         )
 
+    if (
+        host == "reddit.com"
+        or host.endswith(".reddit.com")
+        or host == "redd.it"
+        or host.endswith(".redd.it")
+    ):
+        return _reddit_route(host, path)
+
     for domains, source_type in _DOMAIN_RULES:
         for domain in domains:
             if host == domain or host.endswith("." + domain):
@@ -217,6 +280,85 @@ def detect_route_decision(url: str) -> RouteDecision:
                 return RouteDecision(SourceType.NEWSLETTER, "post")
 
     return RouteDecision(SourceType.WEB, "page")
+
+
+# Newsletter-probe signal matchers. Precision-first: we only upgrade WEB ->
+# NEWSLETTER on signals that distinguish a blog/newsletter from a news site.
+# Bare RSS autodiscovery and the WordPress generator are intentionally NOT
+# triggers — news sites (CNN/BBC/NYT) expose RSS and run WordPress too, and a
+# schema.org NewsArticle is not a newsletter.
+_PROBE_HEAD_BYTES = 16384
+_PROBE_TIMEOUT_SEC = 4.0
+_GENERATOR_META_RE = re.compile(r"<meta\b[^>]*\bname=[\"']?generator[\"']?[^>]*>", re.IGNORECASE)
+_NEWSLETTER_PLATFORM_RE = re.compile(
+    r"\b(substack|ghost|beehiiv|buttondown|jekyll|hugo)\b", re.IGNORECASE
+)
+_BLOGPOSTING_JSONLD_RE = re.compile(
+    r'"@type"\s*:\s*(?:"BlogPosting"|\[[^\]]*"BlogPosting")', re.IGNORECASE
+)
+
+
+def _newsletter_signal(html: str) -> str | None:
+    """Return a reason string if the HTML head carries a high-precision
+    newsletter/blog signal, else None. Only the first ``_PROBE_HEAD_BYTES`` are
+    inspected so a huge body cannot blow up RAM or CPU."""
+    if not html:
+        return None
+    head = html[:_PROBE_HEAD_BYTES]
+    if _BLOGPOSTING_JSONLD_RE.search(head):
+        return "probe_blogposting"
+    for meta_tag in _GENERATOR_META_RE.findall(head):
+        if _NEWSLETTER_PLATFORM_RE.search(meta_tag):
+            return "probe_generator"
+    return None
+
+
+async def _default_probe_fetcher(url: str) -> str:
+    """Bounded, SSRF-guarded HEAD-region fetch for the newsletter probe.
+
+    Reuses the ingest layer's ``fetch_text`` (which routes through
+    ``safe_request`` — the same private-IP/redirect guard the ingestors use).
+    Lazy-imported to avoid a load-time circular import (utils imports models).
+    """
+    from website.features.summarization_engine.source_ingest.utils import fetch_text
+
+    text, _final_url = await fetch_text(
+        url,
+        headers={
+            "Range": f"bytes=0-{_PROBE_HEAD_BYTES}",
+            "User-Agent": "ZettelkastenBot/1.0 (+newsletter-probe)",
+        },
+        timeout=_PROBE_TIMEOUT_SEC,
+    )
+    return text or ""
+
+
+async def refine_web_route(
+    url: str,
+    decision: RouteDecision,
+    *,
+    fetcher: Callable[[str], Awaitable[str]] | None = None,
+) -> RouteDecision:
+    """Probe a generic-WEB URL for newsletter signals and upgrade if found.
+
+    No-op for any non-WEB decision (the sync router already classified it). On
+    a WEB decision, fetch the head region and look for a BlogPosting JSON-LD or
+    a newsletter-platform ``generator`` meta. Any fetch/parse failure leaves the
+    decision as WEB — the probe can never break ingestion, only enrich it.
+    """
+    if decision.source_type != SourceType.WEB:
+        return decision
+    fetch = fetcher or _default_probe_fetcher
+    try:
+        html = await fetch(url)
+    except Exception:
+        logger.warning("router.web_probe_fetch_failed url=%s", url, exc_info=True)
+        return decision
+    signal = _newsletter_signal(html or "")
+    if signal:
+        logger.info("router.web_probe_upgrade url=%s signal=%s", url, signal)
+        return RouteDecision(SourceType.NEWSLETTER, "post", True, signal)
+    return decision
 
 
 def query_param_from_parsed(query: str, key: str) -> str | None:
