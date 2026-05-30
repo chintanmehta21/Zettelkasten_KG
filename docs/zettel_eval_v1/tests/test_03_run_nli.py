@@ -56,6 +56,28 @@ def _teardown_sandbox_iter():
         shutil.rmtree(d, ignore_errors=True)
 
 
+def _set_judge_contradiction(sandbox_overall: Path, *, contradicted: bool) -> None:
+    """Force the judge half of the LOOSE AND-gate on every sandbox per_zettel
+    JSON. With ``contradicted=True`` we inject one ``summac_lite.contradicted_sentence``
+    so the AND-gate can fire; with ``False`` we clear it so the gate must
+    suppress an NLI-only flag. Mirrors into the per-source copy too so the
+    script's in-place rewrite stays consistent."""
+    for f in sandbox_overall.glob("*.json"):
+        p = json.loads(f.read_text(encoding="utf-8"))
+        summac = p.get("summac_lite")
+        if not isinstance(summac, dict):
+            summac = {}
+            p["summac_lite"] = summac
+        summac["contradicted_sentences"] = (
+            ["A fabricated sentence the judge flagged."] if contradicted else []
+        )
+        f.write_text(json.dumps(p, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        # mirror into web/ per-source copy (same wz filename)
+        web = RUNS / _TEST_ITER / "web" / "per_zettel" / f.name
+        if web.exists():
+            web.write_text(json.dumps(p, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def test_extends_per_zettel_with_nli_fields():
     """After --fake-nli on the sandbox iter, per_zettel JSON gains nli fields."""
     try:
@@ -77,16 +99,88 @@ def test_extends_per_zettel_with_nli_fields():
         _teardown_sandbox_iter()
 
 
-def test_hard_fail_gate_recorded():
-    """If any claim's contradict prob > 0.7, hard_fail_flagged is True."""
+def test_route_verdict_unit():
+    """OR-with-review routing (route_verdict) — pure-function truth table.
+    Adopted 2026-05-30, replacing the strict/LOOSE AND-gate."""
+    m = _reload_module()
+    assert m.route_verdict(True, 3) == ("hard_fail", "")       # both fire
+    assert m.route_verdict(True, 0) == ("review", "nli_only")  # NLI only
+    assert m.route_verdict(False, 5) == ("review", "judge_only")  # judge only
+    assert m.route_verdict(False, 0) == ("clean", "")          # neither
+
+
+def test_route_hard_fail_when_both_fire():
+    """NLI contradict >= 0.7 AND >=1 judge contradicted_sentence -> route='hard_fail'."""
     try:
-        _setup_sandbox_iter()
+        dst_overall = _setup_sandbox_iter()
+        _set_judge_contradiction(dst_overall, contradicted=True)  # judge fires
         res = _run("--iter", _TEST_ITER, "--fake-nli", "--fake-entail-prob", "0.05",
-                   "--fake-contradict-prob", "0.85", "--force-refresh")
+                   "--fake-contradict-prob", "0.85", "--force-refresh")  # NLI fires
         assert res.returncode == 0, f"03 failed: {res.stderr}"
         f = next((RUNS / _TEST_ITER / "_overall" / "per_zettel").glob("*.json"))
         p = json.loads(f.read_text(encoding="utf-8"))
-        assert p["nli"]["hard_fail_flagged"] is True
+        assert p["nli"]["nli_threshold_flag"] is True
+        assert p["nli"]["judge_contradicted_count"] >= 1
+        assert p["nli"]["route"] == "hard_fail"
+        assert p["nli"]["hard_fail_flagged"] is True  # back-compat == (route=hard_fail)
+    finally:
+        _teardown_sandbox_iter()
+
+
+def test_nli_only_routes_to_review():
+    """NLI fires (0.85) but judge flagged nothing -> route='review'/nli_only,
+    NOT hard_fail. Under OR-with-review the NLI catch is NOT silently dropped
+    (old AND-gate cleared it); it goes to the human queue instead."""
+    try:
+        dst_overall = _setup_sandbox_iter()
+        _set_judge_contradiction(dst_overall, contradicted=False)  # judge clean
+        res = _run("--iter", _TEST_ITER, "--fake-nli", "--fake-entail-prob", "0.05",
+                   "--fake-contradict-prob", "0.85", "--force-refresh")  # NLI fires
+        assert res.returncode == 0, f"03 failed: {res.stderr}"
+        f = next((RUNS / _TEST_ITER / "_overall" / "per_zettel").glob("*.json"))
+        p = json.loads(f.read_text(encoding="utf-8"))
+        assert p["nli"]["nli_threshold_flag"] is True
+        assert p["nli"]["judge_contradicted_count"] == 0
+        assert p["nli"]["route"] == "review"
+        assert p["nli"]["review_reason"] == "nli_only"
+        assert p["nli"]["hard_fail_flagged"] is False
+    finally:
+        _teardown_sandbox_iter()
+
+
+def test_judge_only_routes_to_review():
+    """Judge flagged but NLI is BELOW threshold (0.05 < 0.7) -> route='review'/
+    judge_only. THIS is the wz=1c0af8ec fix: the old AND-gate CLEARED a real
+    hallucination here (NLI just under threshold); OR-with-review catches it."""
+    try:
+        dst_overall = _setup_sandbox_iter()
+        _set_judge_contradiction(dst_overall, contradicted=True)  # judge fires
+        res = _run("--iter", _TEST_ITER, "--fake-nli", "--fake-entail-prob", "0.95",
+                   "--fake-contradict-prob", "0.05", "--force-refresh")  # NLI below T
+        assert res.returncode == 0, f"03 failed: {res.stderr}"
+        f = next((RUNS / _TEST_ITER / "_overall" / "per_zettel").glob("*.json"))
+        p = json.loads(f.read_text(encoding="utf-8"))
+        assert p["nli"]["nli_threshold_flag"] is False
+        assert p["nli"]["judge_contradicted_count"] >= 1
+        assert p["nli"]["route"] == "review"
+        assert p["nli"]["review_reason"] == "judge_only"
+        assert p["nli"]["hard_fail_flagged"] is False
+    finally:
+        _teardown_sandbox_iter()
+
+
+def test_neither_routes_to_clean():
+    """NLI below threshold AND judge clean -> route='clean'."""
+    try:
+        dst_overall = _setup_sandbox_iter()
+        _set_judge_contradiction(dst_overall, contradicted=False)  # judge clean
+        res = _run("--iter", _TEST_ITER, "--fake-nli", "--fake-entail-prob", "0.95",
+                   "--fake-contradict-prob", "0.05", "--force-refresh")  # NLI below T
+        assert res.returncode == 0, f"03 failed: {res.stderr}"
+        f = next((RUNS / _TEST_ITER / "_overall" / "per_zettel").glob("*.json"))
+        p = json.loads(f.read_text(encoding="utf-8"))
+        assert p["nli"]["route"] == "clean"
+        assert p["nli"]["hard_fail_flagged"] is False
     finally:
         _teardown_sandbox_iter()
 
@@ -197,6 +291,65 @@ def test_hf_token_loader_strips_surrounding_quotes(tmp_path, _clean_hf_env):
     nef = _write_new_envs(tmp_path, 'HF_READ_TOKEN : "hf_quotedValue123"\n')
     m = _reload_module()
     assert m._load_hf_token_from_new_envs(candidates=[nef]) == "hf_quotedValue123"
+
+
+# ---------------------------------------------------------------------------
+# _extract_claims tier selection (atomic_facts cache vs regex) — added 2026-05-30
+# This is the iter-003 false-positive root-cause fix: prefer clean cached
+# atomic_facts (FActScore/RAGAS/FineSurE standard) over noisy regex split.
+# ---------------------------------------------------------------------------
+
+
+def test_extract_claims_prefers_atomic_facts_cache(tmp_path, monkeypatch):
+    """Tier 1: when an atomic_facts cache entry exists for the zettel's
+    (url, source_type, PROMPT_VERSION) key, _extract_claims returns those
+    clean propositions tagged 'atomic_facts' — NOT the noisy regex split."""
+    from website.features.summarization_engine.core.cache import FsContentCache
+    from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION
+
+    m = _reload_module()
+    # Redirect module cache root to an isolated tmp dir — never touch real _cache.
+    monkeypatch.setattr(m, "CACHE", tmp_path)
+
+    url = "https://example.com/article"
+    source_type = "web"
+    FsContentCache(root=tmp_path, namespace="atomic_facts").put(
+        (url, source_type, PROMPT_VERSION),
+        {"facts": [
+            {"claim": "Alpha is a clean atomic proposition.", "importance": 5},
+            {"claim": "Beta is another grounded fact.", "importance": 4},
+        ]},
+    )
+    meta_json = {"normalized_url": url, "source_type": source_type}
+    # Deliberately noisy summary the regex path would shred into fragments:
+    summary_json = {"detailed_summary": "## Header\n- 1.\nis."}
+    claims, provenance = m._extract_claims({}, summary_json, meta_json)
+    assert provenance == "atomic_facts"
+    assert claims == [
+        "Alpha is a clean atomic proposition.",
+        "Beta is another grounded fact.",
+    ]
+
+
+def test_extract_claims_falls_back_to_regex_on_cache_miss(tmp_path, monkeypatch):
+    """Tier 2: no atomic_facts cache entry -> regex sentence-split fallback,
+    tagged 'regex_fallback'. Preserves legacy behavior for cache misses."""
+    m = _reload_module()
+    monkeypatch.setattr(m, "CACHE", tmp_path)  # empty cache dir
+    meta_json = {"normalized_url": "https://no-cache.example", "source_type": "web"}
+    summary_json = {"detailed_summary": "First sentence. Second sentence."}
+    claims, provenance = m._extract_claims({}, summary_json, meta_json)
+    assert provenance == "regex_fallback"
+    assert claims == ["First sentence.", "Second sentence."]
+
+
+def test_extract_claims_regex_when_no_meta(tmp_path, monkeypatch):
+    """No meta_json -> cannot derive cache key -> regex fallback (no crash)."""
+    m = _reload_module()
+    monkeypatch.setattr(m, "CACHE", tmp_path)
+    claims, provenance = m._extract_claims({}, {"detailed_summary": "Only one."}, None)
+    assert provenance == "regex_fallback"
+    assert claims == ["Only one."]
 
 
 def test_hf_token_loader_first_existing_file_wins(tmp_path, _clean_hf_env):
