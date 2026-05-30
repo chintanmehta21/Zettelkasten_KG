@@ -4,7 +4,7 @@
  *   • Identity hero (avatar + name + email + joined + UUID copy)
  *   • 26-week zettel-creation heatmap (client-side aggregation of /api/zettels)
  *   • 4 stat cards (Zettels / Kastens / Knowledge graph / Plan)
- *   • Avatar picker (60-icon SVG radio grid, persisted via ZKHeader.setAvatarById)
+ *   • Avatar picker (100-icon SVG radio grid, persisted via ZKHeader.setAvatarById)
  *   • Trash recovery (Restore + Delete forever, 2-click confirm muscle-memory match)
  *   • Danger zone (Sign out; Delete account stays disabled until backend wires up)
  *
@@ -26,7 +26,7 @@
 
   var zkFetch = window.zkFetch || window.fetch;
 
-  const AVATAR_COUNT = 60;
+  const AVATAR_COUNT = 100;
   const HEATMAP_WEEKS = 26;
 
   // Localhost preview bypass: when running on localhost without a Supabase

@@ -251,8 +251,8 @@ class AvatarUpdateRequest(BaseModel):
     @field_validator("avatar_id")
     @classmethod
     def validate_avatar_id(cls, v: int) -> int:
-        if not (0 <= v <= 59):
-            raise ValueError("avatar_id must be between 0 and 59")
+        if not (0 <= v <= 99):
+            raise ValueError("avatar_id must be between 0 and 99")
         return v
 
 
@@ -488,7 +488,7 @@ async def update_avatar(
 
     Phase 8.5.R3 v2 port: writes to ``core.profiles.avatar_url`` via the
     authenticated profile id (resolved from JWT ``sub``). The product surface
-    is a preset-picker (avatar_id ∈ [0, 59]) mapping to pre-built SVG assets
+    is a preset-picker (avatar_id ∈ [0, 99]) mapping to pre-built SVG assets
     under ``/artifacts/avatars/``. No file upload, no Pillow re-encode — the
     R-B research's full upload pipeline is overkill for this product shape.
 
