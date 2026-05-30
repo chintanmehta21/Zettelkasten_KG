@@ -264,8 +264,8 @@ def _render_with_mobile_shell(
         oauth_modal
         + '\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106" crossorigin></script>'
         + '\n<script src="/auth/js/auth-core.js?v=20260527a"></script>'
-        + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
-        + '\n<script src="/m/js/avatar.js?v=20260525a"></script>'
+        + '\n<script src="/m/js/auth-modal.js?v=20260530a"></script>'
+        + '\n<script src="/m/js/avatar.js?v=20260530a"></script>'
     )
     # Mobile pages use a full shell instead of the desktop footer placeholder,
     # so feature footer hooks are inserted directly before the shell closes.
