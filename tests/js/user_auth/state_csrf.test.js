@@ -1,19 +1,22 @@
 /**
  * UA-04: OAuth state CSRF mismatch regression lock.
  *
- * The codebase delegates OAuth state validation to the Supabase JS SDK
- * (`auth.exchangeCodeForSession` performs PKCE/state checks internally
- * and rejects state mismatches with an error). Our regression invariant:
+ * The codebase delegates OAuth state/PKCE validation to the Supabase JS SDK.
+ * As of commit 924d9415 ("drop redundant PKCE exchange on callback page") the
+ * callback does NOT call exchangeCodeForSession — a second explicit exchange
+ * would burn the single-use PKCE code_verifier. Instead the SDK auto-exchanges
+ * the `?code=` inside `initialize()` (driven by `detectSessionInUrl: true` +
+ * `flowType: 'pkce'`); the PKCE code_verifier is the anti-CSRF binding,
+ * validated inside the SDK. Our regression invariants:
  *
- *   1. callback.html MUST call `exchangeCodeForSession(window.location.href)`
- *      (NOT a hand-rolled hash parser that could skip state validation).
- *   2. callback.html MUST surface SDK errors to the user — i.e. show the
- *      error block, stop the spinner, and avoid redirecting on failure.
+ *   1. callback.html MUST drive the SDK's state-validated exchange
+ *      (`detectSessionInUrl: true` + `flowType: 'pkce'` + `sb.auth.initialize()`),
+ *      and MUST NOT hand-roll a hash parser (or re-add exchangeCodeForSession).
+ *   2. callback.html MUST surface SDK exchange errors to the user — throw on
+ *      `initResult.error`, show the error block, stop the spinner, and avoid
+ *      redirecting on failure.
  *   3. auth-core.js MUST configure `detectSessionInUrl: true` so the SDK
- *      enforces state on session restore. (Pre-extraction this lived in
- *      auth.js; createSupabaseClient was moved into auth-core.js so the
- *      mobile shell can construct the client without the desktop DOM
- *      wiring — the SDK config moves with it.)
+ *      enforces state on session restore.
  *
  * If any of these invariants flips, this test fails and forces a manual
  * review before a CSRF-bypass regression ships.
@@ -32,8 +35,16 @@ const AUTH_CORE_JS = readFileSync(
 );
 
 describe('UA-04 OAuth state CSRF — SDK delegation invariants', () => {
-  it('callback.html uses exchangeCodeForSession (SDK state check)', () => {
-    expect(CALLBACK_HTML).toMatch(/exchangeCodeForSession\s*\(/);
+  it('callback.html drives the SDK state-validated exchange (detectSessionInUrl + pkce + initialize)', () => {
+    // exchangeCodeForSession was intentionally removed (commit 924d9415): a
+    // second explicit exchange burns the single-use PKCE verifier. The SDK
+    // auto-exchanges via initialize() under detectSessionInUrl + pkce; the PKCE
+    // code_verifier is the anti-CSRF binding, validated inside the SDK.
+    expect(CALLBACK_HTML).toMatch(/detectSessionInUrl\s*:\s*true/);
+    expect(CALLBACK_HTML).toMatch(/flowType\s*:\s*['"]pkce['"]/);
+    expect(CALLBACK_HTML).toMatch(/sb\.auth\.initialize\s*\(/);
+    // Must NOT re-introduce the redundant explicit exchange call.
+    expect(CALLBACK_HTML).not.toMatch(/exchangeCodeForSession\s*\(/);
   });
 
   it('callback.html does NOT hand-roll a hash parser around access_token', () => {
@@ -48,7 +59,10 @@ describe('UA-04 OAuth state CSRF — SDK delegation invariants', () => {
     // before throwing, so an attacker forging a state cannot land on /home.
     expect(CALLBACK_HTML).toMatch(/spinnerEl\.style\.display\s*=\s*['"]none/);
     expect(CALLBACK_HTML).toMatch(/errorEl\.style\.display\s*=\s*['"]block/);
-    expect(CALLBACK_HTML).toMatch(/if\s*\(\s*result\.error\s*\)\s*throw\s+result\.error/);
+    // The SDK exchange error (from initialize()) must be thrown, not swallowed,
+    // so the catch surfaces it instead of silently redirecting to /home.
+    expect(CALLBACK_HTML).toMatch(/if\s*\(\s*initResult\s*&&\s*initResult\.error\s*\)/);
+    expect(CALLBACK_HTML).toMatch(/throw new Error\('OAuth exchange failed/);
   });
 
   it('auth-core.js enables detectSessionInUrl so SDK enforces state on restore', () => {
