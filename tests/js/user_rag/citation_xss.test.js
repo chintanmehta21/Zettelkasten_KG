@@ -125,6 +125,12 @@ describe('UR-04 citation XSS — buildCitations must use textContent, not innerH
     const body = document.createElement('div');
     body.className = 'rag-message-body';
     article.appendChild(body);
+    // The real assistant node (createMessageNode) always includes a meta div;
+    // the `done` handler clears its textContent (no_infra_leak contract). Build
+    // the full fixture so the SSE path exercises the real render, not an NPE.
+    const meta = document.createElement('div');
+    meta.className = 'rag-message-meta';
+    article.appendChild(meta);
     document.body.appendChild(article);
 
     const encoder = new TextEncoder();
