@@ -99,11 +99,17 @@
       avatar.classList.add('is-authed');
       avatar.setAttribute('aria-label', 'Open account menu');
       if (imgEl) {
-        const avatarUrl = session.user?.user_metadata?.avatar_url;
-        if (avatarUrl) {
-          imgEl.innerHTML = `<img src="${escHtml(avatarUrl)}" alt="avatar" loading="lazy">`;
-          imgEl.classList.remove('initials');
+        imgEl.hidden = false;
+        if (window.ZK && typeof window.ZK.renderAvatar === 'function') {
+          // Shared renderer (avatar.js): curated /api/me avatar, random-assigned
+          // + persisted when unset — identical to desktop. Replaces the old
+          // user_metadata-or-initials path, which showed bare initials for the
+          // common case where the avatar lives in the profile (not Supabase
+          // user_metadata), e.g. email/password users — the "avatar not loading"
+          // report.
+          window.ZK.renderAvatar(imgEl, { size: 28 });
         } else {
+          // Boot-race fallback: avatar.js not yet loaded → show initials.
           const initial = (
             session.user?.user_metadata?.full_name ||
             session.user?.user_metadata?.name ||
@@ -116,7 +122,7 @@
     } else {
       avatar.classList.remove('is-authed');
       avatar.setAttribute('aria-label', 'Sign in or open account menu');
-      if (imgEl) { imgEl.innerHTML = ''; imgEl.classList.remove('initials'); }
+      if (imgEl) { imgEl.innerHTML = ''; imgEl.classList.remove('initials'); imgEl.hidden = true; }
     }
   }
 
