@@ -51,4 +51,10 @@ describe('ZKAddZettel._normalizeFailure', () => {
     const n = api._normalizeFailure({ status: 'failed' });
     expect(n.message).toBe('Summary failed.');
   });
+
+  it('handles a bare envelope with no error wrapper (problem = next)', () => {
+    const n = api._normalizeFailure({ status: 'failed', detail: 'Service unavailable.', code: 'unavailable' });
+    expect(n.message).toBe('Service unavailable.');
+    expect(n.detail.code).toBe('unavailable');
+  });
 });
