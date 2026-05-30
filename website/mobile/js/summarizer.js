@@ -49,8 +49,27 @@
   }
 
   function redirectAfterSuccess(data) {
-    try { sessionStorage.setItem('zk_just_captured', JSON.stringify(data || {})); } catch (e) { void e; }
-    var id = (data && (data.id || data.zettel_id || data.canonical_zettel_id)) || '';
+    var d = data || {};
+    var s = d.summary || {};
+    // AddZettel response carries the id as workspace_zettel_id (Supabase) or
+    // node_id (file store) — NOT id/zettel_id. Without one, /m/zettels has no
+    // ?just_captured param and an anon user gets bounced to /m/profile.
+    var id = d.workspace_zettel_id || d.node_id || d.id || d.zettel_id || d.canonical_zettel_id || '';
+    // Flatten into the shape /m/zettels' normalizeZettel reads (title/summary/
+    // source live under data.summary), so the just-captured card renders from
+    // this cache — anon has no token to re-fetch it from the API.
+    var stash = {
+      id: id,
+      title: s.title || '',
+      title_ready: !!s.title,
+      brief_summary: s.brief_summary || s.one_line_summary || '',
+      detailed_summary: s.detailed_summary || s.summary || '',
+      tags: Array.isArray(s.tags) ? s.tags : [],
+      source_type: s.source_type || '',
+      source_url: s.source_url || '',
+      added_at: new Date().toISOString(),
+    };
+    try { sessionStorage.setItem('zk_just_captured', JSON.stringify(stash)); } catch (e) { void e; }
     var url = '/m/zettels' + (id ? '?just_captured=' + encodeURIComponent(id) : '');
     window.location.assign(url);
   }
