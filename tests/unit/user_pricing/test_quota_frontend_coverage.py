@@ -34,7 +34,11 @@ def test_metered_frontend_callers_handle_quota_exhausted() -> None:
 
     for path, markers in expected.items():
         js = Path(path).read_text(encoding="utf-8")
-        assert "quota_exhausted" in js, path
+        # A metered caller detects quota exhaustion either via the inline
+        # `code === 'quota_exhausted'` check OR via the centralized
+        # ZKQuotaGate.extractQuotaDetail recognizer (PR #128 moved the literal
+        # into quota_gate.js for the home / my-zettels add surfaces).
+        assert ("quota_exhausted" in js) or ("extractQuotaDetail" in js), path
         assert "ZKQuotaGate" in js, path
         assert "resumeAction" in js, path
         for marker in markers:
