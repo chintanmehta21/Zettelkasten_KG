@@ -28,6 +28,13 @@ jobs:
   check-v2-manifest-fresh:
     name: Verify _v2 expected_schema.json matches prod
     runs-on: ubuntu-latest
+    # 2026-05-30: scoped to the production Environment so the job reads the
+    # fresh env-scoped SUPABASE_DB_URL. The repo-level secret is stale (points
+    # at a dead ap-southeast-1 project ref), which made this check fail with
+    # "tenant/user not found" — a connection error, not real drift. Prod env
+    # has only a branch_policy (no required-reviewer gate), so the nightly
+    # cron still runs unattended.
+    environment: production
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
