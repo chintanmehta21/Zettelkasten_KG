@@ -199,6 +199,15 @@
 
     emit(eventName, session);
 
+    if (eventName === 'SIGNED_IN') {
+      // Item 6: claim any anonymous (Zoro) zettels created in THIS browser
+      // session into the just-signed-in user's workspace. Only on a real
+      // SIGNED_IN (never RESTORE/INITIAL_SESSION/TOKEN_REFRESHED). Idempotent
+      // server-side (first-claim-wins); fire-and-forget + keepalive so it
+      // survives the landing redirect below.
+      claimAnonSession(session);
+    }
+
     if (eventName === 'SIGNED_IN' && isLandingPage()) {
       sessionStorage.setItem('zk-auth-redirect', String(Date.now()));
       sessionStorage.removeItem('zk-home-redirect');
@@ -210,6 +219,35 @@
       // need the bounce if the user is just visiting / while signed in.
       maybeRedirectAuthenticated(session);
     }
+  }
+
+  // Item 6 — anon→user zettel claim. POSTs the claim endpoint once per tab on
+  // sign-in; the HttpOnly zk_anon_sid cookie (sent via credentials:'include')
+  // identifies the anon browser-session server-side. Best-effort; broadcasts to
+  // sibling tabs so an open /m/zettels can refresh.
+  function claimAnonSession(session) {
+    try {
+      if (sessionStorage.getItem('zk-anon-claimed') === '1') return;
+      sessionStorage.setItem('zk-anon-claimed', '1');
+    } catch (e) { void e; }
+    var token = session && session.access_token;
+    if (!token) return;
+    try {
+      fetch('/api/zettels/claim-anon-session', {
+        method: 'POST',
+        credentials: 'include',
+        keepalive: true,
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+        .then(function (r) { return r && r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (data && data.claimed > 0 && typeof BroadcastChannel === 'function') {
+            try { new BroadcastChannel('zk-auth').postMessage({ type: 'anon-claimed', claimed: data.claimed }); } catch (e) { void e; }
+          }
+        })
+        .catch(function () { /* best-effort */ });
+    } catch (e) { void e; }
   }
 
   async function init() {
