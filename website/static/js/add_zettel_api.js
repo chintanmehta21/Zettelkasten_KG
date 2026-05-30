@@ -13,6 +13,21 @@
     return body.detail || body.title || body.message || fallback;
   }
 
+  // Normalize a terminal failed-op envelope ({status:'failed', error:<RFC9457
+  // problem>, ...}) into the SAME shape a sync 4xx rejection produces, so one
+  // consumer catch works for both paths. Inner object `detail` (quota) is
+  // surfaced directly; a string `detail` keeps the problem object (no false
+  // quota match). Title becomes the user-facing message.
+  function _normalizeFailure(next) {
+    var problem = (next && typeof next.error === 'object' && next.error) ? next.error : next;
+    var inner = (problem && typeof problem.detail === 'object' && problem.detail) ? problem.detail : null;
+    return {
+      message: (problem && problem.title) || cleanProblemDetail(next, 'Summary failed.'),
+      detail: inner || problem || next,
+      problem: problem,
+    };
+  }
+
   async function parseResponse(response) {
     var contentType = (response.headers.get('content-type') || '').toLowerCase();
     if (contentType.indexOf('application/json') !== -1 || contentType.indexOf('application/problem+json') !== -1) {
@@ -95,10 +110,11 @@
         // add failure) so each consumer's existing catch surfaces it instead
         // of building an "Untitled" card from a failed envelope.summary.
         if (next.status === 'failed') {
-          var failErr = new Error(cleanProblemDetail(next, 'Summary failed.'));
+          var n = _normalizeFailure(next);
+          var failErr = new Error(n.message);
           failErr.status = 200;
-          failErr.detail = next.detail || next.error || next;
-          failErr.problem = next;
+          failErr.detail = n.detail;
+          failErr.problem = n.problem;
           throw failErr;
         }
         if (onStatus) {
@@ -230,6 +246,7 @@
     uploadDocument: uploadDocument,
     makeActionId: makeActionId,
     continueInBackground: continueInBackground,
-    _parseResponse: parseResponse
+    _parseResponse: parseResponse,
+    _normalizeFailure: _normalizeFailure
   };
 })();
