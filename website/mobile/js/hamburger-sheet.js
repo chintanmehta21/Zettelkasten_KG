@@ -38,7 +38,11 @@
     spec.options.forEach((opt) => {
       const cell = document.createElement('button');
       cell.type = 'button';
-      cell.className = 'zk-sheet-cell' + (opt.selected ? ' is-selected' : '');
+      // Per-value modifier (sanitised) lets callers theme cells via CSS — e.g.
+      // source-type accent colours on the capture sheet (see hamburger-sheet.css).
+      const valueMod = String(opt.value || '').replace(/[^a-z0-9_-]/gi, '');
+      cell.className = 'zk-sheet-cell' + (opt.selected ? ' is-selected' : '') +
+        (valueMod ? ' zk-sheet-cell--' + valueMod : '');
       cell.dataset.value = opt.value;
       cell.innerHTML = (opt.icon || '') + '<span class="zk-sheet-cell-label">' + opt.label + '</span>';
       cell.addEventListener('click', () => {
