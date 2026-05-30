@@ -46,6 +46,11 @@ from website.features.summarization_engine.core.errors import (
 )
 from website.features.summarization_engine.post_summary_transformation import registry as _pst
 from website.features.summarization_engine.source_ingest.document import DocumentUploadError
+# require_entitlement is the REAL atomic reserve-and-consume gate (Phase 9).
+# The claim loop (claim_anon_session) calls it per claimed zettel; it is also
+# the gate the add path uses. Imported at module level so tests can patch
+# `website.api.zettels_routes.require_entitlement` directly.
+from website.features.user_pricing.entitlements import require_entitlement
 
 logger = logging.getLogger("website.api.zettels")
 router = APIRouter(prefix="/api")
@@ -57,6 +62,16 @@ _ZORO_USER_ID: UUID | None = None
 _RATE_STORE: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10
 _RATE_WINDOW_SECONDS = 60
+
+# Item 6 — anon → user zettel claim. The /claim-anon-session endpoint is far
+# more sensitive than /add (it can mint dual-ownership rows + consume quota),
+# so it gets its own tighter sliding-window limiter. 3/60s per IP.
+_CLAIM_RATE_STORE: dict[str, list[float]] = defaultdict(list)
+_CLAIM_RATE_LIMIT = 3
+_CLAIM_RATE_WINDOW_SECONDS = 60
+# Salt for the abuse-forensics ip_hash on anon captures. Per-process, rotated
+# daily inside the hash input — the hash is for burst-correlation, never PII.
+_ANON_IP_HASH_SALT = "zk-anon-sid-v1"
 _MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024
 # ADR-3 (2026-05-22): the document-upload path moved onto the DB-backed
 # core.operations state machine (same as the URL path). The per-process
@@ -186,6 +201,63 @@ def _check_rate_limit(ip: str) -> bool:
         return False
     _RATE_STORE[ip].append(now)
     return True
+
+
+def _check_claim_rate_limit(ip: str) -> bool:
+    """Sliding-window limiter for POST /api/zettels/claim-anon-session.
+
+    Sibling of ``_check_rate_limit`` with a tighter budget (3/60s) — the claim
+    path is privileged (dual-ownership inserts + quota consumption) so it is
+    rate-limited more aggressively than ordinary captures. Returns True if the
+    call is allowed, False if the per-IP window is exhausted.
+    """
+    now = time.monotonic()
+    _CLAIM_RATE_STORE[ip] = [
+        t for t in _CLAIM_RATE_STORE[ip] if now - t < _CLAIM_RATE_WINDOW_SECONDS
+    ]
+    if len(_CLAIM_RATE_STORE[ip]) >= _CLAIM_RATE_LIMIT:
+        return False
+    _CLAIM_RATE_STORE[ip].append(now)
+    return True
+
+
+def _cookie_anon_sid(request: Request) -> UUID | None:
+    """Validated anon sid from the PERSISTED ``zk_anon_sid`` cookie only.
+
+    Used by the claim endpoint. Returns ``None`` for absent/malformed values.
+    Does NOT fall back to the same-request minted ``request.state.anon_sid`` —
+    a sid minted on the current request has no tagged rows yet, so claiming
+    against it is meaningless; the claim contract is cookie-only.
+    """
+    raw = request.cookies.get("zk_anon_sid")
+    if not raw:
+        return None
+    try:
+        return UUID(str(raw))
+    except (ValueError, TypeError):
+        return None
+
+
+def _read_anon_sid(request: Request) -> UUID | None:
+    """Resolve the opaque anon browser-session id for the CAPTURE path.
+
+    Prefers the persisted cookie (subsequent requests); falls back to the sid
+    freshly minted by ``AnonSessionCookieMiddleware`` on ``request.state`` (the
+    very first anon request, before the Set-Cookie reaches the browser) so the
+    same-request capture can tag the just-persisted row. Returns a validated
+    ``UUID`` or ``None`` when absent/malformed — a forged or junk value is
+    discarded here and, even if it weren't, the DB only acts on rows whose
+    persisted ``anon_sid`` matches, so it could claim nothing.
+    """
+    raw = request.cookies.get("zk_anon_sid")
+    if not raw:
+        raw = getattr(request.state, "anon_sid", None)
+    if not raw:
+        return None
+    try:
+        return UUID(str(raw))
+    except (ValueError, TypeError):
+        return None
 
 
 def _zoro_user_id() -> UUID:
@@ -407,11 +479,51 @@ def _schedule_graph_invalidation(user_sub: str | None, persisted: bool) -> None:
         _invalidate_graph(user_sub, persisted)
 
 
+def _tag_anon_capture(
+    *,
+    workspace_zettel_id: str | None,
+    anon_sid: UUID | None,
+    ip_hash: str | None,
+    ua_hash: str | None,
+) -> None:
+    """Best-effort capture-time provenance tag (Item 6).
+
+    Fires only for anon (Zoro) captures that produced a real workspace overlay
+    id and carry a valid anon sid. Stamps ``content.workspace_zettels.anon_sid``
+    + upserts the session ledger via ``content.tag_anon_zettel`` so the row is
+    later claimable. Fully fire-and-forget: ANY failure (no v2 config, RPC
+    error, schema-cache miss) is logged and swallowed — tagging must NEVER fail
+    or delay the capture itself. Runs in a worker thread (the supabase-py client
+    is sync).
+    """
+    if anon_sid is None or not workspace_zettel_id:
+        return
+    try:
+        from website.core.supabase_v2.repositories.content_repository import (
+            ContentRepository,
+        )
+
+        ContentRepository().tag_anon_zettel(
+            workspace_zettel_id,
+            anon_sid,
+            ip_hash=ip_hash,
+            ua_hash=ua_hash,
+        )
+    except Exception:
+        logger.warning(
+            "anon-capture tagging failed (op-best-effort); claim may be unavailable",
+            exc_info=True,
+        )
+
+
 async def _run_add_zettel(
     body: AddZettelRequest,
     *,
     user: dict | None,
     effective_user_id: UUID,
+    anon_sid: UUID | None = None,
+    anon_ip_hash: str | None = None,
+    anon_ua_hash: str | None = None,
 ) -> dict[str, Any]:
     user_sub = str(effective_user_id)
     result = await run_add_zettel_pipeline(
@@ -422,6 +534,17 @@ async def _run_add_zettel(
         effective_user_id=effective_user_id,
         gemini_client_factory=_gemini_client,
     )
+    # Item 6 capture-time tagging: only when the caller resolved to Zoro (anon)
+    # AND a valid anon sid was captured at request time. `user` is None for
+    # anon callers, so its presence is a fast pre-filter; anon_sid is the gate.
+    if anon_sid is not None and not user:
+        await asyncio.to_thread(
+            _tag_anon_capture,
+            workspace_zettel_id=result.get("workspace_zettel_id"),
+            anon_sid=anon_sid,
+            ip_hash=anon_ip_hash,
+            ua_hash=anon_ua_hash,
+        )
     persistence = PersistenceDTO.model_validate(result["persistence"])
     # Off the critical path: graph-cache invalidation is eventually
     # consistent. Schedule it as a post-return continuation so it never
@@ -662,6 +785,25 @@ async def add_zettel(
         )
 
     effective_user_id = _effective_user_id(user)
+    # Item 6 — capture the anon browser-session id + abuse-forensics hashes NOW,
+    # at request time. request.state / cookies lifetime ends with the 202 ack,
+    # so the background worker cannot read them later (same constraint as
+    # auth_intent below). Only meaningful for anon callers (user is None); for
+    # authed callers anon_sid stays None and tagging is skipped downstream.
+    _anon_sid = None if user else _read_anon_sid(request)
+    _anon_ip_hash: str | None = None
+    _anon_ua_hash: str | None = None
+    if _anon_sid is not None:
+        import hashlib as _hashlib
+
+        _day_salt = str(int(time.time()) // 86400)
+        _anon_ip_hash = _hashlib.sha256(
+            f"{ip}:{_ANON_IP_HASH_SALT}:{_day_salt}".encode("utf-8")
+        ).hexdigest()
+        _ua = request.headers.get("user-agent") or ""
+        _anon_ua_hash = (
+            _hashlib.sha256(_ua.encode("utf-8")).hexdigest() if _ua else None
+        )
     # Phase 2 (async-ops redesign): honor IETF-draft `Idempotency-Key` header
     # (https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)
     # as the operation_id when present; fall back to the legacy client_action_id.
@@ -755,7 +897,12 @@ async def add_zettel(
                     user_id=effective_user_id,
                     operation_id=canonical_op_id,
                     pipeline=lambda: _run_add_zettel(
-                        body, user=user, effective_user_id=effective_user_id
+                        body,
+                        user=user,
+                        effective_user_id=effective_user_id,
+                        anon_sid=_anon_sid,
+                        anon_ip_hash=_anon_ip_hash,
+                        anon_ua_hash=_anon_ua_hash,
                     ),
                     persist_requested=body.persist,
                     url=body.url,
@@ -1420,3 +1567,122 @@ async def list_zettels(
             "offset": offset,
         }
     )
+
+
+class ClaimAnonSessionResponse(BaseModel):
+    claimed: int
+    capped: bool
+
+
+@router.post("/zettels/claim-anon-session", response_model=ClaimAnonSessionResponse)
+async def claim_anon_session(
+    request: Request,
+    user: Annotated[dict | None, Depends(get_optional_user)] = None,
+):
+    """Item 6 — claim the current anon browser-session's Zoro captures into the
+    signed-in user's workspace (dual-ownership; Zoro keeps its rows).
+
+    Contract:
+      * Auth REQUIRED. Anonymous callers get 401 (nothing to claim *into*).
+      * Tight per-IP rate limit (3/60s) — privileged path.
+      * Reads the opaque ``zk_anon_sid`` cookie. Absent/malformed → 200
+        ``{claimed: 0, capped: false}`` (no info leak; indistinguishable from
+        "nothing claimable").
+      * Quota: per candidate, ``require_entitlement`` ATOMICALLY reserves AND
+        consumes one ZETTEL unit. It RAISES HTTPException(402) on exhaustion —
+        we CATCH it and STOP (cap at remaining); a 402 NEVER reaches the
+        client. Consume-then-insert: only canonical ids that passed the gate
+        are committed.
+      * ``commit_anon_claim`` is the first-claim-wins + 24h-window gate. A
+        second call (or a concurrent loser) returns ``claimed: 0`` because the
+        session row is already marked.
+    """
+    ip = real_client_ip(request)
+    if not _check_claim_rate_limit(ip):
+        return _problem(
+            status_code=429,
+            title="Too many claim requests",
+            detail="Please wait a minute before trying again.",
+            operation_id="",
+            type_slug="rate-limited",
+        )
+
+    if user is None:
+        return _problem(
+            status_code=401,
+            title="Authentication required",
+            detail="Sign in to claim your anonymous session.",
+            operation_id="",
+            type_slug="unauthenticated",
+        )
+
+    new_user_sub = str(user.get("sub") or "")
+    try:
+        new_user = UUID(new_user_sub)
+    except (ValueError, TypeError):
+        # Authenticated but non-UUID sub (shouldn't happen for real Supabase
+        # JWTs) — nothing to claim into. No info leak.
+        return JSONResponse({"claimed": 0, "capped": False})
+
+    # Claim reads the PERSISTED cookie only — NOT the same-request minted
+    # request.state.anon_sid fallback (_read_anon_sid). A freshly-minted sid on
+    # this very request has no tagged rows, so honouring it would be a no-op at
+    # best; reading the cookie directly keeps the contract crisp: absent/invalid
+    # cookie → claimed:0 (no info leak).
+    anon_sid = _cookie_anon_sid(request)
+    if anon_sid is None:
+        return JSONResponse({"claimed": 0, "capped": False})
+
+    from website.features.user_pricing.models import Meter
+
+    try:
+        from website.core.supabase_v2.repositories.content_repository import (
+            ContentRepository,
+        )
+
+        repo = ContentRepository()
+        candidates = await asyncio.to_thread(
+            repo.peek_claimable_anon_zettels, new_user, anon_sid
+        )
+    except Exception:
+        # v2 unconfigured or transient repo error: surface nothing-claimable
+        # rather than a 5xx. The session is not marked claimed, so a retry can
+        # succeed once the backend recovers (first-claim-wins still holds).
+        logger.warning("claim peek failed; returning claimed=0", exc_info=True)
+        return JSONResponse({"claimed": 0, "capped": False})
+
+    if not candidates:
+        return JSONResponse({"claimed": 0, "capped": False})
+
+    # Quota loop (consume-then-insert). require_entitlement consumes atomically;
+    # the per-candidate action_id makes each consume idempotent under retries.
+    affordable_canonical_ids: list[str] = []
+    user_dict = {"sub": new_user_sub}
+    for candidate in candidates:
+        canonical_id = str(candidate.get("canonical_zettel_id") or "")
+        if not canonical_id:
+            continue
+        try:
+            await require_entitlement(
+                Meter.ZETTEL,
+                user_dict,
+                action_id=f"claim-{anon_sid}-{canonical_id}",
+            )
+        except HTTPException as exc:
+            if exc.status_code == 402:
+                # Quota exhausted mid-claim: STOP. Cap at what we've reserved so
+                # far. The 402 MUST NOT reach the client.
+                break
+            raise
+        affordable_canonical_ids.append(canonical_id)
+
+    try:
+        inserted = await asyncio.to_thread(
+            repo.commit_anon_claim, new_user, anon_sid, affordable_canonical_ids
+        )
+    except Exception:
+        logger.warning("claim commit failed; returning claimed=0", exc_info=True)
+        return JSONResponse({"claimed": 0, "capped": False})
+
+    capped = len(candidates) > len(affordable_canonical_ids)
+    return JSONResponse({"claimed": int(inserted), "capped": bool(capped)})

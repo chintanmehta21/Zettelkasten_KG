@@ -557,6 +557,19 @@ def create_app(lifespan=None) -> FastAPI:
     from website.api._middleware import SessionMarkerCookieMiddleware
     app.add_middleware(SessionMarkerCookieMiddleware)
 
+    # ── Item 6: zk_anon_sid cookie (anon → user zettel claim) ──
+    # Opaque uuid4 set on UN-authenticated responses that lack it, so an
+    # anonymous visitor's Zoro-stored captures can later be claimed into their
+    # own workspace at sign-in. HttpOnly (the claim endpoint reads it server-
+    # side; JS never needs it) + Secure + SameSite=Lax + Max-Age=30d. Unsigned —
+    # the DB validates it by matching the persisted anon_sid, so a forged value
+    # claims nothing. Mirrors SessionMarkerCookieMiddleware's egress shape but
+    # inverts the auth predicate (anon, not authed) and adds HttpOnly. Also
+    # stashes the freshly-minted sid on request.state for same-request capture
+    # tagging in the add-zettel path.
+    from website.api._middleware import AnonSessionCookieMiddleware
+    app.add_middleware(AnonSessionCookieMiddleware)
+
     # ── C13: 401 rate monitor (credential-stuffing / scanner detection) ──
     # Sliding-window counter on global + per-IP 401 responses. Out-of-path
     # of auth.py (hot path stays fast); runs at response-egress time as a

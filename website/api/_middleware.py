@@ -160,6 +160,82 @@ class SessionMarkerCookieMiddleware:
         await self.app(scope, receive, send_wrapper)
 
 
+class AnonSessionCookieMiddleware:
+    """Set an opaque ``zk_anon_sid`` cookie (uuid4) on UN-authenticated
+    responses that don't already carry one, so an anonymous visitor's
+    browser-session captures (stored under the canonical Zoro user) can later
+    be claimed into their own workspace when they sign in (Item 6 — anon ->
+    user zettel claim).
+
+    Contrast with ``SessionMarkerCookieMiddleware`` (set on AUTHED responses,
+    non-HttpOnly, value ``"1"``): this cookie is set on ANON responses, is
+    **HttpOnly** (JS never needs it — the claim endpoint reads it server-side),
+    and carries an opaque random UUID. It is NOT signed/HMAC'd — the DB
+    validates it by matching against the persisted ``anon_sid`` on the rows it
+    tagged, so a forged value claims nothing.
+
+    Same-request capture: the add-zettel handler runs in the SAME request that
+    first mints the sid, but the Set-Cookie only reaches the browser on the
+    response. So on ingress (before calling the inner app) we stash the minted
+    sid on ``scope["state"]["anon_sid"]`` — Starlette exposes it to handlers as
+    ``request.state.anon_sid``, and the capture path tags the just-persisted
+    row with it even on the very first anon request.
+
+    Attrs: HttpOnly, Secure, SameSite=Lax, Path=/, Max-Age=30d. Idempotent:
+    skipped when the request already carries the cookie (the existing sid is
+    already readable via ``request.cookies``).
+    """
+
+    _COOKIE_NAME = "zk_anon_sid"
+    # 30 days; Set-Cookie header is exempt from Safari 18.4 ITP 7-day cap.
+    _MAX_AGE = 30 * 24 * 60 * 60
+
+    def __init__(self, app: _ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: _ASGIReceive, send: _ASGISend) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        cookies = _request_cookies(scope)
+        existing = cookies.get(self._COOKIE_NAME)
+        minted: str | None = None
+        if not existing:
+            import uuid as _uuid
+
+            minted = str(_uuid.uuid4())
+            # Stash on request.state so the SAME-request capture path can read
+            # the freshly-minted sid (the Set-Cookie below only reaches the
+            # browser on subsequent requests). Starlette 1.0 lazily backs
+            # request.state with scope["state"] (a plain dict).
+            state = scope.get("state")
+            if not isinstance(state, dict):
+                state = {}
+                scope["state"] = state
+            state["anon_sid"] = minted
+
+        async def send_wrapper(message: dict) -> None:
+            if message["type"] == "http.response.start" and minted is not None:
+                # Only set the cookie when the response is un-authenticated.
+                # An authed response (e.g. a request that DID carry a valid
+                # JWT but no anon cookie) must not be tagged with an anon sid —
+                # that visitor is already a real user, not a claim candidate.
+                authenticated = bool(_state_get(scope, "authenticated", False))
+                if not authenticated:
+                    cookie_value = (
+                        f"{self._COOKIE_NAME}={minted}; Max-Age={self._MAX_AGE}; "
+                        f"Path=/; HttpOnly; Secure; SameSite=Lax"
+                    ).encode("latin-1")
+                    headers = list(message.get("headers", []))
+                    # Set-Cookie may appear multiple times — append, don't replace.
+                    headers.append((b"set-cookie", cookie_value))
+                    message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
 class Auth401RateMonitorMiddleware:
     """Sliding-window credential-stuffing / scanner detection. On 401
     responses (excluding /api/health and /webhooks/monitor/), fires the
