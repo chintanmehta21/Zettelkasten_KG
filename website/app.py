@@ -37,6 +37,7 @@ from website.features.web_monitor._env_validation import (
 from website.api.admin_routes import router as admin_router
 from website.api.meta_routes import router as meta_router
 from website.api.profile_routes import router as profile_router
+from website.api.quota_routes import router as quota_router
 from website.api import _memory_guard
 from website.config.page_menus import PAGE_MENUS, MenuItem
 
@@ -482,6 +483,7 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(admin_router)
     app.include_router(meta_router)
     app.include_router(profile_router)
+    app.include_router(quota_router)
     if nexus_enabled:
         app.include_router(nexus_router)
 
