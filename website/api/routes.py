@@ -299,6 +299,27 @@ _AVATAR_ETAG: str = hashlib.md5(  # noqa: S324 — non-crypto cache validator
 _AVATAR_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=86400"
 
 
+def _if_none_match(header_value: str | None) -> bool:
+    """RFC 7232 §3.2 weak comparison of If-None-Match against the avatar ETag.
+
+    Cloudflare rewrites our strong ETag to a weak one (``W/"…"``) when it
+    compresses the response, so the client echoes back ``W/"…"`` — the ``W/``
+    prefix must be ignored or the 304 path never fires through the CDN. Also
+    handles the comma-separated list and the ``*`` wildcard.
+    """
+    if not header_value:
+        return False
+    for tag in header_value.split(","):
+        tag = tag.strip()
+        if tag == "*":
+            return True
+        if tag[:2] in ("W/", "w/"):
+            tag = tag[2:]
+        if tag.strip('"') == _AVATAR_ETAG:
+            return True
+    return False
+
+
 class AvatarUpdateRequest(BaseModel):
     avatar_id: int
 
@@ -553,8 +574,7 @@ async def list_avatars(request: Request):
     PII; day-long cacheable with an ETag keyed on the preset set so additions
     invalidate cleanly and unchanged sets 304.
     """
-    inm = request.headers.get("if-none-match")
-    if inm and inm.strip('"') == _AVATAR_ETAG:
+    if _if_none_match(request.headers.get("if-none-match")):
         return Response(
             status_code=304,
             headers={

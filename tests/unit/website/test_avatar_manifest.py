@@ -68,6 +68,32 @@ def test_get_avatars_etag_304():
     assert "max-age" in second.headers.get("cache-control", "")
 
 
+def test_if_none_match_weak_etag_and_wildcard():
+    """RFC 7232 §3.2: If-None-Match uses weak comparison. Cloudflare rewrites our
+    strong ETag to weak (W/"…") when it compresses, so the W/ prefix must be
+    ignored or the 304 path dies behind the CDN. Also cover the list and *."""
+    from website.api.routes import _AVATAR_ETAG, _if_none_match
+
+    assert _if_none_match(f'"{_AVATAR_ETAG}"') is True
+    assert _if_none_match(f'W/"{_AVATAR_ETAG}"') is True          # the Cloudflare case
+    assert _if_none_match("*") is True
+    assert _if_none_match(f'"deadbeef", W/"{_AVATAR_ETAG}"') is True  # comma-list
+    assert _if_none_match('"deadbeef"') is False
+    assert _if_none_match(None) is False
+    assert _if_none_match("") is False
+
+
+def test_get_avatars_weak_etag_304_roundtrip():
+    """End-to-end of the Cloudflare scenario: a weak If-None-Match still 304s."""
+    from website.api.routes import _AVATAR_ETAG
+    from website.app import create_app
+
+    with TestClient(create_app()) as client:
+        resp = client.get("/api/avatars", headers={"If-None-Match": f'W/"{_AVATAR_ETAG}"'})
+    assert resp.status_code == 304, resp.text
+    assert "max-age" in resp.headers.get("cache-control", "")
+
+
 def test_js_constants_match_disk_count():
     """The two JS bundles still carry a hardcoded count for synchronous render;
     pin them against the on-disk set so a future add/remove can't silently break
