@@ -62,6 +62,10 @@ def test_get_avatars_etag_304():
         etag = first.headers["etag"]
         second = client.get("/api/avatars", headers={"If-None-Match": etag})
     assert second.status_code == 304
+    # RFC 7232 §4.1: the 304 must echo the validator + carry Cache-Control so a
+    # shared cache (Cloudflare) can refresh freshness on revalidation.
+    assert second.headers.get("etag") == etag
+    assert "max-age" in second.headers.get("cache-control", "")
 
 
 def test_js_constants_match_disk_count():

@@ -294,6 +294,9 @@ _AVATAR_IDS: list[int] = _scan_avatar_ids()
 _AVATAR_ETAG: str = hashlib.md5(  # noqa: S324 — non-crypto cache validator
     ",".join(str(i) for i in _AVATAR_IDS).encode()
 ).hexdigest()
+# Shared by the 200 and 304 paths so freshness can't drift between them
+# (RFC 7232 §4.1: a 304 must carry Cache-Control if the 200 would have).
+_AVATAR_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=86400"
 
 
 class AvatarUpdateRequest(BaseModel):
@@ -552,7 +555,13 @@ async def list_avatars(request: Request):
     """
     inm = request.headers.get("if-none-match")
     if inm and inm.strip('"') == _AVATAR_ETAG:
-        return Response(status_code=304, headers={"ETag": f'"{_AVATAR_ETAG}"'})
+        return Response(
+            status_code=304,
+            headers={
+                "ETag": f'"{_AVATAR_ETAG}"',
+                "Cache-Control": _AVATAR_CACHE_CONTROL,
+            },
+        )
 
     payload = {
         "avatars": [
@@ -564,7 +573,7 @@ async def list_avatars(request: Request):
     return JSONResponse(
         payload,
         headers={
-            "Cache-Control": "public, max-age=86400, stale-while-revalidate=86400",
+            "Cache-Control": _AVATAR_CACHE_CONTROL,
             "ETag": f'"{_AVATAR_ETAG}"',
         },
     )
