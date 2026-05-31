@@ -87,9 +87,55 @@ def test_iter_level_report_md():
     assert "composite" in txt.lower()
 
 
+def _load_04():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("zettel_eval_v1_04", SCRIPT)
+    m = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_collapse_jury_averages_two_judges():
+    """Multi-judge → one jury_mean row/zettel; numerics averaged, cap/backfilled OR'd."""
+    m = _load_04()
+    rows = [
+        {"wz_uuid": "z1", "source_type": "web", "composite": "80",
+         "composite_uncapped": "80", "finesure_faithfulness": "0.9",
+         "g_eval_coherence": "3", "hallucination_cap_hit": "0",
+         "backfilled": "0", "backfilled_fields": "", "judge_kind": "primary",
+         "judge_model_used": "gemini-2.5-flash"},
+        {"wz_uuid": "z1", "source_type": "web", "composite": "90",
+         "composite_uncapped": "90", "finesure_faithfulness": "0.7",
+         "g_eval_coherence": "2", "hallucination_cap_hit": "1",
+         "backfilled": "0", "backfilled_fields": "", "judge_kind": "secondary",
+         "judge_model_used": "claude-haiku-4-5"},
+    ]
+    out, is_jury = m._collapse_jury(rows)
+    assert is_jury is True and len(out) == 1
+    r = out[0]
+    assert r["judge_kind"] == "jury_mean"
+    assert float(r["composite"]) == 85.0
+    assert abs(float(r["finesure_faithfulness"]) - 0.8) < 1e-9
+    assert r["hallucination_cap_hit"] == "1"  # OR across judges
+    assert "claude-haiku-4-5" in r["judge_model_used"] and "gemini-2.5-flash" in r["judge_model_used"]
+
+
+def test_collapse_jury_single_judge_passthrough():
+    """Single judge per zettel → returned UNCHANGED (is_jury False)."""
+    m = _load_04()
+    rows = [{"wz_uuid": "z1", "composite": "80", "judge_kind": "primary"},
+            {"wz_uuid": "z2", "composite": "70", "judge_kind": "primary"}]
+    out, is_jury = m._collapse_jury(rows)
+    assert is_jury is False
+    assert out == rows
+
+
 if __name__ == "__main__":
     test_iter_001_baseline_emits_overall_manifest_results_csv()
     test_per_source_manifest_results_csv()
     test_error_class_histogram_per_source()
     test_iter_level_report_md()
-    print("PASS all 4 tests")
+    test_collapse_jury_averages_two_judges()
+    test_collapse_jury_single_judge_passthrough()
+    print("PASS all 6 tests")
