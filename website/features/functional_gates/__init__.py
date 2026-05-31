@@ -6,6 +6,7 @@ Public surface:
 - :class:`GateError` (raise to signal a 402 quota_exhausted).
 - :class:`UrlDedupGate` (use :func:`get_url_dedup_gate`) + :class:`DedupDecision`.
 - :mod:`config` (operator-editable plan caps + wallet meter map).
+- :func:`if_none_match` (RFC 7232 weak ETag comparison for 304 short-circuits).
 """
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ from website.features.functional_gates.gates import (
     get_functional_gates,
     reset_for_tests as _reset_gates,
 )
+from website.features.functional_gates.etag import if_none_match
 
 
 def reset_for_tests() -> None:
@@ -41,5 +43,6 @@ __all__ = [
     "UrlDedupGate",
     "get_functional_gates",
     "get_url_dedup_gate",
+    "if_none_match",
     "reset_for_tests",
 ]

@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from website.api.auth import get_current_user
 from website.core.settings import get_settings
+from website.features.functional_gates import if_none_match
 from website.features.functional_gates.upload_rate_limit import UploadRateLimiter
 from website.features.user_stats.semaphore import (
     SemaphoreFullError,
@@ -183,8 +184,9 @@ async def _serve_stats(
     # 304 short-circuit on If-None-Match. Headers must be set on the returned
     # Response — when an endpoint returns a custom Response, FastAPI uses it
     # directly and drops any headers set on the injected ``response`` param.
-    if_none_match = (request.headers.get("if-none-match") or "").strip()
-    if etag and if_none_match == etag:
+    # Weak-comparison aware (RFC 7232 §3.2) via the shared gate — a naive
+    # ``==`` silently fails when an intermediary echoes a weak ``W/"…"`` validator.
+    if etag and if_none_match(request.headers.get("if-none-match"), etag):
         return Response(
             status_code=status.HTTP_304_NOT_MODIFIED,
             headers={

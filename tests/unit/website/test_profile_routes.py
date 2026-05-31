@@ -178,6 +178,29 @@ def test_route_returns_304_on_matching_if_none_match():
     assert resp.headers.get("etag") == "abc123"
 
 
+def test_route_returns_304_on_weak_if_none_match():
+    """304 even when the validator is echoed back weak (W/"…") — e.g. rewritten
+    by a CDN/intermediary. Regression guard for the shared RFC 7232 gate."""
+    app = _build_app()
+    with ExitStack() as stack:
+        stack.enter_context(_patch_settings())
+        stack.enter_context(_patch_workspace_resolver())
+        stack.enter_context(_patch_supabase_client())
+        stack.enter_context(_patch_runner_ok())
+
+        client = TestClient(app)
+        resp = client.get(
+            "/api/profile/stats",
+            headers={
+                "authorization": "Bearer test-jwt",
+                "if-none-match": 'W/"abc123"',
+            },
+        )
+
+    assert resp.status_code == 304
+    assert resp.headers.get("etag") == "abc123"
+
+
 def test_route_503_when_disabled():
     """503: kill switch (STATS_TAB_ENABLED=false) hard-stops before auth scope."""
     app = _build_app()
