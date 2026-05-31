@@ -317,7 +317,7 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_home"
-        / "index.html": "/home/js/home.js?v=20260530a",
+        / "index.html": "/home/js/home.js?v=20260531a",
         ROOT
         / "website"
         / "features"
@@ -349,7 +349,7 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
     assert "/home/css/home.css?v=20260526b" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260530a" in (
+    assert "/home/js/home.js?v=20260531a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/zettels/css/user_zettels.css?v=20260526a" in (
