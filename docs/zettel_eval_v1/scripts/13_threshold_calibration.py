@@ -1,15 +1,33 @@
-"""13_threshold_calibration.py — calibrate the NLI contradict threshold on a
-small hand-labeled set (operator decision 2026-05-30: "hand-label ~25 then calibrate").
+"""13_threshold_calibration.py — NLI contradict-threshold calibration kit.
 
-WHY: the 0.70 threshold was inherited, not derived. MiniCheck's paper default is
-t=0.5 (balanced accuracy, SYMMETRIC costs). Our costs are ASYMMETRIC — a missed
-hallucination (false negative) is worse than a wasted review (false positive) —
-so the correct operating point is found by labeling a held-out sample and
-maximizing F-beta with beta>1 (recall-favoring), per the deep-research verdict
-(docs/claude_audits/nli_judge_combination_strategy_2026-05-30.md).
+⚠️ DO NOT USE FOR A REAL THRESHOLD AT SMALL n. Three-agent research
+(docs/claude_audits/nli_threshold_calibration_verdict_2026-05-31.md) established
+that data-driven calibration is INVALID at our current label scale, for three
+independent reasons:
+  1. n~25-50 OVERFITS — operating-point CIs are wide at n<=100 and the cut can't be
+     cross-validated (sklearn). Defer until labels reach the HUNDREDS.
+  2. A score-stratified sample of our well-grounded corpus is ~ALL "supported"
+     (degenerate single-class sweep; recall undefined) — exactly what the 2026-05-31
+     probe produced (25 supported / 0 contradicted).
+  3. Enriching positives via the LLM JUDGE introduces verification/workup bias
+     (judge & NLI are correlated detectors), only partially correctable via IPW.
+  And F-beta is prevalence-DEPENDENT, so a cut chosen on an enriched (positive-heavy)
+  set over-fires in production unless prevalence-corrected (King-Zeng / IPW).
 
-ZERO API: claims + NLI contradict scores are read straight from the per_zettel
-JSONs. The only manual step is the operator labeling ~25 rows.
+CURRENT DECISION (2026-05-31): the threshold stays a FIXED 0.70 (see
+03_run_nli.py). Under OR-with-review it only sizes the low-priority nli_only review
+queue — correctness is owned by the judge_only route — so a fixed default is safe.
+
+WHEN you DO calibrate (labels in the hundreds), the methodologically clean recipe is:
+  - enrich rare positives by NLI's OWN near-boundary uncertainty + a random/stratified
+    base layer (NOT judge flags);
+  - label truthfully against source;
+  - select the F-beta(beta>1) cut with examples reweighted to NATURAL prevalence (IPW),
+    or recompute F-beta at true prevalence on a representative held-out slice.
+This script's --calibrate implements the F-beta sweep but NOT the prevalence
+correction — add IPW before trusting its output at scale.
+
+ZERO API: claims + NLI contradict scores are read straight from the per_zettel JSONs.
 
 Two modes:
 
@@ -52,6 +70,11 @@ ANALYSIS = EVAL / "analysis"
 
 CSV_COLS = ["wz", "claim", "best_chunk_text", "nli_contradict_prob", "label"]
 VALID_LABELS = {"supported", "contradicted"}
+
+# Below this labeled-set size a data-driven threshold overfits to label noise
+# (operating-point CIs are wide at n<=100; sklearn can't CV the cut). Research
+# 2026-05-31 → defer formal calibration until labels reach the hundreds.
+MIN_CALIBRATION_N = 200
 
 # Spreadsheets (Excel / Sheets) interpret a cell beginning with any of these as
 # a FORMULA, rendering grounded text as `#NAME?` (and a CSV-injection vector).
@@ -194,6 +217,13 @@ def _calibrate(labeled_path: Path, beta: float) -> int:
     if n_pos == 0 or n_neg == 0:
         print(f"[13] WARNING: only one class present (pos={n_pos}, neg={n_neg}); "
               "threshold sweep is degenerate. Label a more balanced sample.")
+    if len(labeled) < MIN_CALIBRATION_N:
+        print(f"[13] WARNING: n={len(labeled)} < {MIN_CALIBRATION_N}. A threshold "
+              "fit at this size OVERFITS to label noise (wide operating-point CI, "
+              "cannot cross-validate). Per the 2026-05-31 research verdict, treat the "
+              "output as EXPLORATORY only — do NOT wire it as the production threshold. "
+              "Keep the fixed 0.70 default until labels reach the hundreds (enriched by "
+              "NLI's own uncertainty + random-stratified, with IPW prevalence correction).")
 
     grid = [round(0.05 * i, 2) for i in range(1, 20)]  # 0.05 .. 0.95
     sweep = [_prf(labeled, t, beta) for t in grid]
