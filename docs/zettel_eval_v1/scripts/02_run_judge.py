@@ -278,10 +278,22 @@ def _filter_zettels(zettels: list[dict], *, wz_filter: str | None,
     return out
 
 
-def _write_per_zettel(*, run_dir: Path, source_type: str, wz_id: str, payload: dict) -> None:
+def _write_per_zettel(*, run_dir: Path, source_type: str, wz_id: str, payload: dict,
+                      multi_judge: bool = False) -> None:
+    # Multi-judge iters (e.g. iter-004 jury, judges=[primary, secondary]) MUST
+    # write one file PER judge — otherwise the second judge's <wz>.json
+    # overwrites the first (last-writer-wins) and the jury is silently reduced
+    # to a single judge (the iter-004 data-loss bug found 2026-05-31). The
+    # judge_kind suffix keeps both. Single-judge iters (001/002/003/005) keep
+    # the bare <wz>.json layout — backward-compatible with existing files and
+    # every downstream glob (04/06/07/09).
+    suffix = ""
+    if multi_judge:
+        jk = (payload.get("_meta") or {}).get("judge_kind", "judge")
+        suffix = f"__{jk}"
     for parent in (run_dir / source_type / "per_zettel", run_dir / "_overall" / "per_zettel"):
         parent.mkdir(parents=True, exist_ok=True)
-        (parent / f"{wz_id}.json").write_text(
+        (parent / f"{wz_id}{suffix}.json").write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
 
@@ -368,12 +380,14 @@ async def main_async(args) -> int:
                       f"{type(exc).__name__}: {str(exc)[:120]}")
                 continue
 
-            # Stamp judge_kind, write to runs dir
+            # Stamp judge_kind, write to runs dir. multi_judge → per-judge
+            # filenames so a jury (e.g. iter-004) keeps every judge's payload.
             _write_per_zettel(
                 run_dir=run_dir,
                 source_type=src_type,
                 wz_id=wz_id,
                 payload=payload,
+                multi_judge=len(judge_kinds) > 1,
             )
 
             ev_meta = payload.get("evaluator_metadata", {}) or {}
