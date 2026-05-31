@@ -266,14 +266,48 @@ def _curate_avatar_url(value: str | None) -> str:
     return value if (value and _CURATED_AVATAR_RE.match(value)) else DEFAULT_AVATAR_URL
 
 
+# R7 (2026-05-30): single source of truth for the avatar preset list. The count
+# is otherwise hardcoded in three JS bundles + the validator; GET /api/avatars
+# enumerates the real files on disk so the picker and validator derive the set
+# from one place. Computed once at import (worker start under gunicorn --preload;
+# the asset set only changes on deploy). A CI guard pins the JS counts vs disk.
+# Regex spans 2-3 digits: the curated set is avatar_00..avatar_119 (incl. 100-119).
+_AVATAR_RE = re.compile(r"^avatar_(\d{2,3})\.svg$")
+
+
+def _scan_avatar_ids() -> list[int]:
+    """Return the sorted avatar IDs present under website/artifacts/avatars/."""
+    avatars_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "artifacts", "avatars")
+    ids: list[int] = []
+    try:
+        for name in os.listdir(avatars_dir):
+            m = _AVATAR_RE.match(name)
+            if m:
+                ids.append(int(m.group(1)))
+    except OSError as exc:  # pragma: no cover - dir always present in prod
+        logger.warning("avatar scan failed at %s: %s", avatars_dir, exc)
+    return sorted(ids)
+
+
+# Computed once at import (module load == worker start under gunicorn --preload).
+_AVATAR_IDS: list[int] = _scan_avatar_ids()
+_AVATAR_ETAG: str = hashlib.md5(  # noqa: S324 — non-crypto cache validator
+    ",".join(str(i) for i in _AVATAR_IDS).encode()
+).hexdigest()
+
+
 class AvatarUpdateRequest(BaseModel):
     avatar_id: int
 
     @field_validator("avatar_id")
     @classmethod
     def validate_avatar_id(cls, v: int) -> int:
-        if not (0 <= v <= 119):
-            raise ValueError("avatar_id must be between 0 and 119")
+        # R7: validate against the real on-disk preset set (single source of
+        # truth). Fall back to the full 0..119 range only if the scan came up
+        # empty (never in prod — the dir is baked into the image).
+        valid = set(_AVATAR_IDS) if _AVATAR_IDS else set(range(120))
+        if v not in valid:
+            raise ValueError("avatar_id is not an available preset")
         return v
 
 
@@ -504,6 +538,36 @@ async def me(
         "avatar_url": DEFAULT_AVATAR_URL,
         "profile_source": "jwt_fallback",
     }
+
+
+@router.get("/avatars")
+async def list_avatars(request: Request):
+    """Public manifest of the curated avatar presets.
+
+    R7 (2026-05-30): single source of truth for the picker. Returns the preset
+    IDs + URLs derived from the files on disk, so the frontend no longer relies
+    only on a hardcoded count. Public (the URLs are already public assets), no
+    PII; day-long cacheable with an ETag keyed on the preset set so additions
+    invalidate cleanly and unchanged sets 304.
+    """
+    inm = request.headers.get("if-none-match")
+    if inm and inm.strip('"') == _AVATAR_ETAG:
+        return Response(status_code=304, headers={"ETag": f'"{_AVATAR_ETAG}"'})
+
+    payload = {
+        "avatars": [
+            {"id": i, "url": f"/artifacts/avatars/avatar_{i:02d}.svg"}
+            for i in _AVATAR_IDS
+        ],
+        "count": len(_AVATAR_IDS),
+    }
+    return JSONResponse(
+        payload,
+        headers={
+            "Cache-Control": "public, max-age=86400, stale-while-revalidate=86400",
+            "ETag": f'"{_AVATAR_ETAG}"',
+        },
+    )
 
 
 @router.put("/me/avatar")
