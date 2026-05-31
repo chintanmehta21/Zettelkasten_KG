@@ -178,6 +178,62 @@ def _row_for_zettel(payload: dict, manifest_entry: dict | None) -> dict:
     }
 
 
+_JURY_NUMERIC_COLS = [
+    "rubric_total", "rubric_max_points", "finesure_faithfulness",
+    "finesure_completeness", "finesure_conciseness", "g_eval_coherence",
+    "g_eval_fluency", "composite", "composite_uncapped",
+]
+_TRUEY = {"1", "true", "True"}
+
+
+def _collapse_jury(rows: list[dict]) -> tuple[list[dict], bool]:
+    """Collapse per-judge rows into ONE jury_mean row per wz_uuid — PoLL
+    mean-of-judges (Verga 2024; operator decision 2026-05-31). Numeric metrics
+    are averaged across judges; hallucination_cap_hit / backfilled are OR'd
+    (a zettel a jury collapses is flagged if EITHER judge flagged it);
+    backfilled_fields are unioned; judge_kind becomes 'jury_mean'.
+
+    Single-judge iters (001/002/003/005) have exactly one row per wz_uuid →
+    returns (rows, False) UNCHANGED (byte-identical, no downstream impact).
+    Only multi-judge iters (iter-004) collapse; returns (collapsed, True)."""
+    by_wz: dict[str, list[dict]] = {}
+    order: list[str] = []
+    for r in rows:
+        wz = r["wz_uuid"]
+        if wz not in by_wz:
+            by_wz[wz] = []
+            order.append(wz)
+        by_wz[wz].append(r)
+    if not any(len(g) > 1 for g in by_wz.values()):
+        return rows, False
+    out: list[dict] = []
+    for wz in order:
+        group = by_wz[wz]
+        base = dict(group[0])
+        for col in _JURY_NUMERIC_COLS:
+            vals = []
+            for g in group:
+                try:
+                    vals.append(float(g.get(col, "")))
+                except (TypeError, ValueError):
+                    pass
+            base[col] = round(sum(vals) / len(vals), 4) if vals else ""
+        base["hallucination_cap_hit"] = "1" if any(
+            str(g.get("hallucination_cap_hit")) in _TRUEY for g in group) else "0"
+        base["backfilled"] = "1" if any(
+            str(g.get("backfilled")) in _TRUEY for g in group) else "0"
+        bf: set[str] = set()
+        for g in group:
+            if g.get("backfilled_fields"):
+                bf.update(x for x in str(g["backfilled_fields"]).split(";") if x)
+        base["backfilled_fields"] = ";".join(sorted(bf))
+        base["judge_kind"] = "jury_mean"
+        base["judge_model_used"] = "+".join(sorted(
+            {str(g.get("judge_model_used", "")) for g in group if g.get("judge_model_used")}))
+        out.append(base)
+    return out, True
+
+
 def _write_csv(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as f:
@@ -325,20 +381,28 @@ def main() -> int:
         print(f"[04] No per_zettel JSON in {overall_pz}; nothing to aggregate.")
         return 0
 
-    # Build rows (one per zettel × judge_kind combination — payloads are
-    # already per-(zettel, judge), so this is 1:1 with files)
-    rows = [_row_for_zettel(p, manifest.get(p.get("_meta", {}).get("wz_zettel_id"))) for p in all_payloads]
+    # Build per-(zettel, judge) rows, then collapse multi-judge (jury) iters to
+    # one jury_mean row per zettel so downstream (06/07/11, which join by
+    # wz_uuid) see a single composite. Single-judge iters pass through unchanged.
+    per_judge_rows = [_row_for_zettel(p, manifest.get(p.get("_meta", {}).get("wz_zettel_id"))) for p in all_payloads]
+    rows, is_jury = _collapse_jury(per_judge_rows)
 
-    # Group by source_type
+    # Group the COLLAPSED rows by source_type (1 row/zettel even for juries).
     per_source_rows: dict[str, list[dict]] = {}
+    for r in rows:
+        per_source_rows.setdefault(r["source_type"] or "unknown", []).append(r)
+    # Histograms aggregate the raw per-judge payloads (error-class counts —
+    # per-judge granularity is fine and more informative there).
     per_source_payloads: dict[str, list[dict]] = {}
-    for p, r in zip(all_payloads, rows):
-        src = r["source_type"] or "unknown"
-        per_source_rows.setdefault(src, []).append(r)
+    for p in all_payloads:
+        src = (p.get("_meta") or {}).get("source_type") or "unknown"
         per_source_payloads.setdefault(src, []).append(p)
 
     # _overall
     _write_csv(iter_dir / "_overall" / "manifest_results.csv", rows)
+    if is_jury:
+        # Audit sidecar: the un-collapsed per-judge rows (jury provenance).
+        _write_csv(iter_dir / "_overall" / "manifest_results_per_judge.csv", per_judge_rows)
     _write_histogram(iter_dir / "_overall" / "error_class_histogram.json", all_payloads)
     (iter_dir / "_overall" / "top_failures.md").write_text(
         _top_failures_md(rows, top_n=10), encoding="utf-8"
