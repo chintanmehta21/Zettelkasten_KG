@@ -742,7 +742,8 @@ def create_app(lifespan=None) -> FastAPI:
         app, "/vendor", STATIC_DIR / "vendor", "vendor"
     )
 
-    # Avatars — long-cache immutable static files (60 SVGs under /artifacts/avatars/).
+    # Avatars — long-cache immutable static files (the curated SVG preset set
+    # under /artifacts/avatars/; GET /api/avatars is the source of truth for the count).
     # Mounted BEFORE the broad /artifacts catch-all so this subpath is matched first.
     AVATARS_DIR = Path(__file__).parent / "artifacts" / "avatars"
 
