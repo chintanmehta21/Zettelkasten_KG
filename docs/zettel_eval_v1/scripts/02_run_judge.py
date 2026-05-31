@@ -248,12 +248,13 @@ async def _evaluate_one_zettel(*, manifest_entry: dict, judge_kind: str, judge_c
 
 
 async def _ensure_atomic_facts(*, manifest_entry: dict, source_text: str,
-                                 extractor_client, rubric_path: Path) -> list[dict]:
+                                 extractor_client, rubric_path: Path,
+                                 cache_root: Path = CACHE_ROOT) -> list[dict]:
     from website.features.summarization_engine.evaluator.atomic_facts import extract_atomic_facts
     return await extract_atomic_facts(
         client=extractor_client,
         source_text=source_text,
-        cache_root=CACHE_ROOT,
+        cache_root=cache_root,
         url=manifest_entry.get("normalized_url", ""),
         ingestor_version=manifest_entry.get("source_type", "web"),
     )
@@ -313,12 +314,19 @@ async def main_async(args) -> int:
     for kind in judge_kinds:
         judge_clients[kind] = _make_judge(kind)
 
-    # The atomic-facts extractor is always Gemini Flash (per judges.yaml extractor stanza)
-    # UNLESS the iter has extractor=experimental_swap (iter-005). For iter-005 we still
-    # use Gemini Flash here (the swap is a v2 implementation detail; current code path
-    # is parity-preserving).
+    # The atomic-facts extractor defaults to Gemini Flash. iter-005
+    # (extractor=experimental_swap) swaps it to gemini-2.5-flash-lite to break the
+    # same-family extract-and-judge circularity (judges.yaml). Swapped facts are
+    # cached under a SEPARATE root so they never overwrite the flash facts shared
+    # by iter-001..004 (overwriting would corrupt those iters). The swapped facts'
+    # content differs → new atomic_facts_sha → judge cache miss → genuine re-judge.
     from ops.scripts.lib.gemini_factory import make_client as make_gemini
-    extractor_client = make_gemini()
+    swap_extractor = (row.get("extractor") == "experimental_swap") or getattr(args, "swap_extractor", False)
+    extractor_client = make_gemini(swap_extractor=swap_extractor)
+    extractor_cache_root = (CACHE_ROOT / "atomic_facts_swap_flash_lite") if swap_extractor else CACHE_ROOT
+    if swap_extractor:
+        print(f"[02_run_judge] EXTRACTOR SWAP: gemini-2.5-flash-lite | "
+              f"facts cache_root={extractor_cache_root}")
 
     run_dir = RUNS_ROOT / args.iter_id
 
@@ -340,6 +348,7 @@ async def main_async(args) -> int:
         atomic_facts = await _ensure_atomic_facts(
             manifest_entry=entry, source_text=source_text,
             extractor_client=extractor_client, rubric_path=RUBRIC_PATH,
+            cache_root=extractor_cache_root,
         )
 
         for kind in judge_kinds:
@@ -479,7 +488,9 @@ def main() -> int:
                     help="iter id matching a row in judges.yaml::run_matrix")
     ap.add_argument("--judge", choices=["primary", "secondary", "both"], default=None)
     ap.add_argument("--swap-extractor", action="store_true",
-                    help="reserved for iter-005 (flash-lite extractor); not yet implemented")
+                    help="force the gemini-2.5-flash-lite atomic-facts extractor + a "
+                         "separate facts cache (override; auto-enabled for iters with "
+                         "extractor=experimental_swap in judges.yaml, e.g. iter-005)")
     ap.add_argument("--max-zettels", type=int, default=None)
     ap.add_argument("--wz-filter", type=str, default=None,
                     help="re-run only the zettel whose workspace_zettel_id starts with this prefix "

@@ -29,7 +29,19 @@ def _parse_csv_key_spec(raw: str) -> tuple[str, str] | None:
     return parse_api_env_line(cleaned)
 
 
-def make_client() -> TieredGeminiClient:
+def make_client(*, swap_extractor: bool = False) -> TieredGeminiClient:
+    """Build the ops/eval TieredGeminiClient from api_env / GEMINI_API_KEYS.
+
+    ``swap_extractor`` (eval-only, iter-005 experimental_swap): returns a client
+    whose ``flash`` tier resolves to **gemini-2.5-flash-lite** as the starting
+    model instead of gemini-2.5-flash. This breaks the same-family extract-and-
+    judge circularity (judges.yaml atomic_fact_extractor.experimental_swap). The
+    swap is achieved by deep-copying the loaded config and rewriting ONLY the
+    ``flash`` model-chain on the copy — the global config and the website serving
+    path are untouched. flash-lite-only (no flash fallback) so the swapped facts
+    are never silently contaminated by flash output; the key pool still retries
+    flash-lite across all keys on 429.
+    """
     keys: list[Any] = []
     env_keys: list[Any] = []
     # Legacy single-key vars: no role syntax supported here, treat as free.
@@ -54,4 +66,11 @@ def make_client() -> TieredGeminiClient:
         raise RuntimeError(
             "No Gemini API keys found — populate api_env or GEMINI_API_KEY(S)"
         )
-    return TieredGeminiClient(GeminiKeyPool(keys), load_config())
+    config = load_config()
+    if swap_extractor:
+        # Deep-copy so the global/prod config is never mutated; rewrite ONLY the
+        # flash chain on the copy. flash-lite is the sole model (no flash fallback)
+        # to guarantee a clean swap.
+        config = config.model_copy(deep=True)
+        config.gemini.model_chains["flash"] = ["gemini-2.5-flash-lite"]
+    return TieredGeminiClient(GeminiKeyPool(keys), config)
