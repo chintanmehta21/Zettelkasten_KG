@@ -53,20 +53,36 @@ ANALYSIS = EVAL / "analysis"
 CSV_COLS = ["wz", "claim", "best_chunk_text", "nli_contradict_prob", "label"]
 VALID_LABELS = {"supported", "contradicted"}
 
+# Spreadsheets (Excel / Sheets) interpret a cell beginning with any of these as
+# a FORMULA, rendering grounded text as `#NAME?` (and a CSV-injection vector).
+# Prefix such cells with a leading apostrophe — Excel hides it and shows the
+# value as text. Harmless to --calibrate, which never reads the claim text.
+_FORMULA_LEAD = ("=", "+", "-", "@")
+
+
+def _excel_safe(s: str) -> str:
+    return "'" + s if s[:1] in _FORMULA_LEAD else s
+
 
 def _collect_claims(iter_id: str) -> list[dict]:
-    """Gather (wz, claim, best_chunk_text, contradict_prob) from every per_claim
-    entry in the iter's per_zettel JSONs. Prefers nli_v2 (atomic_facts claims)
-    over v1 when present."""
+    """Gather (wz, claim, best_chunk_text, contradict_prob) from per_claim
+    entries — STRICTLY from ``nli_v2`` (atomic_facts claim source).
+
+    We deliberately do NOT fall back to v1 ``nli``: the v1 per_claim list is the
+    regex sentence-split (markdown bullets / headers / fragments) the v2 pipeline
+    replaced. Calibrating the v2 threshold on v1 regex claims would tune against
+    the wrong distribution (and reintroduces the `-`/`#`-prefixed noise that
+    triggers Excel's `#NAME?`). Only zettels rescored via 03c (route+atomic_facts)
+    contribute. Run 03c on more zettels first to widen the calibration pool."""
     p_dir = RUNS / iter_id / "_overall" / "per_zettel"
     if not p_dir.exists():
         raise SystemExit(f"missing {p_dir}; run 03/03c for this iter first.")
     rows: list[dict] = []
     for f in sorted(p_dir.glob("*.json")):
         d = json.loads(f.read_text(encoding="utf-8"))
-        nli = d.get("nli_v2") if isinstance(d.get("nli_v2"), dict) else d.get("nli")
-        if not isinstance(nli, dict):
-            continue
+        nli = d.get("nli_v2")
+        if not isinstance(nli, dict) or "error" in nli:
+            continue  # atomic_facts (nli_v2) only — no v1 regex fallback
         for c in nli.get("per_claim", []) or []:
             claim = (c.get("claim") or "").strip()
             if not claim:
@@ -116,14 +132,17 @@ def _emit(iter_id: str, n: int, out_path: Path) -> int:
         raise SystemExit(f"no claims found in {iter_id}; nothing to label.")
     sample = _stratified_sample(rows, n)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8", newline="") as fh:
+    # utf-8-SIG (BOM) so Excel on Windows detects UTF-8 and renders accented
+    # characters (ñ, é, …) instead of mojibake. csv.DictReader on --calibrate
+    # transparently strips the BOM.
+    with out_path.open("w", encoding="utf-8-sig", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=CSV_COLS)
         w.writeheader()
         for r in sample:
             w.writerow({
                 "wz": r["wz"],
-                "claim": r["claim"][:300],
-                "best_chunk_text": r["best_chunk_text"][:300],
+                "claim": _excel_safe(r["claim"][:300]),
+                "best_chunk_text": _excel_safe(r["best_chunk_text"][:300]),
                 "nli_contradict_prob": f"{r['nli_contradict_prob']:.4f}",
                 "label": "",  # operator fills: supported | contradicted
             })
@@ -154,7 +173,9 @@ def _calibrate(labeled_path: Path, beta: float) -> int:
         raise SystemExit(f"missing {labeled_path}; run --emit first and label it.")
     labeled: list[tuple[float, bool]] = []
     skipped = 0
-    with labeled_path.open(encoding="utf-8") as fh:
+    # utf-8-sig transparently strips the BOM the emit writes (and tolerates a
+    # plain utf-8 file the operator may have re-saved).
+    with labeled_path.open(encoding="utf-8-sig") as fh:
         for row in csv.DictReader(fh):
             lbl = (row.get("label") or "").strip().lower()
             if lbl not in VALID_LABELS:
