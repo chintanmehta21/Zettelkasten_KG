@@ -12,7 +12,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from website.api.routes import _AVATAR_IDS, _scan_avatar_ids
+from website.api.routes import _AVATAR_IDS, _curate_avatar_url, _scan_avatar_ids
 
 REPO = Path(__file__).resolve().parents[3]
 AVATARS_DIR = REPO / "website" / "artifacts" / "avatars"
@@ -84,3 +84,18 @@ def test_js_constants_match_disk_count():
     assert m_profile and int(m_profile.group(1)) == n, "user_profile.js AVATAR_COUNT drifted from disk"
     assert m_header and int(m_header.group(1)) == n, "header.js AVATAR_COUNT drifted from disk"
     assert m_mobile and int(m_mobile.group(1)) == n, "mobile avatar.js ALL_AVATARS length drifted from disk"
+
+
+def test_read_time_curation_covers_full_disk_set():
+    """R7 drift guard (Codex P2, PR #132): the write path (PUT validator) is
+    scan-based, but the read-time curation gate (_curate_avatar_url, used by
+    GET /api/me) still uses the hardcoded _CURATED_AVATAR_RE range. If the preset
+    set ever grows past that range, a newly-accepted PUT id would silently revert
+    to the default on the next read. Pin the read gate to the on-disk set so that
+    divergence fails the build instead of shipping. Today both cover 0..119."""
+    for i in _disk_ids():
+        url = f"/artifacts/avatars/avatar_{i:02d}.svg"
+        assert _curate_avatar_url(url) == url, (
+            f"read-time curation rejects on-disk preset {i}; "
+            f"sync _CURATED_AVATAR_RE in website/api/routes.py with the preset set"
+        )
