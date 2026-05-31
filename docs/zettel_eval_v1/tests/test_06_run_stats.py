@@ -27,8 +27,12 @@ def _seed_iter(iter_id: str, rows: list[dict]) -> None:
         for r in rows: w.writerow(r)
 
 
-def _seed_annotations(zettel_uuids: list[str]) -> None:
-    rdir = ANNOT / "round-1"; rdir.mkdir(parents=True, exist_ok=True)
+def _seed_annotations(annot_root: Path, zettel_uuids: list[str]) -> None:
+    # Write into a SANDBOX annot_root (a tmp dir), NEVER the real annotation/
+    # tree — test fixtures here previously clobbered the real
+    # responses.normalized.json and silently broke 06 (N=0). 06 is pointed at
+    # this sandbox via --annotation-root.
+    rdir = annot_root / "round-1"; rdir.mkdir(parents=True, exist_ok=True)
     payload = {"round": "1", "responses": [
         {"zettel_uuid": z, "scores_normalized": {
             "faithfulness": 0.5 + i * 0.1,
@@ -42,7 +46,7 @@ def _seed_annotations(zettel_uuids: list[str]) -> None:
     )
 
 
-def test_emits_per_axis_spearman_with_ci():
+def test_emits_per_axis_spearman_with_ci(tmp_path):
     rows = [{"wz_uuid": f"sz{i}", "source_type": "web",
              "composite": 50.0 + i * 10,
              "finesure_faithfulness": 0.5 + i * 0.1,
@@ -50,10 +54,11 @@ def test_emits_per_axis_spearman_with_ci():
              "finesure_conciseness": 0.7,
              "g_eval_coherence": 3} for i in range(5)]
     _seed_iter("iter-stats-test", rows)
-    _seed_annotations([r["wz_uuid"] for r in rows])
+    _seed_annotations(tmp_path, [r["wz_uuid"] for r in rows])
 
     res = subprocess.run(
-        [sys.executable, str(SCRIPT), "--iter", "iter-stats-test", "--bootstrap-B", "200"],
+        [sys.executable, str(SCRIPT), "--iter", "iter-stats-test", "--bootstrap-B", "200",
+         "--annotation-root", str(tmp_path)],
         capture_output=True, text=True, cwd=str(REPO_ROOT)
     )
     assert res.returncode == 0, f"06 failed: {res.stderr}"
@@ -69,7 +74,7 @@ def test_emits_per_axis_spearman_with_ci():
         assert "n" in d[axis]
 
 
-def test_excludes_backfilled_rows_from_correlation():
+def test_excludes_backfilled_rows_from_correlation(tmp_path):
     """Fix #2.1: backfilled rows (synthesized 0.5 scores) must NOT enter the
     rank-correlation against human annotations. Without this, the synthesized
     'middle' scores artificially compress Spearman ρ toward 0."""
@@ -91,11 +96,11 @@ def test_excludes_backfilled_rows_from_correlation():
         "backfilled": 1, "backfilled_fields": "finesure;rubric",
     })
     _seed_iter("iter-stats-backfilled-test", rows)
-    _seed_annotations([r["wz_uuid"] for r in rows])
+    _seed_annotations(tmp_path, [r["wz_uuid"] for r in rows])
 
     res = subprocess.run(
         [sys.executable, str(SCRIPT), "--iter", "iter-stats-backfilled-test",
-         "--bootstrap-B", "200"],
+         "--bootstrap-B", "200", "--annotation-root", str(tmp_path)],
         capture_output=True, text=True, cwd=str(REPO_ROOT)
     )
     assert res.returncode == 0, f"06 failed: {res.stderr}"
@@ -115,8 +120,11 @@ def test_excludes_backfilled_rows_from_correlation():
 
 
 if __name__ == "__main__":
-    test_emits_per_axis_spearman_with_ci()
+    import tempfile
+    with tempfile.TemporaryDirectory() as _d:
+        test_emits_per_axis_spearman_with_ci(Path(_d))
     print("PASS test_emits_per_axis_spearman_with_ci")
-    test_excludes_backfilled_rows_from_correlation()
+    with tempfile.TemporaryDirectory() as _d:
+        test_excludes_backfilled_rows_from_correlation(Path(_d))
     print("PASS test_excludes_backfilled_rows_from_correlation")
     print("ALL 2 TESTS PASS")

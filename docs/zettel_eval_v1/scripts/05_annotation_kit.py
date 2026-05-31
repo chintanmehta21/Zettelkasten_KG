@@ -173,7 +173,14 @@ def main() -> int:
     ap.add_argument("--emit", action="store_true")
     ap.add_argument("--ingest", action="store_true")
     ap.add_argument("--round", choices=["1", "retest", "pairwise"], default="1")
+    ap.add_argument("--annotation-root", type=Path, default=None,
+                    help="override the annotation output dir (default: "
+                         "docs/zettel_eval_v1/annotation). Tests point this at a "
+                         "temp dir so they never clobber real human annotations.")
     args = ap.parse_args()
+    if args.annotation_root is not None:
+        global ANNOT
+        ANNOT = args.annotation_root
     if args.emit == args.ingest:
         ap.error("specify exactly one of --emit / --ingest")
     if args.emit:
