@@ -129,7 +129,14 @@ def main() -> int:
     ap.add_argument("--iter", required=True, dest="iter_id")
     ap.add_argument("--bootstrap-B", type=int, default=10000)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--annotation-root", type=Path, default=None,
+                    help="override the annotation dir (default: "
+                         "docs/zettel_eval_v1/annotation). Tests point this at a "
+                         "temp dir so they never clobber real human annotations.")
     args = ap.parse_args()
+    global ANNOT
+    if args.annotation_root is not None:
+        ANNOT = args.annotation_root
 
     iter_dir = RUNS / args.iter_id
     csv_path = iter_dir / "_overall" / "manifest_results.csv"
