@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -79,7 +80,8 @@ def test_emit_writes_labeling_csv(tmp_path, monkeypatch):
     out = tmp_path / "labels.csv"
     rc = m._emit("iter-x", 2, out)
     assert rc == 0 and out.exists()
-    rows = list(csv.DictReader(out.open(encoding="utf-8")))
+    # emit writes utf-8-sig (BOM) for Excel; read back with utf-8-sig to strip it
+    rows = list(csv.DictReader(out.open(encoding="utf-8-sig")))
     assert [*rows[0].keys()] == m.CSV_COLS
     assert all(r["label"] == "" for r in rows), "label column must start empty for operator"
 
@@ -106,6 +108,43 @@ def test_calibrate_end_to_end(tmp_path):
         m.ANALYSIS = orig
     assert rc == 0
     assert (tmp_path / "analysis" / "threshold_calibration" / "REPORT.md").exists()
+
+
+def test_excel_safe_guards_formula_leads():
+    """Cells starting with =,+,-,@ get an apostrophe so Excel renders text,
+    not a #NAME? formula. Normal text is untouched."""
+    m = _load()
+    assert m._excel_safe("- a bullet claim") == "'- a bullet claim"
+    assert m._excel_safe("=SUM(A1)") == "'=SUM(A1)"
+    assert m._excel_safe("+1 was added") == "'+1 was added"
+    assert m._excel_safe("@handle said") == "'@handle said"
+    assert m._excel_safe("A normal claim.") == "A normal claim."
+    assert m._excel_safe("") == ""  # empty is safe (no IndexError)
+
+
+def test_collect_claims_uses_atomic_facts_only(tmp_path, monkeypatch):
+    """_collect_claims must read ONLY nli_v2 (atomic_facts) and SKIP zettels
+    that have only v1 nli (regex claims) — calibrating on regex noise would
+    tune the v2 threshold against the wrong claim distribution."""
+    m = _load()
+    pdir = tmp_path / "iter-x" / "_overall" / "per_zettel"
+    pdir.mkdir(parents=True)
+    # zettel A: has nli_v2 (atomic) → INCLUDED
+    (pdir / "aaaa.json").write_text(json.dumps({
+        "nli_v2": {"per_claim": [{"claim": "Clean atomic fact.",
+                                  "contradict_prob": 0.3, "best_chunk_text": "ctx"}]},
+        "nli": {"per_claim": [{"claim": "- regex bullet", "contradict_prob": 0.9}]},
+    }), encoding="utf-8")
+    # zettel B: ONLY v1 nli (regex) → EXCLUDED
+    (pdir / "bbbb.json").write_text(json.dumps({
+        "nli": {"per_claim": [{"claim": "## Header noise", "contradict_prob": 0.95}]},
+    }), encoding="utf-8")
+    monkeypatch.setattr(m, "RUNS", tmp_path)
+    rows = m._collect_claims("iter-x")
+    claims = [r["claim"] for r in rows]
+    assert claims == ["Clean atomic fact."], (
+        f"must use atomic_facts only, not v1 regex; got {claims}"
+    )
 
 
 if __name__ == "__main__":
