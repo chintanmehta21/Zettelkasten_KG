@@ -249,3 +249,37 @@ def test_make_client_raises_when_no_keys_available(
     )
     with pytest.raises(RuntimeError, match="No Gemini API keys found"):
         _patched_make_client()
+
+
+# ---------------------------------------------------------------------------
+# make_client — extractor swap (iter-005 experimental_swap)
+# These use the REAL load_config so the flash-lite chain rewrite is exercised
+# end-to-end (the _patched_make_client stub returns object(), no .model_copy).
+# ---------------------------------------------------------------------------
+
+
+def test_make_client_swap_uses_flash_lite_only(_clean_gemini_env, monkeypatch):
+    """swap_extractor=True → the `flash` tier resolves to gemini-2.5-flash-lite
+    only (no flash fallback, so swapped facts are never flash-contaminated)."""
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaDummyKeyForUnitTest")
+    swap = make_client(swap_extractor=True)
+    assert swap._config.gemini.model_chains["flash"] == ["gemini-2.5-flash-lite"]
+
+
+def test_make_client_default_keeps_flash_first(_clean_gemini_env, monkeypatch):
+    """Default path is unchanged: flash chain still starts with gemini-2.5-flash."""
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaDummyKeyForUnitTest")
+    default = make_client()
+    assert default._config.gemini.model_chains["flash"][0] == "gemini-2.5-flash"
+
+
+def test_swap_does_not_mutate_global_config(_clean_gemini_env, monkeypatch):
+    """PRODUCTION SAFETY: building a swap client must NOT mutate the shared config
+    that the website serving path also loads. The swap operates on a deep copy."""
+    from website.features.summarization_engine.core.config import load_config
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaDummyKeyForUnitTest")
+    before = list(load_config().gemini.model_chains["flash"])
+    make_client(swap_extractor=True)
+    after = list(load_config().gemini.model_chains["flash"])
+    assert before == after, "swap mutated the global config — prod contamination"
+    assert "gemini-2.5-flash" == after[0]
