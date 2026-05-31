@@ -111,6 +111,17 @@ def _load_hf_token_from_new_envs(candidates: list | None = None) -> str | None:
 # pick it up before any from_pretrained call.
 _HF_TOKEN_LOADED = _load_hf_token_from_new_envs()
 
+# FIXED operating point, deliberately NOT data-calibrated (decision 2026-05-31).
+# Three-agent research (docs/claude_audits/nli_threshold_calibration_verdict_2026-05-31.md)
+# converged: at our label count (n~25-50) any data-driven threshold overfits
+# (sklearn can't CV it); a score-stratified sample of our well-grounded corpus is
+# ~all-supported (degenerate sweep, recall undefined); and enriching positives via
+# the LLM judge introduces verification bias (correlated detectors). Under
+# OR-with-review this value only sizes the low-priority nli_only review queue —
+# correctness is owned by the judge_only route — so a fixed default is safe.
+# Recalibrate ONLY when labels reach the hundreds, enriched by NLI's own
+# near-boundary uncertainty + random-stratified (NOT judge flags) with prevalence
+# (IPW) correction. See 13_threshold_calibration.py header.
 HARD_FAIL_CONTRADICT_THRESHOLD = 0.7
 
 
