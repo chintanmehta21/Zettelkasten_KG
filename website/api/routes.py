@@ -7,15 +7,19 @@ import json
 import logging
 import os
 import re
+import secrets
 import time
 import unicodedata
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlencode
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user, get_optional_user
@@ -396,17 +400,185 @@ async def warm():
 
 @router.get("/auth/config")
 async def auth_config():
-    """Return public Supabase config for client-side auth init."""
+    """Return public Supabase config for client-side auth init.
+
+    ``google_client_id`` is the native-sign-in feature flag: empty ⇒ the
+    frontend keeps the legacy hosted ``signInWithOAuth`` redirect; set ⇒ Google
+    routes through the on-domain server-side flow (PR #135) so the consent
+    screen shows our brand/domain instead of ``<ref>.supabase.co``. Only the
+    *public* client id is ever exposed — never ``GOOGLE_OAUTH_CLIENT_SECRET``.
+    """
+    google_client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
     if get_db_schema_version() == "v2":
         # β: prefer V2_* names; fall back to canonical when v1 namespace gone.
         return {
             "supabase_url": os.environ.get("SUPABASE_V2_URL", "") or os.environ.get("SUPABASE_URL", ""),
             "supabase_anon_key": os.environ.get("SUPABASE_V2_ANON_KEY", "") or os.environ.get("SUPABASE_ANON_KEY", ""),
+            "google_client_id": google_client_id,
         }
     return {
         "supabase_url": os.environ.get("SUPABASE_URL", ""),
         "supabase_anon_key": os.environ.get("SUPABASE_ANON_KEY", ""),
+        "google_client_id": google_client_id,
     }
+
+
+# --------------------------------------------------------------------------- #
+# Google native (ID-token) sign-in — server-side authorization-code flow.     #
+#                                                                             #
+# PR #135. Keeps the legacy full-page-redirect UX but runs the OAuth round-   #
+# trip on OUR domain so Google's consent screen reads "Zettelkasten /         #
+# zettelkasten.in" (not "<ref>.supabase.co"), and Google brand verification   #
+# only inspects a domain we own. Gated on GOOGLE_OAUTH_CLIENT_ID/SECRET —     #
+# absent ⇒ /start bounces home and the frontend uses the legacy flow. CSRF:   #
+# a one-time SameSite=Lax state cookie, compared on callback. No OIDC nonce —  #
+# the confidential-client code exchange + state already block replay, and it   #
+# avoids the Supabase raw/hashed-nonce footgun.                                #
+# --------------------------------------------------------------------------- #
+
+_GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
+_GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+_GOOGLE_SCOPES = "openid email profile"
+_GOOGLE_HANDOFF_PATH = (
+    Path(__file__).resolve().parents[1] / "features" / "user_auth" / "google_handoff.html"
+)
+
+
+def _google_oauth_configured() -> bool:
+    return bool(os.environ.get("GOOGLE_OAUTH_CLIENT_ID")) and bool(
+        os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    )
+
+
+def _public_base_url(request: Request) -> str:
+    """External origin used to build Google's ``redirect_uri``.
+
+    Prefer explicit ``PUBLIC_BASE_URL`` (canonical, must match the URI
+    registered in Google) so Cloudflare/Caddy host rewriting can't trigger a
+    ``redirect_uri_mismatch``. Fall back to the request origin in dev.
+    """
+    explicit = os.environ.get("PUBLIC_BASE_URL", "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    return str(request.base_url).rstrip("/")
+
+
+def _safe_return_to(value: str | None) -> str:
+    """Allow only same-origin relative paths (open-redirect guard)."""
+    if isinstance(value, str) and value.startswith("/") and not value.startswith("//"):
+        return value
+    return "/home"
+
+
+def _is_secure_origin(base_url: str) -> bool:
+    return base_url.lower().startswith("https://")
+
+
+async def _exchange_google_code(code: str, redirect_uri: str) -> dict:
+    """Exchange an authorization code for tokens at Google's token endpoint.
+
+    Server-to-server confidential-client call — ``client_secret`` never leaves
+    the backend. The response carries ``id_token`` because the request includes
+    the ``openid`` scope. Patched in tests.
+    """
+    data = {
+        "code": code,
+        "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
+        "client_secret": os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+    }
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(_GOOGLE_TOKEN_ENDPOINT, data=data)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _render_google_handoff(id_token: str, return_to: str) -> str:
+    """Inject the id_token + return path into the handoff template.
+
+    ``json.dumps`` keeps both values safe inside the inline ``<script>``. The
+    page is served ``no-store`` and the id_token is single-use.
+    """
+    template = _GOOGLE_HANDOFF_PATH.read_text(encoding="utf-8")
+    return (
+        template
+        .replace("__GOOGLE_ID_TOKEN__", json.dumps(id_token))
+        .replace("__RETURN_TO__", json.dumps(_safe_return_to(return_to)))
+    )
+
+
+@router.get("/auth/google/start")
+async def google_start(request: Request, return_to: str = "/home"):
+    """Begin on-domain Google sign-in: set state cookie, 302 to Google."""
+    if not _google_oauth_configured():
+        # Disabled ⇒ harmless bounce home; frontend falls back to legacy flow.
+        return RedirectResponse(url="/", status_code=302)
+
+    base_url = _public_base_url(request)
+    redirect_uri = f"{base_url}/api/auth/google/callback"
+    state = secrets.token_urlsafe(32)
+    return_to = _safe_return_to(return_to)
+
+    params = {
+        "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": _GOOGLE_SCOPES,
+        "state": state,
+    }
+    resp = RedirectResponse(
+        url=f"{_GOOGLE_AUTH_ENDPOINT}?{urlencode(params)}", status_code=302
+    )
+    secure = _is_secure_origin(base_url)
+    cookie_kwargs = dict(httponly=True, secure=secure, samesite="lax", max_age=600, path="/")
+    resp.set_cookie("g_oauth_state", state, **cookie_kwargs)
+    resp.set_cookie("g_oauth_return", return_to, **cookie_kwargs)
+    return resp
+
+
+@router.get("/auth/google/callback")
+async def google_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    """Complete the flow: verify state, exchange code, serve the handoff page."""
+    cookie_state = request.cookies.get("g_oauth_state")
+    return_to = _safe_return_to(request.cookies.get("g_oauth_return"))
+
+    def _clear(resp: Response) -> Response:
+        resp.delete_cookie("g_oauth_state", path="/")
+        resp.delete_cookie("g_oauth_return", path="/")
+        return resp
+
+    # User declined / Google-side error ⇒ degrade to login, never 500.
+    if error:
+        return _clear(RedirectResponse(url="/?auth_error=google", status_code=302))
+
+    # CSRF: the state Google echoes must match our one-time cookie.
+    if not cookie_state or not state or not secrets.compare_digest(cookie_state, state):
+        return _clear(JSONResponse({"detail": "Invalid OAuth state"}, status_code=400))
+
+    if not code or not _google_oauth_configured():
+        return _clear(JSONResponse({"detail": "Invalid OAuth callback"}, status_code=400))
+
+    base_url = _public_base_url(request)
+    redirect_uri = f"{base_url}/api/auth/google/callback"
+    try:
+        tokens = await _exchange_google_code(code, redirect_uri)
+    except Exception as exc:  # noqa: BLE001 — never leak Google/secret detail
+        logger.warning("google token exchange failed: %s", type(exc).__name__)
+        return _clear(RedirectResponse(url="/?auth_error=google_exchange", status_code=302))
+
+    id_token = tokens.get("id_token")
+    if not id_token:
+        return _clear(RedirectResponse(url="/?auth_error=google_no_idtoken", status_code=302))
+
+    resp = HTMLResponse(content=_render_google_handoff(id_token, return_to))
+    resp.headers["Cache-Control"] = "private, no-store"
+    return _clear(resp)
 
 
 @router.get("/me")

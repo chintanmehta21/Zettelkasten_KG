@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Signing in | Zettelkasten</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106"></script>
+    <script src="/browser-cache/js/cache.js?v=20260404f"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: hsl(224, 28%, 5%);
+            color: hsl(210, 20%, 92%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .callback-card { text-align: center; padding: 2rem; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid hsl(220, 16%, 14%);
+            border-top-color: hsl(172, 66%, 50%);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .status { color: hsl(215, 14%, 58%); font-size: 0.9rem; }
+        .error { color: hsl(0, 72%, 63%); margin-top: 1rem; }
+        .retry-link {
+            color: hsl(172, 66%, 50%);
+            text-decoration: none;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="callback-card" aria-live="polite">
+        <div class="spinner" id="spinner"></div>
+        <p class="status" id="status">Completing sign-in…</p>
+        <p class="error" id="error" style="display:none"></p>
+        <a class="retry-link" id="retry" href="/" style="display:none">Back to home</a>
+    </div>
+
+    <script>
+    // Values injected server-side by routes._render_google_handoff (JSON-encoded).
+    // The id_token is single-use and this page is served `no-store`.
+    var GOOGLE_ID_TOKEN = __GOOGLE_ID_TOKEN__;
+    var RETURN_TO = __RETURN_TO__;
+
+    (async function () {
+        var statusEl = document.getElementById('status');
+        var errorEl = document.getElementById('error');
+        var spinnerEl = document.getElementById('spinner');
+        var retryEl = document.getElementById('retry');
+
+        function isSafePath(value) {
+            return typeof value === 'string' && value.length > 0 && value[0] === '/' && value.indexOf('//') !== 0;
+        }
+
+        function fail(message) {
+            spinnerEl.style.display = 'none';
+            statusEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorEl.textContent = 'Sign-in failed: ' + (message || 'Unknown error');
+            retryEl.style.display = 'inline-block';
+        }
+
+        try {
+            if (!GOOGLE_ID_TOKEN) throw new Error('Missing Google credential.');
+
+            var configResp = await fetch('/api/auth/config');
+            var config = await configResp.json();
+            if (!config.supabase_url || !config.supabase_anon_key) {
+                throw new Error('Authentication is not configured on this server.');
+            }
+
+            // Same storageKey ('zk-auth-token') as auth-core.js so the session
+            // this writes is the one every other page reads. signInWithIdToken
+            // verifies the Google id_token against the project's Authorized
+            // Client IDs and mints a Supabase session — no supabase.co round-trip.
+            var sb = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: false,
+                    storage: window.localStorage,
+                    storageKey: 'zk-auth-token',
+                }
+            });
+
+            var result = await sb.auth.signInWithIdToken({
+                provider: 'google',
+                token: GOOGLE_ID_TOKEN,
+            });
+            if (result.error) {
+                throw new Error(result.error.message || result.error.code || 'ID-token sign-in rejected');
+            }
+            if (!result.data || !result.data.session) {
+                throw new Error('Signed in but no session was created.');
+            }
+
+            statusEl.textContent = 'Signed in! Redirecting…';
+            if (window.browserCache && typeof window.browserCache.patchState === 'function') {
+                window.browserCache.patchState({
+                    hasLoggedIn: true,
+                    allowCredentialStorage: true,
+                    landingPath: '/home'
+                });
+            }
+
+            var returnTo = isSafePath(RETURN_TO) ? RETURN_TO : '/home';
+            window.location.replace(returnTo);
+        } catch (err) {
+            fail(err && err.message);
+        }
+    })();
+    </script>
+</body>
+</html>
