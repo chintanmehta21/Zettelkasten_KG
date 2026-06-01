@@ -26,6 +26,7 @@
   var _supabaseClient = null;
   var _currentSession = null;
   var _subscribers = [];
+  var _googleClientId = '';
 
   // Client-side idle + absolute session timeout — closes the "forever session"
   // gap that Supabase Auth has when running on the free tier (idle/inactivity
@@ -266,6 +267,11 @@
         return;
       }
 
+      // Native Google sign-in feature flag (PR #135). Set ⇒ ZKAuth
+      // .signInWithGoogle routes Google through the on-domain server-side flow
+      // (consent shows our brand/domain); empty ⇒ legacy hosted signInWithOAuth.
+      _googleClientId = (config && config.google_client_id) || '';
+
       _supabaseClient = createSupabaseClient(config);
 
       // Subscribe ourselves to Supabase first so RESTORE/TOKEN_REFRESHED
@@ -405,6 +411,21 @@
     emit('SIGNED_OUT', null);
   }
 
+  // Native Google sign-in (PR #135): full-page redirect to the on-domain
+  // server-side OAuth flow so Google's consent shows "Zettelkasten /
+  // zettelkasten.in" instead of "<ref>.supabase.co". Identical UX to the
+  // legacy redirect, robust on every browser (no popup / 3rd-party cookies /
+  // GIS JS). Returns true when it took over (navigating away); false when the
+  // flag is off so the caller falls back to signInWithOAuth.
+  function signInWithGoogle(returnTo) {
+    if (!_googleClientId) return false;
+    var target = (typeof returnTo === 'string' && returnTo.charAt(0) === '/'
+      && returnTo.indexOf('//') !== 0) ? returnTo : '/home';
+    setReturnPath(target);
+    window.location.assign('/api/auth/google/start?return_to=' + encodeURIComponent(target));
+    return true;
+  }
+
   // Record activity timestamp in localStorage so multi-tab activity counts
   // (a click in tab A keeps tab B alive). Throttled to one write/minute so
   // mass click/keydown events don't hammer storage.
@@ -476,6 +497,7 @@
   window.ZKAuth.getClient = function () { return _supabaseClient; };
   window.ZKAuth.getSession = function () { return _currentSession; };
   window.ZKAuth.signOut = signOut;
+  window.ZKAuth.signInWithGoogle = signInWithGoogle;
   window.ZKAuth.onAuthStateChange = function (cb) {
     if (typeof cb !== 'function') return function () {};
     _subscribers.push(cb);

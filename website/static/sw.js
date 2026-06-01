@@ -1,7 +1,7 @@
 // Service Worker — Zettelkasten mobile shell cache (iter mobile-1a Phase 6)
 // Placeholder icons: teal-on-dark 'Z'. Replace icons before shipping to stores.
 
-const CACHE = 'zk-shell-v5';  // v5: precache the rest of the critical mobile JS (install/avatar/summarizer/sheet) + manifest so the shell hydrates on bad networks; activate purges v4 and any stale assets behind "UI doesn't show up properly" reports. v4: drop ignoreSearch on /m/js/ + /m/css/ + /static/ so cache-busters actually invalidate (Vedant OAuth incident 2026-05-26)
+const CACHE = 'zk-shell-v6';  // v6: refresh precache after auth-modal.js native Google sign-in (PR #135) so offline mobile gets the new handler. v5: precache the rest of the critical mobile JS (install/avatar/summarizer/sheet) + manifest so the shell hydrates on bad networks; activate purges v4 and any stale assets behind "UI doesn't show up properly" reports. v4: drop ignoreSearch on /m/js/ + /m/css/ + /static/ so cache-busters actually invalidate (Vedant OAuth incident 2026-05-26)
 
 const SHELL_URLS = [
   '/m/',
