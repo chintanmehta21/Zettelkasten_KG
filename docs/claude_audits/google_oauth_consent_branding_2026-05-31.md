@@ -4,7 +4,10 @@
 **Branch:** `feat/google-native-signin`
 **Goal:** Stop the Google account-chooser / consent screen from showing `ic…supabase.co`. Make it read **"Sign in to Zettelkasten · to continue to zettelkasten.in"**.
 
-> Status: **WIP. One design decision is pending operator approval** (button approach — see §4). No frontend auth code is written until that is resolved. This first commit is the plan + runbook only.
+> Status: **Option B selected** (operator, 2026-06-01), refined to a server-side full-page
+> **redirect** flow (most faithful to the current UX, most browser-robust). Backend routes +
+> frontend wiring + tests **implemented** in PR #135 (commits `f2737017`, `6c32cd23`). Teal button
+> unchanged. Remaining = the manual Google Cloud + Supabase console steps in §7, then set the env vars.
 
 ---
 
@@ -55,7 +58,13 @@ Google **ID token**, and hands it to Supabase via `supabase.auth.signInWithIdTok
 | **B. Backend-mediated OAuth** | Keep the **teal** button; it opens a Google popup on our domain | High | Medium-High (new FastAPI route + `GOOGLE_CLIENT_SECRET` + token exchange) | Preserves teal; more attack surface + secret to manage |
 | **C. Invisible-overlay hack** (rejected) | Teal visible, Google button transparent on top | Low — pixel-fragile, breaks on resize/locale/zoom | Low | Violates "no knowingly-fragile state" — not for a prod auth path |
 
-**Operator must choose A or B before frontend auth code is written.**
+**SELECTED: Option B** (operator, 2026-06-01) — implemented as a server-side full-page **redirect**
+(not a popup): identical UX to the current login, robust on every browser (pure redirects — no popups,
+no 3rd-party cookies, no GIS JS), and it sidesteps the popup `redirect_uri='postmessage'` footgun.
+CSRF via a one-time SameSite=Lax `state` cookie; no OIDC nonce (confidential-client code exchange +
+state already block replay). One-Tap stays a separate opt-in. Env: `GOOGLE_OAUTH_CLIENT_ID`,
+`GOOGLE_OAUTH_CLIENT_SECRET`, `PUBLIC_BASE_URL`. Routes: `GET /api/auth/google/start` +
+`GET /api/auth/google/callback`; handoff page `website/features/user_auth/google_handoff.html`.
 
 ## 5. Design common to A & B (backward-compatible, zero-risk to merge)
 
@@ -101,8 +110,9 @@ Google **ID token**, and hands it to Supabase via `supabase.auth.signInWithIdTok
    - **Option A:** create a Web client with **Authorized JavaScript origins** = `https://zettelkasten.in`
      (+ `http://localhost:8000` for dev). **No redirect URI** needed for the ID-token flow. Keep the existing
      supabase.co-redirect client for the other providers + hosted fallback.
-   - **Option B:** add **Authorized redirect URI** = `https://zettelkasten.in/auth/google/callback`;
-     download the **client secret**.
+   - **Option B (selected):** add **Authorized redirect URI** =
+     `https://zettelkasten.in/api/auth/google/callback` (note the `/api` prefix); download the
+     **client secret**. JS origins are not required for the server-side redirect flow.
 5. **Verify `zettelkasten.in`** in Google Search Console (`search.google.com/search-console`).
 
 ### 7b. Supabase Dashboard
@@ -110,8 +120,10 @@ Google **ID token**, and hands it to Supabase via `supabase.auth.signInWithIdTok
   trust `signInWithIdToken` tokens). Set nonce handling (or enable Skip Nonce Check).
 
 ### 7c. Droplet env
-- Set `GOOGLE_OAUTH_CLIENT_ID=<client id>` in the container env / `/etc/secrets/api_env`
-  (+ `GOOGLE_CLIENT_SECRET` only if Option B).
+- Set `GOOGLE_OAUTH_CLIENT_ID=<client id>`, `GOOGLE_OAUTH_CLIENT_SECRET=<secret>`, and
+  `PUBLIC_BASE_URL=https://zettelkasten.in` in the container env / `/etc/secrets/api_env`.
+  `PUBLIC_BASE_URL` must equal the origin of the registered redirect URI (else `redirect_uri_mismatch`).
+  See `ops/.env.example` → "Google native sign-in".
 
 ### 7d. Deploy ordering (critical)
 1. Merge this PR — **no behavior change** while the env var is unset.
