@@ -170,9 +170,18 @@
   if (providers) {
     providers.addEventListener('click', function (e) {
       const btn = e.target.closest('[data-provider]');
-      if (!btn || !_client) return;
+      if (!btn) return;
       const provider = btn.getAttribute('data-provider');
       btn.disabled = true;
+      // Google native (on-domain) flow when GOOGLE_OAUTH_CLIENT_ID is set:
+      // navigates to /api/auth/google/start (consent shows our brand/domain).
+      // Returns false (flag off) ⇒ fall through to the legacy hosted redirect.
+      if (provider === 'google' && window.ZKAuth &&
+          typeof window.ZKAuth.signInWithGoogle === 'function' &&
+          window.ZKAuth.signInWithGoogle('/home')) {
+        return;
+      }
+      if (!_client) { btn.disabled = false; return; }
       _client.auth.signInWithOAuth({
         provider: provider,
         options: { redirectTo: window.location.origin + '/auth/callback' },

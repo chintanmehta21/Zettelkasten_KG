@@ -251,6 +251,16 @@
     setReturnPath('/home');
     closeModal();
 
+    // Google native (on-domain) flow when GOOGLE_OAUTH_CLIENT_ID is set:
+    // ZKAuth.signInWithGoogle navigates to /api/auth/google/start so the
+    // consent screen shows our brand/domain. Returns false (flag off) ⇒ fall
+    // through to the legacy hosted redirect. Other providers always use legacy.
+    if (provider === 'google' && window.ZKAuth &&
+        typeof window.ZKAuth.signInWithGoogle === 'function' &&
+        window.ZKAuth.signInWithGoogle('/home')) {
+      return;
+    }
+
     var result = await client.auth.signInWithOAuth({
       provider: provider,
       options: {

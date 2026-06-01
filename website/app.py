@@ -264,8 +264,8 @@ def _render_with_mobile_shell(
     auth_block = (
         oauth_modal
         + '\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106" crossorigin></script>'
-        + '\n<script src="/auth/js/auth-core.js?v=20260530a"></script>'
-        + '\n<script src="/m/js/auth-modal.js?v=20260530a"></script>'
+        + '\n<script src="/auth/js/auth-core.js?v=20260601a"></script>'
+        + '\n<script src="/m/js/auth-modal.js?v=20260601a"></script>'
         + '\n<script src="/m/js/avatar.js?v=20260530a"></script>'
     )
     # Mobile pages use a full shell instead of the desktop footer placeholder,
