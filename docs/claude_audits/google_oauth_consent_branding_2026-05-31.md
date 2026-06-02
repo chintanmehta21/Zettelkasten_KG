@@ -110,14 +110,18 @@ state already block replay). One-Tap stays a separate opt-in. Env: `GOOGLE_OAUTH
    - **Option A:** create a Web client with **Authorized JavaScript origins** = `https://zettelkasten.in`
      (+ `http://localhost:8000` for dev). **No redirect URI** needed for the ID-token flow. Keep the existing
      supabase.co-redirect client for the other providers + hosted fallback.
-   - **Option B (selected):** add **Authorized redirect URI** =
-     `https://zettelkasten.in/api/auth/google/callback` (note the `/api` prefix); download the
-     **client secret**. JS origins are not required for the server-side redirect flow.
+   - **Option B (selected):** **reuse the existing Google OAuth client** (the one already wired to
+     Supabase's hosted flow) — Google clients allow multiple redirect URIs, so just **add**
+     `https://zettelkasten.in/api/auth/google/callback` (note the `/api` prefix) *alongside* the
+     existing `…supabase.co/auth/v1/callback` (keep both — the legacy fallback still uses it). Reuse
+     the **same client secret** (Google Cloud → Credentials → your client). A brand-new client also
+     works. JS origins are not required for the server-side redirect flow.
 5. **Verify `zettelkasten.in`** in Google Search Console (`search.google.com/search-console`).
 
 ### 7b. Supabase Dashboard
-- Auth → Providers → Google → add the new client ID to **Authorized Client IDs** (this is what makes Supabase
-  trust `signInWithIdToken` tokens). Set nonce handling (or enable Skip Nonce Check).
+- Auth → Providers → Google → add the client ID to **Authorized Client IDs** — REQUIRED even when reusing the
+  hosted-flow client: `signInWithIdToken` only trusts client IDs in *this list*, not the primary "Client ID"
+  field. (Harmless if redundant.) Our flow sends no nonce, so Skip Nonce Check is not needed.
 
 ### 7c. Droplet env
 - Set `GOOGLE_OAUTH_CLIENT_ID=<client id>`, `GOOGLE_OAUTH_CLIENT_SECRET=<secret>`, and
