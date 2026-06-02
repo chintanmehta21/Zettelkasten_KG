@@ -280,7 +280,12 @@
 
   function bindEvents() {
     Array.prototype.slice.call(document.querySelectorAll('[data-doc]')).forEach(function (card) {
-      card.addEventListener('click', function () {
+      card.addEventListener('click', function (event) {
+        // Cards are real <a href> links to the standalone /privacy /terms
+        // /data-security pages (crawlable + no-JS fallback). Intercept the
+        // click to open the in-page modal — the current UX — instead of
+        // navigating away.
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
         openDoc(card.getAttribute('data-doc'), card);
       });
     });
