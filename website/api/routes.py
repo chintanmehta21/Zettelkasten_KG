@@ -417,7 +417,7 @@ async def auth_config():
     screen shows our brand/domain instead of ``<ref>.supabase.co``. Only the
     *public* client id is ever exposed — never ``GOOGLE_OAUTH_CLIENT_SECRET``.
     """
-    google_client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+    google_client_id = _google_client_id()
     if get_db_schema_version() == "v2":
         # β: prefer V2_* names; fall back to canonical when v1 namespace gone.
         return {
@@ -453,10 +453,32 @@ _GOOGLE_HANDOFF_PATH = (
 )
 
 
-def _google_oauth_configured() -> bool:
-    return bool(os.environ.get("GOOGLE_OAUTH_CLIENT_ID")) and bool(
-        os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+def _google_client_id() -> str:
+    """Public OAuth client id for native Google sign-in.
+
+    Prefer a dedicated ``GOOGLE_OAUTH_CLIENT_ID``; otherwise reuse the existing
+    Nexus YouTube OAuth client (``NEXUS_YOUTUBE_CLIENT_ID``) — same Google
+    client, just one more authorized redirect URI. Client ids are public, so
+    exposing the resolved value via /api/auth/config is safe.
+    """
+    return (
+        os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+        or os.environ.get("NEXUS_YOUTUBE_CLIENT_ID")
+        or ""
     )
+
+
+def _google_client_secret() -> str:
+    """Server-only OAuth client secret (code→token exchange). Same precedence."""
+    return (
+        os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+        or os.environ.get("NEXUS_YOUTUBE_CLIENT_SECRET")
+        or ""
+    )
+
+
+def _google_oauth_configured() -> bool:
+    return bool(_google_client_id()) and bool(_google_client_secret())
 
 
 def _public_base_url(request: Request) -> str:
@@ -492,8 +514,8 @@ async def _exchange_google_code(code: str, redirect_uri: str) -> dict:
     """
     data = {
         "code": code,
-        "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
-        "client_secret": os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+        "client_id": _google_client_id(),
+        "client_secret": _google_client_secret(),
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
@@ -530,7 +552,7 @@ async def google_start(request: Request, return_to: str = "/home"):
     return_to = _safe_return_to(return_to)
 
     params = {
-        "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
+        "client_id": _google_client_id(),
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": _GOOGLE_SCOPES,
