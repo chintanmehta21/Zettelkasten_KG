@@ -31,11 +31,19 @@ from website.app import create_app
 
 CLIENT_ID = "test-client-id.apps.googleusercontent.com"
 CLIENT_SECRET = "test-secret-value"
+# Reused Nexus YouTube OAuth client (operator chose to reuse it rather than mint
+# a new client). The backend resolves GOOGLE_OAUTH_* first, then NEXUS_YOUTUBE_*.
+NEXUS_CLIENT_ID = "nexus-yt-client.apps.googleusercontent.com"
+NEXUS_CLIENT_SECRET = "nexus-yt-secret-value"
 BASE_URL = "https://zettelkasten.test"
 
 
 def _make_client(monkeypatch, *, configured: bool = True) -> TestClient:
     routes._rate_store.clear()
+    # Isolate from any ambient Nexus YouTube creds so the resolver is
+    # deterministic for the GOOGLE_OAUTH_*-only cases below.
+    monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_SECRET", raising=False)
     if configured:
         monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", CLIENT_ID)
         monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", CLIENT_SECRET)
@@ -210,3 +218,47 @@ class TestGoogleCallback:
         set_cookie = resp.headers.get("set-cookie", "")
         assert "g_oauth_state" in set_cookie
         assert ("max-age=0" in set_cookie.lower()) or ("expires=" in set_cookie.lower())
+
+
+# --------------------------------------------------------------------------- #
+# Credential reuse — fall back to the existing Nexus YouTube OAuth client.     #
+# --------------------------------------------------------------------------- #
+
+def _make_nexus_client(monkeypatch) -> TestClient:
+    """App configured with ONLY the Nexus YouTube creds (no dedicated vars)."""
+    routes._rate_store.clear()
+    monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_SECRET", raising=False)
+    monkeypatch.setenv("NEXUS_YOUTUBE_CLIENT_ID", NEXUS_CLIENT_ID)
+    monkeypatch.setenv("NEXUS_YOUTUBE_CLIENT_SECRET", NEXUS_CLIENT_SECRET)
+    monkeypatch.setenv("PUBLIC_BASE_URL", BASE_URL)
+    return TestClient(create_app(), base_url="https://testserver", follow_redirects=False)
+
+
+class TestNexusYoutubeCredentialReuse:
+    def test_config_falls_back_to_nexus_youtube_client_id(self, monkeypatch) -> None:
+        client = _make_nexus_client(monkeypatch)
+        body = client.get("/api/auth/config").json()
+        assert body["google_client_id"] == NEXUS_CLIENT_ID
+        # The secret must never be in the public config under any name.
+        assert NEXUS_CLIENT_SECRET not in client.get("/api/auth/config").text
+
+    def test_start_works_with_nexus_youtube_creds(self, monkeypatch) -> None:
+        client = _make_nexus_client(monkeypatch)
+        resp = client.get("/api/auth/google/start", params={"return_to": "/home"})
+        assert resp.status_code in (302, 307)
+        q = parse_qs(urlparse(resp.headers["location"]).query)
+        assert q["client_id"] == [NEXUS_CLIENT_ID]
+        assert q["redirect_uri"] == [f"{BASE_URL}/api/auth/google/callback"]
+
+    def test_dedicated_google_client_takes_precedence(self, monkeypatch) -> None:
+        # Both present ⇒ explicit GOOGLE_OAUTH_* overrides the shared Nexus client.
+        routes._rate_store.clear()
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", CLIENT_ID)
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", CLIENT_SECRET)
+        monkeypatch.setenv("NEXUS_YOUTUBE_CLIENT_ID", NEXUS_CLIENT_ID)
+        monkeypatch.setenv("NEXUS_YOUTUBE_CLIENT_SECRET", NEXUS_CLIENT_SECRET)
+        monkeypatch.setenv("PUBLIC_BASE_URL", BASE_URL)
+        client = TestClient(create_app(), base_url="https://testserver", follow_redirects=False)
+        body = client.get("/api/auth/config").json()
+        assert body["google_client_id"] == CLIENT_ID

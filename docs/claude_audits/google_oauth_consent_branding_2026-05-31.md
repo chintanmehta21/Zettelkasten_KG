@@ -124,10 +124,16 @@ state already block replay). One-Tap stays a separate opt-in. Env: `GOOGLE_OAUTH
   field. (Harmless if redundant.) Our flow sends no nonce, so Skip Nonce Check is not needed.
 
 ### 7c. Droplet env
-- Set `GOOGLE_OAUTH_CLIENT_ID=<client id>`, `GOOGLE_OAUTH_CLIENT_SECRET=<secret>`, and
-  `PUBLIC_BASE_URL=https://zettelkasten.in` in the container env / `/etc/secrets/api_env`.
-  `PUBLIC_BASE_URL` must equal the origin of the registered redirect URI (else `redirect_uri_mismatch`).
-  See `ops/.env.example` → "Google native sign-in".
+- Credential resolution: backend reads `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` first, else
+  `NEXUS_YOUTUBE_CLIENT_ID`/`_SECRET`. **Operator chose to reuse the Nexus YouTube client** →
+  ensure `NEXUS_YOUTUBE_CLIENT_ID` + `NEXUS_YOUTUBE_CLIENT_SECRET` (likely already present for Nexus
+  YouTube ingestion) and `PUBLIC_BASE_URL=https://zettelkasten.in` are in the container env /
+  `/etc/secrets/api_env`. `PUBLIC_BASE_URL` must equal the origin of the registered redirect URI
+  (else `redirect_uri_mismatch`). See `ops/.env.example` → "Google native sign-in".
+- ⚠️ Because the Nexus client is reused, the consent-screen brand = the **Google Cloud project that
+  owns the Nexus YouTube client**. Confirm that project's OAuth consent screen is named **Zettelkasten**
+  with authorized domain `zettelkasten.in` and is **Published** — otherwise sign-in will show the wrong
+  app name even though the flow works.
 
 ### 7d. Deploy ordering (critical)
 1. Merge this PR — **no behavior change** while the env var is unset.
