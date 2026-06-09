@@ -979,6 +979,13 @@ a:hover {
 }
 
 .footer-icon {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: 0;
+    margin: 0;
+    cursor: pointer;
+    font: inherit;
     color: var(--text-muted);
     transition: color var(--transition);
     display: inline-flex;
