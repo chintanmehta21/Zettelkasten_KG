@@ -417,7 +417,9 @@ async def auth_config():
     screen shows our brand/domain instead of ``<ref>.supabase.co``. Only the
     *public* client id is ever exposed — never ``GOOGLE_OAUTH_CLIENT_SECRET``.
     """
-    google_client_id = _google_client_id()
+    # Only advertise the client id to the SPA when the flow is explicitly
+    # enabled — otherwise the frontend keeps the legacy hosted redirect (dormant).
+    google_client_id = _google_client_id() if _native_signin_enabled() else ""
     if get_db_schema_version() == "v2":
         # β: prefer V2_* names; fall back to canonical when v1 namespace gone.
         return {
@@ -432,18 +434,18 @@ async def auth_config():
     }
 
 
-# --------------------------------------------------------------------------- #
-# Google native (ID-token) sign-in — server-side authorization-code flow.     #
-#                                                                             #
-# PR #135. Keeps the legacy full-page-redirect UX but runs the OAuth round-   #
-# trip on OUR domain so Google's consent screen reads "Zettelkasten /         #
-# zettelkasten.in" (not "<ref>.supabase.co"), and Google brand verification   #
-# only inspects a domain we own. Gated on GOOGLE_OAUTH_CLIENT_ID/SECRET —     #
-# absent ⇒ /start bounces home and the frontend uses the legacy flow. CSRF:   #
-# a one-time SameSite=Lax state cookie, compared on callback. No OIDC nonce —  #
-# the confidential-client code exchange + state already block replay, and it   #
-# avoids the Supabase raw/hashed-nonce footgun.                                #
-# --------------------------------------------------------------------------- #
+# Google native (ID-token) sign-in — server-side authorization-code flow (PR
+# #135). Keeps the legacy full-page-redirect UX but runs the OAuth round-trip on
+# OUR domain so Google's consent screen reads "Zettelkasten / zettelkasten.in"
+# (not "<ref>.supabase.co") and brand verification only inspects a domain we own.
+#
+# OFF BY DEFAULT: activates only when GOOGLE_NATIVE_SIGNIN_ENABLED is truthy
+# (plus a resolvable client id/secret + PUBLIC_BASE_URL). Otherwise /start
+# bounces home and the frontend keeps the legacy signInWithOAuth flow — so
+# merging/deploying this is dormant until the operator flips the flag. CSRF: a
+# one-time SameSite=Lax state cookie compared on callback. No OIDC nonce — the
+# confidential-client code exchange + state already block replay and it avoids
+# the Supabase raw/hashed-nonce footgun.
 
 _GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 _GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
@@ -477,8 +479,33 @@ def _google_client_secret() -> str:
     )
 
 
+def _native_signin_enabled() -> bool:
+    """Explicit master switch for the native Google sign-in flow.
+
+    Must be truthy for the flow to activate — so deploying this code stays
+    DORMANT by default even when a client id resolves from the reused
+    ``NEXUS_YOUTUBE_*`` creds. Flip to true only AFTER: (1) the
+    ``/api/auth/google/callback`` redirect URI is registered on the Google
+    client, (2) that client id is in Supabase → Auth → Providers → Google →
+    Authorized Client IDs, and (3) ``PUBLIC_BASE_URL`` is set.
+    """
+    return os.environ.get("GOOGLE_NATIVE_SIGNIN_ENABLED", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 def _google_oauth_configured() -> bool:
-    return bool(_google_client_id()) and bool(_google_client_secret())
+    # Require the explicit enable flag + an exact PUBLIC_BASE_URL (so redirect_uri
+    # is an invariant, never derived from a spoofable request Host) + creds.
+    return (
+        _native_signin_enabled()
+        and bool(os.environ.get("PUBLIC_BASE_URL", "").strip())
+        and bool(_google_client_id())
+        and bool(_google_client_secret())
+    )
 
 
 def _public_base_url(request: Request) -> str:
@@ -495,10 +522,19 @@ def _public_base_url(request: Request) -> str:
 
 
 def _safe_return_to(value: str | None) -> str:
-    """Allow only same-origin relative paths (open-redirect guard)."""
-    if isinstance(value, str) and value.startswith("/") and not value.startswith("//"):
-        return value
-    return "/home"
+    """Allow only a clean same-origin relative path (open-redirect guard).
+
+    Browsers normalise ``\\`` to ``/`` and strip TAB/CR/LF, so ``/\\evil.com``
+    and ``/\\t/evil.com`` would resolve to an external origin and slip past a
+    naive leading-``/`` check. Reject backslashes, control chars, and
+    protocol-relative ``//host``. Mirror of ``isSafePath`` (google_handoff.html),
+    ``signInWithGoogle`` (auth-core.js), and ``isPath`` (browser_cache/cache.js).
+    """
+    if not isinstance(value, str) or not value or value[0] != "/" or value[:2] == "//":
+        return "/home"
+    if "\\" in value or "\t" in value or "\n" in value or "\r" in value:
+        return "/home"
+    return value
 
 
 def _is_secure_origin(base_url: str) -> bool:

@@ -419,8 +419,11 @@
   // flag is off so the caller falls back to signInWithOAuth.
   function signInWithGoogle(returnTo) {
     if (!_googleClientId) return false;
+    // Reject protocol-relative (//host) + backslash/control-char tricks that
+    // browsers normalise to an external origin (open-redirect guard).
     var target = (typeof returnTo === 'string' && returnTo.charAt(0) === '/'
-      && returnTo.indexOf('//') !== 0) ? returnTo : '/home';
+      && returnTo.indexOf('//') !== 0 && returnTo.indexOf('\\') === -1
+      && !/[\t\n\r]/.test(returnTo)) ? returnTo : '/home';
     setReturnPath(target);
     window.location.assign('/api/auth/google/start?return_to=' + encodeURIComponent(target));
     return true;

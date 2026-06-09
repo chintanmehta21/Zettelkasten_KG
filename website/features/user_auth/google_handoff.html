@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106"></script>
-    <script src="/browser-cache/js/cache.js?v=20260404f"></script>
+    <script src="/browser-cache/js/cache.js?v=20260609a"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -63,7 +63,12 @@
         var retryEl = document.getElementById('retry');
 
         function isSafePath(value) {
-            return typeof value === 'string' && value.length > 0 && value[0] === '/' && value.indexOf('//') !== 0;
+            // Reject protocol-relative (//host) AND backslash/control-char tricks
+            // ('/\\evil.com', '/\t/evil.com') that browsers normalise to an
+            // external origin. Mirrors _safe_return_to in routes.py.
+            return typeof value === 'string' && value.length > 0 && value[0] === '/'
+                && value.indexOf('//') !== 0 && value.indexOf('\\') === -1
+                && !/[\t\n\r]/.test(value);
         }
 
         function fail(message) {
@@ -104,6 +109,7 @@
             if (result.error) {
                 throw new Error(result.error.message || result.error.code || 'ID-token sign-in rejected');
             }
+            GOOGLE_ID_TOKEN = null;  // single-use credential consumed — drop from memory
             if (!result.data || !result.data.session) {
                 throw new Error('Signed in but no session was created.');
             }
