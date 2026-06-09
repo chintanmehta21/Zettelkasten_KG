@@ -1,8 +1,11 @@
-"""WAVE-C 1c-A.4 — /api/graph payload trim + Brotli negotiation tests.
+"""WAVE-C 1c-A.4 — /api/graph payload trim + compressibility budget.
 
 Locked decisions covered:
-- D-KG-8: Brotli + gzip via Accept-Encoding negotiation
 - D-KG-9: drop embedding, raw scores, raw timestamps, model_version
+- Payload size budget: the trimmed graph must compress well under 300 KB at
+  1k nodes (compression itself is now owned by Caddy/Cloudflare, audit
+  2026-06-04 — we verify the body is *compressible* under budget, not that the
+  app compresses it).
 
 Strategy: black-box the response shape via FastAPI TestClient + monkey-patch
 the upstream graph loader. Avoids any Supabase round-trip (these are NOT
@@ -18,21 +21,14 @@ from fastapi.testclient import TestClient
 def _build_test_app():
     """Construct a minimal FastAPI app exposing /api/graph against an
     in-memory file-store stub. Avoids Supabase / auth / lifespan startup.
+    Compression is owned by Caddy/Cloudflare now, so no compressor is wired
+    here (audit 2026-06-04).
     """
     from fastapi import FastAPI
 
     from website.api import routes as routes_module
 
     app = FastAPI()
-
-    # Register Brotli compression middleware to mirror production wiring.
-    try:
-        from brotli_asgi import BrotliMiddleware
-
-        app.add_middleware(BrotliMiddleware, minimum_size=512, quality=4)
-    except ImportError:
-        pytest.skip("brotli-asgi not installed in this env")
-
     app.include_router(routes_module.router)
     return app
 
@@ -193,71 +189,6 @@ def test_min_strength_filter_passes_null_strength() -> None:
     assert targets == {"b", "c"}
 
 
-# ── Brotli content-encoding negotiation ─────────────────────────────
-
-
-def test_brotli_negotiation_returns_br(monkeypatch) -> None:
-    """Accept-Encoding: br ⇒ Content-Encoding: br on a >1KB response."""
-    import website.api.routes as routes_module
-
-    # Stub out get_graph() to return a payload large enough to compress.
-    big_payload = {
-        "nodes": [
-            {
-                "id": f"n-{i}",
-                "name": f"node-{i}",
-                "group": "web",
-                "summary": "lorem ipsum " * 30,
-                "tags": ["python", "fastapi", "supabase"],
-                "url": f"https://example.com/{i}",
-                "date": "2026-01-01",
-                "node_date": "2026-01-01",
-            }
-            for i in range(100)
-        ],
-        "links": [],
-    }
-
-    def _fake_get_graph():
-        return big_payload
-
-    # Both routes_module-local and origin name (defensive monkey-patch).
-    monkeypatch.setattr(routes_module, "get_graph", _fake_get_graph)
-    monkeypatch.setattr(
-        routes_module,
-        "_enrich_graph_with_analytics",
-        lambda d, **_kw: d,  # skip analytics in this payload-shape test
-    )
-
-    app = _build_test_app()
-    with TestClient(app) as client:
-        r = client.get("/api/graph", headers={"Accept-Encoding": "br"})
-    assert r.status_code == 200
-    assert r.headers.get("Content-Encoding") == "br"
-
-
-def test_gzip_negotiation_returns_gzip(monkeypatch) -> None:
-    """Accept-Encoding: gzip alone ⇒ either gzip or br (server may downgrade)."""
-    import website.api.routes as routes_module
-
-    big_payload = {
-        "nodes": [{"id": f"n-{i}", "name": f"x{i}", "summary": "y" * 200, "tags": []}
-                  for i in range(50)],
-        "links": [],
-    }
-    monkeypatch.setattr(routes_module, "get_graph", lambda: big_payload)
-    monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d, **_kw: d)
-
-    app = _build_test_app()
-    with TestClient(app) as client:
-        r = client.get("/api/graph", headers={"Accept-Encoding": "gzip"})
-    assert r.status_code == 200
-    # brotli-asgi falls back to gzip when br not in Accept-Encoding.
-    assert r.headers.get("Content-Encoding") in ("gzip", None)
-    # Body is decoded transparently by httpx when Content-Encoding is set.
-    parsed = r.json()
-    assert "nodes" in parsed
-
 
 def test_payload_trims_embedding_via_endpoint(monkeypatch) -> None:
     """Even if the upstream loader returns embedding-laden nodes, the
@@ -291,10 +222,12 @@ def test_payload_trims_embedding_via_endpoint(monkeypatch) -> None:
 # ── Payload size budget at 1k-node fixture ─────────────────────────
 
 
-def test_payload_under_300kb_at_1k_nodes(monkeypatch) -> None:
-    """Compressed /api/graph response must stay under 300KB at 1k nodes
-    with default trim + br compression. Headroom for 10k-user scale.
-    """
+def test_payload_under_300kb_brotli_at_1k_nodes(monkeypatch) -> None:
+    """The trimmed /api/graph body must compress to <300 KB at 1k nodes so the
+    Caddy/Cloudflare layer keeps it small at 10k-user scale. We brotli-compress
+    the response body ourselves (the app no longer compresses)."""
+    import brotli  # type: ignore
+
     import website.api.routes as routes_module
 
     n = 1000
@@ -327,19 +260,12 @@ def test_payload_under_300kb_at_1k_nodes(monkeypatch) -> None:
 
     app = _build_test_app()
     with TestClient(app) as client:
-        r = client.get("/api/graph", headers={"Accept-Encoding": "br"})
+        r = client.get("/api/graph", params={"view": "global"})
     assert r.status_code == 200
-    # httpx.Response.content has already been decompressed; we want the
-    # raw on-the-wire size — read from the Content-Length header.
-    raw_size = int(r.headers.get("Content-Length", 0))
-    if raw_size == 0:
-        # Some servers omit Content-Length on chunked; re-encode to estimate.
-        import brotli  # type: ignore
-
-        raw_size = len(brotli.compress(r.content, quality=4))
+    raw_size = len(brotli.compress(r.content, quality=4))
     assert raw_size < 300 * 1024, (
-        f"compressed /api/graph payload is {raw_size} bytes at 1k nodes; "
-        f"D-KG-8 budget is <300KB"
+        f"brotli-compressed /api/graph payload is {raw_size} bytes at 1k nodes; "
+        f"budget is <300 KB"
     )
 
 
