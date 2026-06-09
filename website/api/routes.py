@@ -213,7 +213,16 @@ def _enrich_graph_with_analytics(
         if metrics is None:
             from website.features.kg_features.analytics import compute_graph_metrics
             kg_graph = KGGraph(**graph_dict)
+            _t0 = time.perf_counter()
             metrics = compute_graph_metrics(kg_graph)
+            # Flip-metric #3 (audit 2026-06-04): igraph wall-time on a cache
+            # miss. Watch p95; >1s for any graph (or >~500 shared nodes) trips
+            # the materialized-analytics-columns work.
+            logger.info(
+                "kg_analytics_ms ms=%.1f nodes=%d",
+                (time.perf_counter() - _t0) * 1000.0,
+                len(graph_dict.get("nodes", []) or []),
+            )
             put_cached_metrics(graph_hash, metrics)
 
         for node in graph_dict.get("nodes", []):
@@ -1393,6 +1402,14 @@ async def graph_data(
         raise HTTPException(status_code=403, detail="Forbidden") from None
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Flip-metric #2 (audit 2026-06-04): node count per response. Watch the max
+    # per-user value; >~500 trips the personal-subgraph progressive-reveal work.
+    logger.info(
+        "kg_graph_nodes view=%s nodes=%d",
+        view or "auto",
+        len((payload or {}).get("nodes", []) or []),
+    )
 
     # Conditional-request + private-cache contract (audit 2026-06-04).
     # `private` is mandatory: per-user graphs must never be edge-cached
