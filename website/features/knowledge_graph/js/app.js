@@ -111,6 +111,16 @@ function warmupTicksForNodeCount(n) {
   const count = Number(n) || 0;
   return Math.min(250, Math.max(60, Math.round(count * 0.6)));
 }
+
+// Observability (audit 2026-06-04, flip-metric #1): one console line per graph
+// load — decoded payload size + wall time + node count. Watched to decide when
+// LOD/progressive-reveal trips (payload measured client-side, post-CDN).
+function formatGraphLoadMetric(stats) {
+  const kb = Math.round((Number(stats && stats.bytes) || 0) / 1024);
+  const ms = Math.round(Number(stats && stats.ms) || 0);
+  const nodes = Number(stats && stats.nodes) || 0;
+  return '[kg] graph loaded: ' + nodes + ' nodes, ' + kb + ' KB, ' + ms + ' ms';
+}
 /* test-exports:end */
 
 (function () {
@@ -726,6 +736,7 @@ function warmupTicksForNodeCount(n) {
 
   // ---- Load data ----
   function loadGraphData() {
+    const _kgLoadT0 = (window.performance && performance.now) ? performance.now() : Date.now();
     showOverlay('overlay-loading');
     hideOverlay('overlay-empty');
     hideOverlay('overlay-error');
@@ -745,6 +756,13 @@ function warmupTicksForNodeCount(n) {
         const sliderWrap = document.querySelector('.kg-strength-slider-wrap');
         if (sliderWrap) sliderWrap.classList.remove('is-loading');
         fullData = data;
+        try {
+          const _ms = ((window.performance && performance.now) ? performance.now() : Date.now()) - _kgLoadT0;
+          let _bytes;
+          try { _bytes = new Blob([JSON.stringify(data)]).size; }
+          catch (_e) { _bytes = JSON.stringify(data).length; }
+          console.log(formatGraphLoadMetric({ bytes: _bytes, ms: _ms, nodes: (data.nodes || []).length }));
+        } catch (_e) { /* metric must never break the load path */ }
         fullData.nodes = (fullData.nodes || []).map(node => {
           node.group = normalizeGroup(node.group);
           return node;
