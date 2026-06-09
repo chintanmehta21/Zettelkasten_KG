@@ -100,6 +100,17 @@ function getCommunityHue(communityId) {
   const idx = Math.abs(parseInt(communityId, 10) || 0);
   return AMBER_HUE_MIN + (idx * 7 % (span + 1));
 }
+
+// Settle tuning (audit 2026-06-04): tier the off-screen pre-settle by node
+// count so the FIRST painted frame is near-final (no chaotic churn), capped so
+// first paint is never delayed on big graphs / low-end devices. The visible
+// drift-to-rest is governed by GRAPH_COOLDOWN_MS (down from the old 2500ms) —
+// keeps the "alive" feel but reads as "ready" not "loading".
+const GRAPH_COOLDOWN_MS = 1100;
+function warmupTicksForNodeCount(n) {
+  const count = Number(n) || 0;
+  return Math.min(250, Math.max(60, Math.round(count * 0.6)));
+}
 /* test-exports:end */
 
 (function () {
@@ -1145,8 +1156,8 @@ function getCommunityHue(communityId) {
       // ---- Physics — fast convergence ----
       .d3AlphaDecay(0.025)
       .d3VelocityDecay(0.35)
-      .warmupTicks(100)
-      .cooldownTime(2500)
+      .warmupTicks(warmupTicksForNodeCount(graphData.nodes.length))
+      .cooldownTime(GRAPH_COOLDOWN_MS)
       // X6: settle-driven deep-link focus replaces the 1200 ms setTimeout.
       // The callback runs the moment the force layout converges, so the
       // camera fly-to has a real layout to aim at — slower graphs no

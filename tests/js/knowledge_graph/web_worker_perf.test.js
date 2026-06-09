@@ -40,8 +40,8 @@ describe('KG perf — web worker + simulation tuning', () => {
   });
 
   it('uses the cooldownTime cap below the default to avoid runaway settles', () => {
-    // The existing setting is 2500ms. Pin it as a regression guard — anything
-    // higher means the worker keeps spinning long after the layout converges.
-    expect(APP_SRC).toMatch(/\.cooldownTime\(\s*2500\s*\)/);
+    // Was 2500ms; settle_tuning task (2026-06-04) replaced the literal with
+    // GRAPH_COOLDOWN_MS (1100ms) — "alive but fast". Pin the constant name.
+    expect(APP_SRC).toMatch(/\.cooldownTime\(\s*GRAPH_COOLDOWN_MS\s*\)/);
   });
 });
