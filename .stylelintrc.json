@@ -1,0 +1,9 @@
+{
+  "plugins": ["stylelint-declaration-strict-value"],
+  "rules": {
+    "scale-unlimited/declaration-strict-value": [
+      ["border-radius"],
+      { "ignoreValues": ["0", "50%", "999px", "/^var\\(/"], "expandShorthand": true }
+    ]
+  }
+}

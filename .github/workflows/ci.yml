@@ -49,3 +49,17 @@ jobs:
           NEXUS_TOKEN_ENCRYPTION_KEY: "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4="
         run: |
           pytest -q --maxfail=5
+
+  stylelint-changed:
+    name: stylelint (changed CSS lines)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm run lint:css:changed
