@@ -1,7 +1,7 @@
 """Agent 3 test matrix for the pure-ASGI middleware conversion (PR #115 Scope C).
 
 These tests build a MINIMAL FastAPI app wired with the same middleware stack
-(Brotli + the 5 converted classes) so the chain's correctness can be pinned
+(the 5 converted pure-ASGI classes) so the chain's correctness can be pinned
 without dragging in Supabase / Gemini / Caddy dependencies. They complement
 ``test_middleware_chain_order.py`` (which pins registration order) and
 ``test_auth_jwt_drop_observability.py`` (which pins the X-Auth-Status /
