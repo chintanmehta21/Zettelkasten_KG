@@ -66,7 +66,7 @@
 .home-panel {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 48px 48px var(--radius-lg) var(--radius-lg);
+    border-radius: var(--radius-lg);
     padding: 1.75rem;
     box-shadow: var(--shadow-md);
     position: relative;
@@ -90,8 +90,8 @@
     height: 80px;
     background: linear-gradient(to bottom, var(--accent-subtle), transparent);
     pointer-events: none;
-    border-radius: 48px 48px 0 0;
-    clip-path: inset(0 0 0 0 round 48px 48px 0 0);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    clip-path: inset(0 0 0 0 round var(--radius-lg) var(--radius-lg) 0 0);
 }
 
 .home-vault-header {
