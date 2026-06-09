@@ -2,40 +2,1543 @@
   "round": "1",
   "responses": [
     {
-      "zettel_uuid": "sz0",
+      "zettel_uuid": "3dcba4c9-9c8e-4dc8-b6fd-a4de4a1e89ca",
+      "shown_order": 1,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "51750374-0287-4f90-bd33-ec672f2d1d22",
+      "shown_order": 2,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "90a7a8f1-73b6-45da-89f4-6bef2ca18f97",
+      "shown_order": 3,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 5,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 1.0,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "a2928645-af37-4605-87dc-61f3c7d32c67",
+      "shown_order": 4,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "628789b4-72bb-4cfe-b9b6-ad7a398e5cdc",
+      "shown_order": 5,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "minor speaker/format noise",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "ac60e521-4b1a-455c-9441-2fe8f0e499c1",
+      "shown_order": 6,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "6ac4c5f0-5c73-426b-9d9b-0f8ac4a9cd43",
+      "shown_order": 7,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "ec02d661-780e-426a-8887-e1fd51d97127",
+      "shown_order": 8,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "d3de06c5-7e47-45b8-9e01-11f482d1fa21",
+      "shown_order": 9,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
       "scores_normalized": {
         "faithfulness": 0.5,
         "coverage": 0.5,
-        "conciseness": 0.7,
-        "coherence": 0.8
-      }
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
     },
     {
-      "zettel_uuid": "sz1",
+      "zettel_uuid": "a9de82e8-5753-4212-9bfa-85b1e9f780dd",
+      "shown_order": 10,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 3,
+        "coherence": 4
+      },
       "scores_normalized": {
-        "faithfulness": 0.6,
-        "coverage": 0.55,
-        "conciseness": 0.7,
-        "coherence": 0.8
-      }
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
     },
     {
-      "zettel_uuid": "sz2",
+      "zettel_uuid": "6cd80a1f-882c-4f79-971d-b3f538ac23ef",
+      "shown_order": 11,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 4
+      },
       "scores_normalized": {
-        "faithfulness": 0.7,
-        "coverage": 0.6,
-        "conciseness": 0.7,
-        "coherence": 0.8
-      }
+        "faithfulness": 1.0,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "broad Wikipedia page summarized with long name-heavy list",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
     },
     {
-      "zettel_uuid": "sz_backfilled",
+      "zettel_uuid": "7883c431-7e09-47bc-91ec-d8d61e63a70d",
+      "shown_order": 12,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
       "scores_normalized": {
-        "faithfulness": 0.8,
-        "coverage": 0.65,
-        "conciseness": 0.7,
-        "coherence": 0.8
-      }
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "d5650ab7-d687-4e4f-994b-1bc500e43000",
+      "shown_order": 13,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 3
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.5
+      },
+      "comment": "some GitHub extraction artifacts and unclear public-surface details",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "67ed05d0-afb2-41a9-a46b-5021a1a1e404",
+      "shown_order": 14,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 4,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 0.75,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "very large source; summary captures main arc but omits many details",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "f8de85f8-37ed-4c70-8e09-f41cd94a45e7",
+      "shown_order": 15,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "c54e4852-6eca-42a0-b619-527456d907c0",
+      "shown_order": 16,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 2,
+        "coherence": 3
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.25,
+        "coherence": 0.5
+      },
+      "comment": "unsupported GitHub issue/public-surface details and noisy extraction artifacts",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "88b63f46-c03a-4553-82b9-cf20a0bc1c1d",
+      "shown_order": 17,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "a1890557-4987-4aa8-b44b-f94b2a9da431",
+      "shown_order": 18,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "speaker label is wrong/odd but substantive points match transcript",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "47dcf7db-5177-4d61-9d3e-fe51a5320a30",
+      "shown_order": 19,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "some repetition in overview",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "4cc79f34-6ac6-45cf-9ee4-80f1d079ec67",
+      "shown_order": 20,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but core content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "bbae060f-96dd-4316-8814-cc66c4e210ae",
+      "shown_order": 21,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "96ef92bc-67aa-4932-a11b-1bd9072d0087",
+      "shown_order": 22,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong and framing is somewhat loaded",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "b52a80d6-c4ca-414c-9448-7f5f0f8e7ccd",
+      "shown_order": 23,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 3
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.5
+      },
+      "comment": "GitHub extraction adds odd unsupported public API details",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "42add64b-d27a-4509-9497-ed837f2daa8d",
+      "shown_order": 24,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "c21e48ec-f7a7-418d-b726-aed602f34b48",
+      "shown_order": 25,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "1c0af8ec-0ba8-42dc-bc53-cf2c1f3089d1",
+      "shown_order": 26,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "cdc94776-b091-4867-b1fc-ac6961ac4d13",
+      "shown_order": 27,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "b621aeec-6f81-4b67-bc5b-21195d1423e1",
+      "shown_order": 28,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "ea7c0ca0-7bd9-490b-a499-ca3edec1c5f7",
+      "shown_order": 29,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "591880fb-a4a5-4688-81fb-9e0d55237114",
+      "shown_order": 30,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 3
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.5
+      },
+      "comment": "GitHub extraction adds odd public-surface/email details",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "0aa336fe-2ce8-4e1a-a5c2-190977affe63",
+      "shown_order": 31,
+      "scores_raw": {
+        "faithfulness": 1,
+        "coverage": 1,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.0,
+        "coverage": 0.0,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "source mismatch: live video is MIT macroeconomics, not monolith/microservices",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "13261811-baf0-42e6-9b70-266c21da5c1a",
+      "shown_order": 32,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "c71afcb6-fada-4871-96d5-f657093c496e",
+      "shown_order": 33,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "881865c9-2e11-4935-9f9e-16588e0dc9d4",
+      "shown_order": 34,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "some recent-development claims not verified in extracted repo source",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "793f2563-28c6-42aa-a8e4-11b64f370b40",
+      "shown_order": 35,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "5dd18062-1a75-499c-a26c-a044fc2a9468",
+      "shown_order": 36,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "ec1c363c-952b-4cfc-ac4d-e66f38235d72",
+      "shown_order": 37,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "dfc93ef9-20a1-4f24-bea1-416a62490e73",
+      "shown_order": 38,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong; quantum threat phrasing is broad",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "e00c622f-4402-4be9-a01f-b4cadde09f1b",
+      "shown_order": 39,
+      "scores_raw": {
+        "faithfulness": 1,
+        "coverage": 1,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.0,
+        "coverage": 0.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source mismatch: live video is about lithium-ion batteries, not Python overloading",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "b18ffaaf-921f-4ceb-8f29-3c8ed11b0de2",
+      "shown_order": 40,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "overview is repetitive but substantive summary is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "f35623f2-a78c-4e97-9771-24e524db530f",
+      "shown_order": 41,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "1f15b1b0-20ad-4e16-874d-151db9b0e057",
+      "shown_order": 42,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "951bad75-3765-4436-902c-d9984695fe79",
+      "shown_order": 43,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "f6139a40-83d7-41b1-b7f0-e918e46e3b3c",
+      "shown_order": 44,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "youtube transcript unavailable; couldn't fully verify",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "cd73b78e-1ed4-40b8-8d65-e64f4b269658",
+      "shown_order": 45,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "2e12cc8a-a412-4801-808b-c9658deab4fd",
+      "shown_order": 46,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "fabdb544-95ac-4421-a771-c4fe05dc6b54",
+      "shown_order": 47,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "6557d0f4-0a80-4eef-a1d2-8f465e728c5d",
+      "shown_order": 48,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "707a6e53-8ea4-4f48-9579-d857917b75c8",
+      "shown_order": 49,
+      "scores_raw": {
+        "faithfulness": 1,
+        "coverage": 1,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.0,
+        "coverage": 0.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source mismatch: live video is about power laws/game of life, not Go WebAssembly",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "de4e68df-25c7-4549-82d0-0fc92b6ccd86",
+      "shown_order": 50,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "04ccd190-3e8e-4998-a96d-95bef11dbfea",
+      "shown_order": 51,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "879f3562-46c1-4551-906a-aa9a15431ebc",
+      "shown_order": 52,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "a5d22e48-ccc0-4607-b0c5-c59eb4ffd4c6",
+      "shown_order": 53,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "af39dd2c-1e07-4176-9cd4-8a0cf8a738d0",
+      "shown_order": 54,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "99790339-9e8b-4ba2-9721-ee7c6b6a2f1b",
+      "shown_order": 55,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "4a44320c-981a-4458-a168-40970091505f",
+      "shown_order": 56,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "double-encoded summary text has mojibake and wrong speaker label",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "23f1cc68-6527-4768-8db2-8dfeaea215b0",
+      "shown_order": 57,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "183caad5-d4df-4c88-8175-85fe8c8358fa",
+      "shown_order": 58,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "fa2a34f6-222e-4790-9df6-9a656785ccf9",
+      "shown_order": 59,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 3,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.5,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "ddfb4689-ec1d-4ebd-b915-7b7c0caa80a7",
+      "shown_order": 60,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "minor repetition in overview",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "f96f2352-0e2e-404a-90d8-4c22ed6e7cc3",
+      "shown_order": 61,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "6a3be69d-00e6-49bd-8417-604554cb7880",
+      "shown_order": 62,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "minor incomplete sentence in architecture section",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "55bf9ba4-078d-4d18-a5a8-82e771ec67f0",
+      "shown_order": 63,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "e8e4c1ae-4490-42e4-8001-ccd580dafd29",
+      "shown_order": 64,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "98ae915c-b29c-4050-ba94-bd50ef77d28b",
+      "shown_order": 65,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "7a080c3a-97f3-43d2-8d17-1437b4ca1683",
+      "shown_order": 66,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "681a07c3-d5a5-456e-b54c-4daa3452836b",
+      "shown_order": 67,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "0061ad33-2f41-444f-b742-4786d15470a6",
+      "shown_order": 68,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "6ebc6b8a-8c4b-4d86-9e4c-c4f0ffb60384",
+      "shown_order": 69,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "minor truncation/noise in architecture line",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "ee73f1fa-59a2-4eee-a548-58c52025bf26",
+      "shown_order": 70,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 3
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.5
+      },
+      "comment": "some GitHub recent-issue/public-surface details are noisy",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "36fb7126-10c6-42ad-aae0-e99de4610954",
+      "shown_order": 71,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "2a36ba0a-d7e0-4e7a-975f-dfacfd975aa4",
+      "shown_order": 72,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 3
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.5
+      },
+      "comment": "some details go beyond extracted README and summary truncates a word",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "00b4f856-1801-4d41-9353-68c041f4b180",
+      "shown_order": 73,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "5a0e0654-0580-4ce2-8b2c-62377044b6b5",
+      "shown_order": 74,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 3,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.5,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "source unreachable: Reddit JSON blocked; scored from limited cached evidence",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "24d1a13a-bf7e-4848-b54d-83eafe327fee",
+      "shown_order": 75,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "0d3c0dee-dcab-439c-9a2b-17b59d5696f9",
+      "shown_order": 76,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 4,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 0.75,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "6dce6963-2866-48e1-a8b0-ce4ce19170ba",
+      "shown_order": 77,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "2e0447fb-1269-45c4-bff1-c618f06dfa57",
+      "shown_order": 78,
+      "scores_raw": {
+        "faithfulness": 5,
+        "coverage": 5,
+        "conciseness": 5,
+        "coherence": 5
+      },
+      "scores_normalized": {
+        "faithfulness": 1.0,
+        "coverage": 1.0,
+        "conciseness": 1.0,
+        "coherence": 1.0
+      },
+      "comment": "",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "91557c83-0580-4781-ae9b-ef5e474fe7ec",
+      "shown_order": 79,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker label appears wrong but content is supported",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "b00df24f-f8a6-410a-87db-2eccbd1a6005",
+      "shown_order": 80,
+      "scores_raw": {
+        "faithfulness": 3,
+        "coverage": 4,
+        "conciseness": 3,
+        "coherence": 3
+      },
+      "scores_normalized": {
+        "faithfulness": 0.5,
+        "coverage": 0.75,
+        "conciseness": 0.5,
+        "coherence": 0.5
+      },
+      "comment": "GitHub extraction includes noisy/truncated recent module details",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
+    },
+    {
+      "zettel_uuid": "8fb2f662-4cbe-4207-a599-a2de2744c1a9",
+      "shown_order": 81,
+      "scores_raw": {
+        "faithfulness": 4,
+        "coverage": 5,
+        "conciseness": 4,
+        "coherence": 4
+      },
+      "scores_normalized": {
+        "faithfulness": 0.75,
+        "coverage": 1.0,
+        "conciseness": 0.75,
+        "coherence": 0.75
+      },
+      "comment": "speaker attribution is shaky but content matches transcript",
+      "annotation_started_at_iso": "",
+      "annotation_finished_at_iso": ""
     }
   ]
 }
