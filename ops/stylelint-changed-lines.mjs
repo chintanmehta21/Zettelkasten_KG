@@ -2,7 +2,6 @@
 // pre-existing literals in legacy files never block a PR, but any NEW raw
 // border-radius does. Exit 1 on a violation on a changed line.
 import { execSync } from "node:child_process";
-import { resolve } from "node:path";
 import stylelint from "stylelint";
 
 const base = process.env.GITHUB_BASE_REF
@@ -27,6 +26,7 @@ for (const line of diff.split("\n")) {
 const files = Object.keys(changed);
 if (files.length === 0) { console.log("No changed CSS files."); process.exit(0); }
 
+// NB: must be run from the repo root (CI checkout + `npm run` both satisfy this).
 const cwdNorm = process.cwd().replace(/\\/g, "/");
 const { results } = await stylelint.lint({ files, configFile: ".stylelintrc.json" });
 let failed = 0;
