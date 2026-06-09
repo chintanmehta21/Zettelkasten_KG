@@ -4,10 +4,14 @@
   "description": "Vitest harness for browser-cache and user-auth JS modules. Run: npx vitest run",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint:css": "stylelint \"website/**/*.css\"",
+    "lint:css:changed": "node ops/stylelint-changed-lines.mjs"
   },
   "devDependencies": {
     "vitest": "^1.6.0",
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.0.0",
+    "stylelint": "^16.6.1",
+    "stylelint-declaration-strict-value": "^1.10.6"
   }
 }
