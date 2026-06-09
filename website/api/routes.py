@@ -1316,6 +1316,7 @@ def invalidate_user_graph(user_sub: str | None) -> int:
 
 @router.get("/graph")
 async def graph_data(
+    request: Request,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
     view: str | None = None,
     kasten_id: str | None = None,
@@ -1378,7 +1379,7 @@ async def graph_data(
         )
 
     try:
-        return await run_view_graph(
+        payload = await run_view_graph(
             user=user,
             view=view,  # type: ignore[arg-type]
             kasten_id=parsed_kasten_id,
@@ -1392,6 +1393,25 @@ async def graph_data(
         raise HTTPException(status_code=403, detail="Forbidden") from None
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Conditional-request + private-cache contract (audit 2026-06-04).
+    # `private` is mandatory: per-user graphs must never be edge-cached
+    # (Cloudflare async-SWR, 2026-02-26, would otherwise serve A's graph to B).
+    # ETag is a weak validator over the FINAL serialized body, so it reflects
+    # the exact view/min_strength/limit slice the client received; weak so a
+    # Cloudflare-rewritten validator still matches via if_none_match (RFC 7232).
+    body = json.dumps(
+        jsonable_encoder(payload), ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    etag = 'W/"' + hashlib.blake2s(body, digest_size=16).hexdigest() + '"'
+    cache_headers = {
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=300",
+        "ETag": etag,
+        "Vary": "Accept-Encoding",
+    }
+    if if_none_match(request.headers.get("if-none-match"), etag):
+        return Response(status_code=304, headers=cache_headers)
+    return Response(content=body, media_type="application/json", headers=cache_headers)
 
 
 # Phase 8.5.R3 / Phase 8 Task 4d: /api/graph/rebuild-links — HARD DELETED.
