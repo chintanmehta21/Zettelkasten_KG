@@ -45,12 +45,15 @@ def _make_client(monkeypatch, *, configured: bool = True) -> TestClient:
     monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_ID", raising=False)
     monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_SECRET", raising=False)
     if configured:
+        monkeypatch.setenv("GOOGLE_NATIVE_SIGNIN_ENABLED", "true")
         monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", CLIENT_ID)
         monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", CLIENT_SECRET)
         monkeypatch.setenv("PUBLIC_BASE_URL", BASE_URL)
     else:
+        monkeypatch.delenv("GOOGLE_NATIVE_SIGNIN_ENABLED", raising=False)
         monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_ID", raising=False)
         monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("PUBLIC_BASE_URL", raising=False)
     app = create_app()
     # follow_redirects=False so we can assert the 302 Location to Google.
     # base_url https so the httpx cookie jar persists the Secure state cookie
@@ -227,6 +230,7 @@ class TestGoogleCallback:
 def _make_nexus_client(monkeypatch) -> TestClient:
     """App configured with ONLY the Nexus YouTube creds (no dedicated vars)."""
     routes._rate_store.clear()
+    monkeypatch.setenv("GOOGLE_NATIVE_SIGNIN_ENABLED", "true")
     monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_ID", raising=False)
     monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_SECRET", raising=False)
     monkeypatch.setenv("NEXUS_YOUTUBE_CLIENT_ID", NEXUS_CLIENT_ID)
@@ -254,6 +258,7 @@ class TestNexusYoutubeCredentialReuse:
     def test_dedicated_google_client_takes_precedence(self, monkeypatch) -> None:
         # Both present ⇒ explicit GOOGLE_OAUTH_* overrides the shared Nexus client.
         routes._rate_store.clear()
+        monkeypatch.setenv("GOOGLE_NATIVE_SIGNIN_ENABLED", "true")
         monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", CLIENT_ID)
         monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", CLIENT_SECRET)
         monkeypatch.setenv("NEXUS_YOUTUBE_CLIENT_ID", NEXUS_CLIENT_ID)
@@ -262,3 +267,105 @@ class TestNexusYoutubeCredentialReuse:
         client = TestClient(create_app(), base_url="https://testserver", follow_redirects=False)
         body = client.get("/api/auth/config").json()
         assert body["google_client_id"] == CLIENT_ID
+
+
+# --------------------------------------------------------------------------- #
+# Explicit master switch (GOOGLE_NATIVE_SIGNIN_ENABLED) — dormant by default.  #
+# --------------------------------------------------------------------------- #
+
+class TestEnableFlagGate:
+    def test_flag_off_keeps_flow_dormant(self, monkeypatch) -> None:
+        # Creds + PUBLIC_BASE_URL present but the master flag is OFF ⇒ the SPA
+        # sees no client id and /start bounces home. This is what makes merging/
+        # deploying PR #135 a no-op until the operator flips the flag.
+        routes._rate_store.clear()
+        monkeypatch.delenv("GOOGLE_NATIVE_SIGNIN_ENABLED", raising=False)
+        monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_SECRET", raising=False)
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", CLIENT_ID)
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", CLIENT_SECRET)
+        monkeypatch.setenv("PUBLIC_BASE_URL", BASE_URL)
+        client = TestClient(create_app(), base_url="https://testserver", follow_redirects=False)
+        assert client.get("/api/auth/config").json()["google_client_id"] == ""
+        resp = client.get("/api/auth/google/start", params={"return_to": "/home"})
+        assert resp.status_code in (302, 307)
+        assert "accounts.google.com" not in resp.headers["location"]
+
+    def test_enabled_requires_public_base_url(self, monkeypatch) -> None:
+        # Flag ON + creds but no PUBLIC_BASE_URL ⇒ NOT configured: the redirect_uri
+        # must be an invariant, never derived from a spoofable request Host.
+        routes._rate_store.clear()
+        monkeypatch.setenv("GOOGLE_NATIVE_SIGNIN_ENABLED", "true")
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", CLIENT_ID)
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", CLIENT_SECRET)
+        monkeypatch.delenv("PUBLIC_BASE_URL", raising=False)
+        monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("NEXUS_YOUTUBE_CLIENT_SECRET", raising=False)
+        client = TestClient(create_app(), base_url="https://testserver", follow_redirects=False)
+        resp = client.get("/api/auth/google/start", params={"return_to": "/home"})
+        assert resp.status_code in (302, 307)
+        assert "accounts.google.com" not in resp.headers["location"]
+
+
+# --------------------------------------------------------------------------- #
+# Open-redirect guard — _safe_return_to + the /start cookie coercion.          #
+# --------------------------------------------------------------------------- #
+
+class TestSafeReturnTo:
+    @pytest.mark.parametrize(
+        "evil",
+        ["/\\evil.com", "/\tevil", "/\nevil", "/\revil", "//evil.com", "https://evil.com", "", None, "home"],
+    )
+    def test_rejects_unsafe(self, evil) -> None:
+        assert routes._safe_return_to(evil) == "/home"
+
+    @pytest.mark.parametrize("ok", ["/home", "/home/zettels", "/knowledge-graph", "/m/"])
+    def test_accepts_clean_relative_paths(self, ok) -> None:
+        assert routes._safe_return_to(ok) == ok
+
+    def test_start_coerces_backslash_return_to_in_cookie(self, monkeypatch) -> None:
+        # The handoff later does window.location.replace(g_oauth_return); the
+        # backslash trick ('/\evil.com' → browser-normalised to //evil.com) must
+        # be coerced to the safe default before it ever reaches the cookie.
+        client = _make_client(monkeypatch)
+        client.get("/api/auth/google/start", params={"return_to": "/\\evil.com"})
+        # SimpleCookie quotes values containing '/', so the jar may return
+        # '"/home"'; Starlette un-quotes it on the callback read. What matters:
+        # the backslash-evil value was coerced away, not retained.
+        cookie = (client.cookies.get("g_oauth_return") or "").strip('"')
+        assert cookie == "/home"
+        assert "evil" not in cookie
+
+
+# --------------------------------------------------------------------------- #
+# Callback edge cases — missing id_token + secret never logged.               #
+# --------------------------------------------------------------------------- #
+
+class TestGoogleCallbackEdges:
+    def test_missing_idtoken_degrades(self, monkeypatch) -> None:
+        async def _no_idtoken(code: str, redirect_uri: str) -> dict:
+            return {"access_token": "x", "token_type": "Bearer"}  # no id_token
+
+        monkeypatch.setattr(routes, "_exchange_google_code", _no_idtoken)
+        client = _make_client(monkeypatch)
+        client.cookies.set("g_oauth_state", "s4")
+        resp = client.get("/api/auth/google/callback", params={"code": "c", "state": "s4"})
+        assert resp.status_code in (302, 307)
+        assert "google_no_idtoken" in resp.headers["location"]
+
+    def test_client_secret_never_logged_on_exchange_failure(self, monkeypatch, caplog) -> None:
+        import logging
+
+        async def _boom(code: str, redirect_uri: str) -> dict:
+            # Worst case: the secret leaks into the exception message itself.
+            raise RuntimeError("token endpoint rejected secret=" + CLIENT_SECRET)
+
+        monkeypatch.setattr(routes, "_exchange_google_code", _boom)
+        client = _make_client(monkeypatch)
+        client.cookies.set("g_oauth_state", "s5")
+        with caplog.at_level(logging.WARNING):
+            resp = client.get("/api/auth/google/callback", params={"code": "c", "state": "s5"})
+        assert resp.status_code in (302, 307)
+        assert "google_exchange" in resp.headers["location"]
+        # Only type(exc).__name__ is logged — never the secret or token.
+        assert CLIENT_SECRET not in caplog.text

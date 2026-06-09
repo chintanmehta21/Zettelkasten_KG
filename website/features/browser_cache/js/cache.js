@@ -22,7 +22,11 @@
   }
 
   function isPath(value) {
-    return typeof value === 'string' && value.length > 0 && value.length <= 128 && value[0] === '/' && value.indexOf('//') !== 0;
+    // Reject protocol-relative (//host) + backslash/control-char tricks that
+    // browsers normalise to an external origin (open-redirect guard).
+    return typeof value === 'string' && value.length > 0 && value.length <= 128
+      && value[0] === '/' && value.indexOf('//') !== 0 && value.indexOf('\\') === -1
+      && !/[\t\n\r]/.test(value);
   }
 
   function cloneDefaultState() {

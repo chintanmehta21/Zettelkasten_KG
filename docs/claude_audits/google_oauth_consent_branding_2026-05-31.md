@@ -124,6 +124,10 @@ state already block replay). One-Tap stays a separate opt-in. Env: `GOOGLE_OAUTH
   field. (Harmless if redundant.) Our flow sends no nonce, so Skip Nonce Check is not needed.
 
 ### 7c. Droplet env
+- **Master switch — set LAST:** the flow stays OFF until `GOOGLE_NATIVE_SIGNIN_ENABLED=true` is in the
+  container env, so merging/deploying the code is dormant. Flip it ONLY after the redirect URI is
+  registered (7a), the client id is in Supabase Authorized Client IDs (7b), and `PUBLIC_BASE_URL` is set —
+  otherwise Google sign-in breaks (`redirect_uri_mismatch` / `aud` failure). Rollback = unset this flag.
 - Credential resolution: backend reads `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` first, else
   `NEXUS_YOUTUBE_CLIENT_ID`/`_SECRET`. **Operator chose to reuse the Nexus YouTube client** →
   ensure `NEXUS_YOUTUBE_CLIENT_ID` + `NEXUS_YOUTUBE_CLIENT_SECRET` (likely already present for Nexus
