@@ -127,16 +127,16 @@ git commit -m "fix: feed judge the rubric fields tags+label from structured_payl
 
 - [ ] **Step A7: 🚦 GATE D1 — SKIPPED per operator (no re-judge).** Operator declined the re-judge spend (D1). The schema-feed fix applies to **future** freezes only; do **not** re-freeze + re-judge the existing 81 this iteration (a free re-freeze without the paid re-judge would desync `summary.json` from the cached judge scores). Revisit if/when a fresh eval iteration is commissioned.
 
-## Phase B — True-source evidence reference (Sol 1)  🚦 BLOCKED on decision D2
+## Phase B — True-source evidence reference (Sol 1)  ⏳ D2 resolved — needs expansion into code-complete TDD tasks
 
 **Intent:** stop scoring faithfulness against `source_text.md` (= summary-derived `body_md`; `len==body_md_len` on all 81) and score against the true raw source. The faithfulness consumers to repoint: `02_run_judge.py:353` and `03_run_nli.py:542` (data source only; NLI already chunks long premises).
-**Open decision D2 (raw-source provenance for the 81):** resolve which of {re-ingest at freeze / production-ingest-cache-where-present + `body_md_fallback` flag / defer} before writing code-complete tasks. Once D2 is chosen, expand Phase B into TDD tasks: (1) `evidence_source` field + `content_digest` in `meta.json`; (2) `source_evidence.json` writer; (3) repoint the 2 consumers; (4) harness-health metric "% corpus with true source"; (5) re-judge under D1.
+**D2 resolved → (b) cache-where-present + fallback** (operator re-ingests the misses out-of-band). Expand Phase B into code-complete TDD tasks before executing: (1) `evidence_source` ∈ {`production_ingest_cache`, `reingest`, `body_md_fallback`} + `content_digest` in `meta.json`; (2) `source_evidence.json` writer (cache-first → `body_md` fallback); (3) repoint the 2 faithfulness consumers (`02_run_judge.py:353`, `03_run_nli.py:542`); (4) harness-health metric "% corpus with true source". **No re-judge this iteration (D1 declined)** — the new reference applies to future eval runs.
 
 ---
 
-# WAVES 1–2 — Production summarizer (🚦 BLOCKED on D3; expand to own plans after Wave 0 baseline)
+# WAVES 1–2 — Production summarizer (D3 approved — expand each into its own code-complete plan)
 
-> Per the writing-plans multi-subsystem rule, each of these becomes its **own** code-complete plan once Wave 0 yields a trustworthy baseline and the operator approves D3. Below = the verified seams + the research-backed fix spec + the test each plan must include, so the roadmap is explicit. **No production code is written until D3.**
+> Per the writing-plans multi-subsystem rule, each of these becomes its **own** code-complete plan. D3 is approved; the remaining per-wave gates are: own TDD plan → the frozen-81 CI gate (no axis regresses, paired bootstrap, idempotency asserted) → FLAG/shadow before prod. Below = the verified seams + research-backed fix spec + the tests each plan must include, so the roadmap is explicit.
 
 ## Wave 1A — Reddit deterministic consensus templates (Sol 4)  [highest faithfulness leverage, cheap]
 - **Root cause (verified):** the "Consensus stayed around…/Dissent centered on…" text is **hardcoded Python**, not the LLM — `reddit/schema.py:218-226` (`_repair_brief_summary`), `:282` (min-safe fallback), `reddit/layout.py:201`. Prompt word-banning will NOT fix these.
