@@ -112,6 +112,17 @@ def _load_ingest_cache_index(cache_dir: Path) -> dict[str, dict]:
     return index
 
 
+_INGEST_INDEX_CACHE: dict[str, dict] | None = None
+
+
+def _ingest_index() -> dict[str, dict]:
+    """Lazy, run-scoped cache of the ingest index (built once, reused per zettel)."""
+    global _INGEST_INDEX_CACHE
+    if _INGEST_INDEX_CACHE is None:
+        _INGEST_INDEX_CACHE = _load_ingest_cache_index(INGEST_CACHE_DIR)
+    return _INGEST_INDEX_CACHE
+
+
 def fetch_rows(threshold_chars: int):
     from website.core.supabase_v2.client import get_v2_client
     client = get_v2_client()
@@ -148,6 +159,26 @@ def write_zettel_bundle(row: dict, *, dry_run: bool) -> tuple[str, str]:
     content_hash = canon.get("content_hash") or ""
     chash_hex = content_hash.replace("\\x", "") if isinstance(content_hash, str) else ""
 
+    # Sol 1 / D2: choose the TRUE raw source. Cache hit -> production_ingest_cache;
+    # miss -> body_md_fallback (flagged so circular items are EXCLUDABLE, not scored).
+    norm_url = _norm_url(canon.get("normalized_url"))
+    hit = _ingest_index().get(norm_url)
+    if hit is not None:
+        evidence_source = "production_ingest_cache"
+        raw_text_full = hit.get("raw_text") or ""
+        ingestor_version = hit.get("ingestor_version") or ""
+        fetched_at = hit.get("fetched_at") or ""
+    else:
+        evidence_source = "body_md_fallback"
+        raw_text_full = body_md
+        ingestor_version = ""
+        fetched_at = ""
+
+    raw_bytes = raw_text_full.encode("utf-8")
+    truncated = len(raw_bytes) > MAX_EVIDENCE_BYTES
+    raw_text = raw_bytes[:MAX_EVIDENCE_BYTES].decode("utf-8", errors="ignore") if truncated else raw_text_full
+    content_digest = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+
     meta = {
         "workspace_zettel_id": wz_id,
         "workspace_id": str(row["workspace_id"]),
@@ -161,6 +192,9 @@ def write_zettel_bundle(row: dict, *, dry_run: bool) -> tuple[str, str]:
         "body_md_len": len(body_md),
         "content_hash_hex": chash_hex,
         "source_metadata": canon.get("source_metadata") or {},
+        # Sol 1 provenance: lets a consumer exclude circular (body_md_fallback) items.
+        "evidence_source": evidence_source,
+        "content_digest": content_digest,
     }
 
     if dry_run:
@@ -171,6 +205,18 @@ def write_zettel_bundle(row: dict, *, dry_run: bool) -> tuple[str, str]:
         json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     (out / "source_text.md").write_text(body_md, encoding="utf-8")
+    source_evidence = {
+        "evidence_source": evidence_source,
+        "raw_text": raw_text,
+        "content_digest": content_digest,
+        "ingestor_version": ingestor_version,
+        "fetched_at": fetched_at,
+        "raw_text_truncated": truncated,
+        "raw_text_full_len": len(raw_text_full),
+    }
+    (out / "source_evidence.json").write_text(
+        json.dumps(source_evidence, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     try:
         summary_payload = json.loads(ai_summary)
     except Exception:
