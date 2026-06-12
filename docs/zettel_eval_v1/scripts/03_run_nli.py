@@ -46,6 +46,23 @@ DATA = EVAL / "_data"
 CACHE = EVAL / "_cache"
 
 
+def read_nli_source(data_dir: Path) -> str:
+    """TRUE NLI premise: source_evidence.json.raw_text (Sol 1). Falls back to
+    source_text.md for pre-Sol-1 bundles / empty evidence. Premise bytes only —
+    NLI chunking (_chunk_premise) handles long sources unchanged."""
+    ev_path = data_dir / "source_evidence.json"
+    if ev_path.exists():
+        try:
+            ev = json.loads(ev_path.read_text(encoding="utf-8", errors="replace"))
+            raw = (ev or {}).get("raw_text") or ""
+            if raw.strip():
+                return raw
+        except Exception:
+            pass
+    legacy = data_dir / "source_text.md"
+    return legacy.read_text(encoding="utf-8", errors="replace") if legacy.exists() else ""
+
+
 def _load_hf_token_from_new_envs(candidates: list | None = None) -> str | None:
     """Best-effort: pluck ``HF_READ_TOKEN`` out of ``new_envs.txt`` (one level
     above the worktree, operator-owned, untracked) and surface it as
@@ -539,13 +556,12 @@ def _augment_one(payload: dict, predictor, batch_size: int = 8) -> dict:
         payload["nli"] = {"error": "no wz_zettel_id in payload"}
         return payload
     data_dir = DATA / wz_id
-    source_path = data_dir / "source_text.md"
     summary_path = data_dir / "summary.json"
     meta_path = data_dir / "meta.json"
-    if not source_path.exists():
-        payload["nli"] = {"error": f"source_text.md missing for {wz_id}"}
+    source_text = read_nli_source(data_dir)  # Sol 1: true premise, fallback to source_text.md
+    if not source_text:
+        payload["nli"] = {"error": f"no source for {wz_id} (evidence + source_text.md both empty)"}
         return payload
-    source_text = source_path.read_text(encoding="utf-8", errors="replace")
     summary_json = None
     if summary_path.exists():
         try:
