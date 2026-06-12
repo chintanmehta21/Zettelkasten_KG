@@ -1,0 +1,21 @@
+# Reddit coverage-aware consensus thresholds (Wave 1A).
+# CALIBRATION DEFAULTS — tune on the 15-thread Reddit eval set; OPERATOR MUST
+# CONFIRM before production. Plain YAML edit, no code change to re-tune.
+#
+# Rationale (see reddit/coverage.py docstring + 2026-06-09 solutions research):
+# - Reddit top/best sort is a position-biased non-probability sample
+#   (Glenski et al. 2017, arXiv:1703.05267); claims are SCOPED to the fetched
+#   frame, never the whole thread, unless the consensus gate passes.
+# - n>=25 floor for consensus: at n=10 a 50/50 split has a ~+/-31pp 95% CI
+#   (PSU STAT 200 proportion sample size; MeasuringU finite-population
+#   correction — N=100 needs ~79 read for +/-5%, ~48 for +/-10%).
+version: "reddit_coverage.v1"
+tiers:
+  consensus:
+    min_coverage: 0.60
+    min_fetched: 25
+  plurality:
+    min_coverage: 0.40
+    min_fetched: 10
+  sample_scoped:
+    min_fetched: 10
