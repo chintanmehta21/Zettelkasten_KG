@@ -198,7 +198,9 @@ def _closing_remarks_section(
             f"Resolution: main counterpoint to watch — {counters[0].rstrip('.?!')}"
         )
     else:
-        takeaway = "Resolution: the thread reached rough consensus with no major unresolved questions."
+        # Wave 1A: no counts available at render time → scope to the captured
+        # discussion; never claim thread-wide consensus (unfetched tail unknown).
+        takeaway = "Resolution: no major unresolved questions surfaced in the captured discussion."
 
     return DetailedSummarySection(heading="Closing remarks", bullets=[takeaway])
 
