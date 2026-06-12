@@ -159,6 +159,7 @@ def render_legal_page_html(key: str) -> str:
     )
 
     title = e(doc["eyebrow"])
+    canonical = f"https://zettelkasten.in{DOC_ROUTES[active]}"
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -167,6 +168,21 @@ def render_legal_page_html(key: str) -> str:
   <meta name="description" content="{title} for Zettelkasten — what is stored, how data is handled, and how your account information is used.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>{title} | Zettelkasten</title>
+  <link rel="canonical" href="{canonical}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Zettelkasten">
+  <meta property="og:title" content="{title} | Zettelkasten">
+  <meta property="og:description" content="{title} for Zettelkasten — what is stored, how data is handled, and how your account information is used.">
+  <meta property="og:url" content="{canonical}">
+  <meta property="og:image" content="https://zettelkasten.in/artifacts/og-cover.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{title} | Zettelkasten">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{title} | Zettelkasten">
+  <meta name="twitter:image" content="https://zettelkasten.in/artifacts/og-cover.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
