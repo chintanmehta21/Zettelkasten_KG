@@ -458,9 +458,11 @@ _GOOGLE_HANDOFF_PATH = (
 def _google_client_id() -> str:
     """Public OAuth client id for native Google sign-in.
 
-    Prefer a dedicated ``GOOGLE_OAUTH_CLIENT_ID``; otherwise reuse the existing
-    Nexus YouTube OAuth client (``NEXUS_YOUTUBE_CLIENT_ID``) — same Google
-    client, just one more authorized redirect URI. Client ids are public, so
+    Prefer a DEDICATED ``GOOGLE_OAUTH_CLIENT_ID`` from a clean Google Cloud
+    project that requests only openid/email/profile. ``NEXUS_YOUTUBE_CLIENT_ID``
+    is a fallback only — reusing the Nexus client is DISCOURAGED because Google
+    verifies per-project and that project's restricted YouTube scope drags the
+    consent screen into a multi-week CASA assessment. Client ids are public, so
     exposing the resolved value via /api/auth/config is safe.
     """
     return (
@@ -471,7 +473,12 @@ def _google_client_id() -> str:
 
 
 def _google_client_secret() -> str:
-    """Server-only OAuth client secret (code→token exchange). Same precedence."""
+    """Server-only OAuth client secret (code→token exchange).
+
+    Same precedence as :func:`_google_client_id` — prefer the dedicated
+    ``GOOGLE_OAUTH_CLIENT_SECRET``; ``NEXUS_YOUTUBE_CLIENT_SECRET`` is a
+    discouraged fallback.
+    """
     return (
         os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
         or os.environ.get("NEXUS_YOUTUBE_CLIENT_SECRET")
