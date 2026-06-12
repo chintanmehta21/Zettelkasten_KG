@@ -16,7 +16,13 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 
 from fastapi.responses import JSONResponse
 
@@ -223,6 +229,7 @@ def _render_with_mobile_shell(
     *,
     page_title: str,
     body_class: str = "",
+    canonical_url: Optional[str] = None,
     request: Optional[Request] = None,
 ) -> HTMLResponse:
     """Inject mobile shell around a body fragment file.
@@ -233,11 +240,15 @@ def _render_with_mobile_shell(
     """
     shell = _MOBILE_SHELL.read_text(encoding="utf-8")
     body = body_path.read_text(encoding="utf-8")
+    # Separate-mobile-URL canonical: point public /m/* pages at their desktop
+    # equivalent so the canonical signal consolidates to one URL.
+    canonical_tag = f'<link rel="canonical" href="{canonical_url}">' if canonical_url else ""
     rendered = (
         shell
         .replace("<!--ZK_MOBILE_TITLE-->", page_title)
         .replace("<!--ZK_MOBILE_PAGE_TITLE-->", page_title)
         .replace("<!--ZK_MOBILE_BODY_CLASS-->", body_class)
+        .replace("<!--ZK_MOBILE_CANONICAL-->", canonical_tag)
         .replace("<!--ZK_MOBILE_CONTENT-->", body)
     )
 
@@ -328,6 +339,17 @@ _MOBILE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# SE + social crawlers must reach canonical desktop pages: Googlebot's
+# mobile-first UA carries "Mobile" and would otherwise 302 -> /m/ home.
+_CRAWLER_RE = re.compile(
+    r"Googlebot|Google-InspectionTool|Storebot-Google|GoogleOther|"
+    r"bingbot|BingPreview|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|"
+    r"Applebot|PetalBot|AhrefsBot|SemrushBot|"
+    r"facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|"
+    r"WhatsApp|TelegramBot|Discordbot|Pinterest|redditbot",
+    re.IGNORECASE,
+)
+
 # SameSite=Lax: survives the Supabase OAuth top-level GET return. httponly=True: no JS consumer in iter 1a (flip when adding a desktop->mobile inverse link).
 _DESKTOP_COOKIE = "zk-prefer-desktop"
 
@@ -345,6 +367,8 @@ def _is_mobile(request: Request) -> bool:
         # First-time escape. Cookie set by the route handler after this check.
         return False
     ua = request.headers.get("user-agent", "")
+    if _CRAWLER_RE.search(ua):
+        return False  # bots get desktop canonical pages, never the /m/ redirect
     return bool(_MOBILE_RE.search(ua))
 
 
@@ -759,12 +783,15 @@ def create_app(lifespan=None) -> FastAPI:
     # Serve a single SVG asset for both /favicon.ico and /favicon.svg with
     # long browser cache headers — the icon never changes per request.
     _favicon_path = STATIC_DIR / "favicon.svg"
+    _favicon_ico_path = STATIC_DIR / "favicon.ico"
 
     @app.get("/favicon.ico", include_in_schema=False)
     async def favicon_ico():
+        # Real multi-size .ico (16/32/48) for Google SERP + legacy /favicon.ico
+        # auto-discovery; the SVG is still offered via the rel=icon links in <head>.
         return FileResponse(
-            str(_favicon_path),
-            media_type="image/svg+xml",
+            str(_favicon_ico_path),
+            media_type="image/x-icon",
             headers={"Cache-Control": "public, max-age=86400, immutable"},
         )
 
@@ -798,12 +825,57 @@ def create_app(lifespan=None) -> FastAPI:
             },
         )
 
+    @app.get("/robots.txt", include_in_schema=False)
+    async def robots_txt():
+        # Wildcard allow keeps Googlebot/Bingbot + answer-engine/citation bots
+        # (OAI-SearchBot, PerplexityBot, Claude-SearchBot, *-User) fully crawlable.
+        # Only AI *training* crawlers are denied (per-bot groups → Googlebot is
+        # never in scope of a Disallow). Google-Extended/Applebot-Extended are
+        # training tokens distinct from Googlebot/Applebot — blocking them does
+        # not affect Search/Siri indexing.
+        body = (
+            "User-agent: *\n"
+            "Allow: /\n\n"
+            + "".join(
+                f"User-agent: {bot}\nDisallow: /\n\n"
+                for bot in (
+                    "GPTBot",
+                    "Google-Extended",
+                    "ClaudeBot",
+                    "anthropic-ai",
+                    "CCBot",
+                    "Bytespider",
+                    "Applebot-Extended",
+                    "Meta-ExternalAgent",
+                )
+            )
+            + "Sitemap: https://zettelkasten.in/sitemap.xml\n"
+        )
+        return PlainTextResponse(body)
+
+    @app.get("/sitemap.xml", include_in_schema=False)
+    async def sitemap_xml():
+        # Public, indexable URLs only; private app pages are CSR shells behind
+        # auth and are intentionally omitted.
+        paths = ("/", "/about", "/pricing", "/knowledge-graph",
+                 "/privacy", "/terms", "/data-security")
+        locs = "".join(
+            f"<url><loc>https://zettelkasten.in{p}</loc></url>" for p in paths
+        )
+        xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            f"{locs}</urlset>"
+        )
+        return Response(content=xml, media_type="application/xml")
+
     # ── Mobile routes ──
     @app.get("/m/")
     async def mobile_index(request: Request):
         return _render_with_mobile_shell(
             MOBILE_DIR / "index.html",
             page_title="Summarize",
+            canonical_url="https://zettelkasten.in/",
             request=request,
         )
 
@@ -813,6 +885,7 @@ def create_app(lifespan=None) -> FastAPI:
             MOBILE_DIR / "knowledge-graph.html",
             page_title="Knowledge Graph",
             body_class="kg-body",
+            canonical_url="https://zettelkasten.in/knowledge-graph",
             request=request,
         )
 
