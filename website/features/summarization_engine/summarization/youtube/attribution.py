@@ -74,4 +74,31 @@ def canonical_format(label: str | None) -> str:
     return _FORMAT_FOLD.get((label or "").strip().lower(), "unknown")
 
 
-__all__ = ["reconcile_attribution_confidence", "canonical_format"]
+# Wave 1B: reporting-verb stance taxonomy (La Trobe; over-attribution
+# AnthroScore arXiv:2402.02056). neutral=explains/demonstrates/reports,
+# strong=argues, tentative=suggests. interview/documentary/unknown -> agentless
+# (a host/narrator/unknown source is not a single arguer). Returns None for the
+# agentless case; the caller then uses topic-fronted framing.
+_VERB_AGENTED: dict[str, dict[str, str]] = {
+    "lecture":    {"high": "explains that",    "low": "suggests that"},
+    "explainer":  {"high": "demonstrates how", "low": "walks through how"},
+    "commentary": {"high": "argues that",      "low": "suggests that"},
+    "news":       {"high": "reports that",     "low": "reports that"},
+    # documentary / interview / unknown deliberately absent -> always agentless.
+}
+
+
+def reporting_verb_phrase(canonical_key: str, confidence: str) -> str | None:
+    """Return the agented reporting-verb phrase (e.g. 'argues that'), or None
+    when the lead sentence must be agentless (missing confidence, or a format
+    whose 'speaker' is not a single arguer: interview/documentary/unknown).
+    """
+    if confidence == "missing":
+        return None
+    table = _VERB_AGENTED.get(canonical_key)
+    if not table:
+        return None
+    return table.get(confidence) or table.get("high")
+
+
+__all__ = ["reconcile_attribution_confidence", "canonical_format", "reporting_verb_phrase"]
