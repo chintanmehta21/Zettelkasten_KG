@@ -67,6 +67,7 @@ async def test_robots_txt_allows_all_and_points_at_sitemap(app):
         r = await c.get("/robots.txt")
     assert r.status_code == 200
     assert "text/plain" in r.headers.get("content-type", "")
+    assert "max-age" in r.headers.get("cache-control", "")
     assert "User-agent: *" in r.text
     assert f"Sitemap: {ORIGIN}/sitemap.xml" in r.text
 
@@ -77,6 +78,7 @@ async def test_sitemap_well_formed_and_lists_exactly_the_public_urls(app):
         r = await c.get("/sitemap.xml")
     assert r.status_code == 200
     assert "xml" in r.headers.get("content-type", "")
+    assert "max-age" in r.headers.get("cache-control", "")
     root = ET.fromstring(r.text)  # raises on malformed XML
     ns = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
     locs = {el.text for el in root.iter(f"{ns}loc")}

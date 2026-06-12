@@ -851,7 +851,7 @@ def create_app(lifespan=None) -> FastAPI:
             )
             + "Sitemap: https://zettelkasten.in/sitemap.xml\n"
         )
-        return PlainTextResponse(body)
+        return PlainTextResponse(body, headers={"Cache-Control": "public, max-age=3600"})
 
     @app.get("/sitemap.xml", include_in_schema=False)
     async def sitemap_xml():
@@ -867,7 +867,7 @@ def create_app(lifespan=None) -> FastAPI:
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
             f"{locs}</urlset>"
         )
-        return Response(content=xml, media_type="application/xml")
+        return Response(content=xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
 
     # ── Mobile routes ──
     @app.get("/m/")
