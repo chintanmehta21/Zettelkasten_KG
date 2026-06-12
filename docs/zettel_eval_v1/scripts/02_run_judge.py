@@ -76,6 +76,27 @@ def read_faithfulness_source(data_dir: Path) -> str:
     return legacy.read_text(encoding="utf-8") if legacy.exists() else ""
 
 
+def assert_summary_contract(wz_id: str, summary_json: dict) -> str | None:
+    """Deterministic schema-contract guard (Sol 2 / A5) — NOT the LLM judge.
+    Fail-closed on malformed-fresh; WARN (not raise) on legacy bundles.
+
+    Returns None if clean, or a warning string for legacy bundles. Raises
+    ValueError for malformed-fresh (structured_payload missing rubric fields)."""
+    src = (summary_json or {}).get("_summary_source")
+    if src == "structured_payload":
+        # fresh bundle that claims to carry the rubric fields MUST carry both
+        if not ({"tags", "mini_title"} <= set(summary_json)):
+            raise ValueError(
+                f"{wz_id}: malformed-fresh summary.json — _summary_source="
+                f"'structured_payload' but tags/mini_title not both present")
+        return None
+    if src is None:
+        # legacy bundle (pre master-plan A3); D1 declined the re-freeze so WARN only
+        return (f"{wz_id}: legacy summary.json (no _summary_source) — contract "
+                f"not enforced; faithfulness reference unaffected")
+    return None  # ai_summary_envelope (documented fresh fallback) or any other tagged state
+
+
 def _parse_api_env_lines(text: str) -> list[str]:
     """Extract Gemini key lines from an api_env-format string.
 
@@ -369,6 +390,10 @@ async def main_async(args) -> int:
             continue
         source_text = read_faithfulness_source(data_dir)  # Sol 1: true source, fallback to source_text.md
         summary_json = json.loads((data_dir / "summary.json").read_text(encoding="utf-8"))
+
+        contract_warn = assert_summary_contract(wz_id, summary_json)
+        if contract_warn:
+            print(f"  [{i}/{len(zettels)}] WARN {contract_warn}")
 
         if not source_text.strip() or not summary_json:
             print(f"  [{i}/{len(zettels)}] SKIP {wz_id}: empty source or summary")
