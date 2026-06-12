@@ -45,4 +45,33 @@ def reconcile_attribution_confidence(speakers: list[str]) -> str:
     return "low" if had_placeholder else "high"
 
 
-__all__ = ["reconcile_attribution_confidence"]
+# Wave 1B: fold BOTH the YouTubeDetailedPayload.format Literal AND
+# format_classifier.FORMAT_LABELS onto one closed key set the verb map covers.
+# validate_assignment is OFF, so classifier labels (documentary/explainer) leak
+# into detailed_summary.format unvalidated — without this fold the verb map
+# would silently miss them. Keys: lecture|explainer|commentary|documentary|
+# news|interview|unknown.
+_FORMAT_FOLD: dict[str, str] = {
+    "lecture": "lecture", "talk": "lecture",
+    "explainer": "explainer", "tutorial": "explainer", "walkthrough": "explainer",
+    "how-to": "explainer", "howto": "explainer", "demo": "explainer", "guide": "explainer",
+    "commentary": "commentary", "opinion": "commentary", "essay": "commentary",
+    "review": "commentary", "reaction": "commentary", "debate": "commentary", "vlog": "commentary",
+    "documentary": "documentary", "docuseries": "documentary",
+    "news": "news", "report": "news", "recap": "news",
+    "interview": "interview", "discussion": "interview", "podcast": "interview",
+    "q&a": "interview", "conversation": "interview",
+}
+_CANONICAL_KEYS = frozenset(_FORMAT_FOLD.values()) | {"unknown"}
+
+
+def canonical_format(label: str | None) -> str:
+    """Fold any Literal/classifier format label to a canonical verb-map key.
+
+    Unrecognised / empty / "other" -> "unknown" (agentless framing, no guessed
+    verb). Closed mapping: the verb map can never miss.
+    """
+    return _FORMAT_FOLD.get((label or "").strip().lower(), "unknown")
+
+
+__all__ = ["reconcile_attribution_confidence", "canonical_format"]
