@@ -100,6 +100,8 @@ state already block replay). One-Tap stays a separate opt-in. Env: `GOOGLE_OAUTH
 
 ## 7. Operator runbook (manual — cannot be done in code)
 
+> See docs/claude_audits/dedicated_oauth_client_plan_2026-06-12.md for the verified rationale (dedicated client, not Nexus reuse).
+
 ### 7a. Google Cloud Console
 1. **Branding** — `console.cloud.google.com/auth/branding`: App name = `Zettelkasten`, square logo (≥120px),
    App home = `https://zettelkasten.in`, privacy + ToS URLs, **Authorized domain = `zettelkasten.in`**.
@@ -110,12 +112,13 @@ state already block replay). One-Tap stays a separate opt-in. Env: `GOOGLE_OAUTH
    - **Option A:** create a Web client with **Authorized JavaScript origins** = `https://zettelkasten.in`
      (+ `http://localhost:8000` for dev). **No redirect URI** needed for the ID-token flow. Keep the existing
      supabase.co-redirect client for the other providers + hosted fallback.
-   - **Option B (selected):** **reuse the existing Google OAuth client** (the one already wired to
-     Supabase's hosted flow) — Google clients allow multiple redirect URIs, so just **add**
-     `https://zettelkasten.in/api/auth/google/callback` (note the `/api` prefix) *alongside* the
-     existing `…supabase.co/auth/v1/callback` (keep both — the legacy fallback still uses it). Reuse
-     the **same client secret** (Google Cloud → Credentials → your client). A brand-new client also
-     works. JS origins are not required for the server-side redirect flow.
+   - **Option B (selected):** create a **DEDICATED Web OAuth client in a NEW, clean Google Cloud
+     project** whose OAuth consent screen requests **only `openid email profile`**. Authorized
+     redirect URI = `https://zettelkasten.in/api/auth/google/callback` (note the `/api` prefix). JS
+     origins are not required for the server-side redirect flow. Reusing the existing Nexus YouTube
+     client is possible but **DISCOURAGED** — that project also holds restricted YouTube scopes and
+     Google verifies per-project, so reuse drags sign-in into a multi-week CASA assessment (the
+     restricted-scope trap); see docs/claude_audits/dedicated_oauth_client_plan_2026-06-12.md.
 5. **Verify `zettelkasten.in`** in Google Search Console (`search.google.com/search-console`).
 
 ### 7b. Supabase Dashboard
@@ -129,15 +132,15 @@ state already block replay). One-Tap stays a separate opt-in. Env: `GOOGLE_OAUTH
   registered (7a), the client id is in Supabase Authorized Client IDs (7b), and `PUBLIC_BASE_URL` is set —
   otherwise Google sign-in breaks (`redirect_uri_mismatch` / `aud` failure). Rollback = unset this flag.
 - Credential resolution: backend reads `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` first, else
-  `NEXUS_YOUTUBE_CLIENT_ID`/`_SECRET`. **Operator chose to reuse the Nexus YouTube client** →
-  ensure `NEXUS_YOUTUBE_CLIENT_ID` + `NEXUS_YOUTUBE_CLIENT_SECRET` (likely already present for Nexus
-  YouTube ingestion) and `PUBLIC_BASE_URL=https://zettelkasten.in` are in the container env /
+  `NEXUS_YOUTUBE_CLIENT_ID`/`_SECRET`. **Set the DEDICATED client (recommended)** →
+  put `GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` (from the clean-project client created
+  in 7a) and `PUBLIC_BASE_URL=https://zettelkasten.in` in the container env /
   `/etc/secrets/api_env`. `PUBLIC_BASE_URL` must equal the origin of the registered redirect URI
   (else `redirect_uri_mismatch`). See `ops/.env.example` → "Google native sign-in".
-- ⚠️ Because the Nexus client is reused, the consent-screen brand = the **Google Cloud project that
-  owns the Nexus YouTube client**. Confirm that project's OAuth consent screen is named **Zettelkasten**
-  with authorized domain `zettelkasten.in` and is **Published** — otherwise sign-in will show the wrong
-  app name even though the flow works.
+- ⚠️ The consent-screen brand = the **Google Cloud project that owns the resolved client**. Confirm
+  the dedicated client's OAuth consent screen is named **Zettelkasten** with authorized domain
+  `zettelkasten.in` and is **Published** — otherwise sign-in will show the wrong app name even though
+  the flow works.
 
 ### 7d. Deploy ordering (critical)
 1. Merge this PR — **no behavior change** while the env var is unset.
