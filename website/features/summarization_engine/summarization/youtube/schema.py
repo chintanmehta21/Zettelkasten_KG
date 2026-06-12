@@ -72,29 +72,6 @@ class YouTubeStructuredPayload(BaseModel):
     attribution_confidence: Literal["high", "low", "missing"] = "high"
 
     @model_validator(mode="after")
-    def _normalize_note_facing_fields(self) -> "YouTubeStructuredPayload":
-        self.detailed_summary.format = _normalize_format_name(
-            self.detailed_summary.format,
-            brief=self.brief_summary,
-            thesis=self.detailed_summary.thesis,
-            chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
-            speakers=list(self.speakers or []),
-        )
-        self.mini_title = _normalize_mini_title(self.mini_title)
-        self.tags = _ensure_format_tag(self.tags, self.detailed_summary.format)
-        self.brief_summary = _repair_brief_summary(
-            brief=self.brief_summary,
-            format_name=self.detailed_summary.format,
-            thesis=self.detailed_summary.thesis,
-            speakers=self.speakers,
-            entities=self.entities_discussed,
-            chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
-            demonstrations=list(self.detailed_summary.demonstrations or []),
-            closing_takeaway=self.detailed_summary.closing_takeaway,
-        )
-        return self
-
-    @model_validator(mode="after")
     def _sanitize_speakers(self) -> "YouTubeStructuredPayload":
         """4-step speaker fallback (see docs/summary_eval/_synthesis.md P5).
 
@@ -112,6 +89,12 @@ class YouTubeStructuredPayload(BaseModel):
         Step 4: if nothing plausible is found, use the neutral label
                 ``"The speaker"`` rather than dropping the structured
                 payload.
+
+        Wave 1B: runs BEFORE _normalize_note_facing_fields (definition order
+        == validator run order) so brief composition sees the corrected
+        attribution_confidence; derivation delegated to the single source of
+        truth reconcile_attribution_confidence (also reused by the
+        speaker_detector override in summarizer.py — the two can never desync).
 
         Rationale (iter-20 regression): YouTube iter-20 output
         ``speakers: ["Strait of Hormuz"]`` on the Petrodollar lecture
@@ -132,32 +115,51 @@ class YouTubeStructuredPayload(BaseModel):
             and not _is_geographic_entity(s.strip())
             and not _is_non_human_speaker_entity(s.strip())
         ]
-        # H2/C2: detect mixed real+placeholder for the "low" tier.
-        had_placeholder = any(
-            _is_placeholder_speaker(s.strip()) or _is_geographic_entity(s.strip())
-            for s in raw_speakers
-        )
         if real:
             self.speakers = real
-            self.attribution_confidence = "low" if had_placeholder else "high"
-            return self
+        else:
+            # Step 3: first named human entity in entities_discussed.
+            coerced = None
+            for entity in (self.entities_discussed or []):
+                if (
+                    isinstance(entity, str)
+                    and _looks_like_named_human(entity)
+                    and not _is_geographic_entity(entity)
+                    and not _is_non_human_speaker_entity(entity)
+                ):
+                    coerced = entity.strip()
+                    break
+            # Step 4: deterministic neutral sentinel when nothing plausible.
+            self.speakers = [coerced] if coerced else ["The speaker"]
+        # Single source of truth for confidence (reused by the detector
+        # override seam so the two resolvers can never desync — Wave 1B M5).
+        from website.features.summarization_engine.summarization.youtube.attribution import (
+            reconcile_attribution_confidence,
+        )
+        self.attribution_confidence = reconcile_attribution_confidence(self.speakers)
+        return self
 
-        # Step 3: first named human entity in entities_discussed.
-        for entity in (self.entities_discussed or []):
-            if (
-                isinstance(entity, str)
-                and _looks_like_named_human(entity)
-                and not _is_geographic_entity(entity)
-                and not _is_non_human_speaker_entity(entity)
-            ):
-                self.speakers = [entity.strip()]
-                # Coerced from entities — original speakers were all placeholders.
-                self.attribution_confidence = "missing"
-                return self
-
-        # Step 4: deterministic neutral label.
-        self.speakers = ["The speaker"]
-        self.attribution_confidence = "missing"
+    @model_validator(mode="after")
+    def _normalize_note_facing_fields(self) -> "YouTubeStructuredPayload":
+        self.detailed_summary.format = _normalize_format_name(
+            self.detailed_summary.format,
+            brief=self.brief_summary,
+            thesis=self.detailed_summary.thesis,
+            chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
+            speakers=list(self.speakers or []),
+        )
+        self.mini_title = _normalize_mini_title(self.mini_title)
+        self.tags = _ensure_format_tag(self.tags, self.detailed_summary.format)
+        self.brief_summary = _repair_brief_summary(
+            brief=self.brief_summary,
+            format_name=self.detailed_summary.format,
+            thesis=self.detailed_summary.thesis,
+            speakers=self.speakers,
+            entities=self.entities_discussed,
+            chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
+            demonstrations=list(self.detailed_summary.demonstrations or []),
+            closing_takeaway=self.detailed_summary.closing_takeaway,
+        )
         return self
 
 
