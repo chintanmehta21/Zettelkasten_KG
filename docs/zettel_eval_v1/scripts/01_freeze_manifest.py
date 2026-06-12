@@ -31,6 +31,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -71,6 +72,44 @@ def _project_ref_from_url(url: str) -> str:
         return ""
     host = urlsplit(url).hostname or ""
     return host.split(".")[0] if host else ""
+
+
+# --- Sol 1 / D2: true-source evidence from the production ingest cache ---
+# The cache lives at docs/summary_eval/_cache/ingests/*.json (FsContentCache of
+# IngestResult). Join is by normalized URL, NOT by the cache filename hash.
+INGEST_CACHE_DIR = REPO_ROOT / "docs" / "summary_eval" / "_cache" / "ingests"
+# Cap to bound git size; largest real prod raw_text is ~513KB (one ytdlp transcript).
+MAX_EVIDENCE_BYTES = 600_000
+
+
+def _norm_url(u: str | None) -> str:
+    """Normalize a URL for cache joins. Mirrors _d2_cache_check.norm() exactly:
+    drop scheme + leading www., strip trailing slash, lowercase."""
+    return re.sub(r"^https?://(www\.)?", "", (u or "").rstrip("/").lower())
+
+
+def _load_ingest_cache_index(cache_dir: Path) -> dict[str, dict]:
+    """Build {normalized_url: ingest_dict} from the prod ingest cache. Files with
+    no usable raw_text are skipped so they can never masquerade as true source.
+    On a duplicate normalized URL the most-recently fetched record wins."""
+    index: dict[str, dict] = {}
+    if not cache_dir.exists():
+        return index
+    for f in sorted(cache_dir.glob("*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(d, dict) or not (d.get("raw_text") or "").strip():
+            continue
+        for url_key in ("url", "original_url", "normalized_url", "source_url"):
+            raw = d.get(url_key)
+            if isinstance(raw, str) and raw.startswith("http"):
+                nu = _norm_url(raw)
+                prev = index.get(nu)
+                if prev is None or (d.get("fetched_at") or "") >= (prev.get("fetched_at") or ""):
+                    index[nu] = d
+    return index
 
 
 def fetch_rows(threshold_chars: int):
