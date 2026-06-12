@@ -31,8 +31,9 @@ from website.app import create_app
 
 CLIENT_ID = "test-client-id.apps.googleusercontent.com"
 CLIENT_SECRET = "test-secret-value"
-# Reused Nexus YouTube OAuth client (operator chose to reuse it rather than mint
-# a new client). The backend resolves GOOGLE_OAUTH_* first, then NEXUS_YOUTUBE_*.
+# Nexus YouTube OAuth client creds — used to exercise the DISCOURAGED fallback
+# path. A dedicated GOOGLE_OAUTH_* client is preferred; the backend resolves
+# GOOGLE_OAUTH_* first, then NEXUS_YOUTUBE_*.
 NEXUS_CLIENT_ID = "nexus-yt-client.apps.googleusercontent.com"
 NEXUS_CLIENT_SECRET = "nexus-yt-secret-value"
 BASE_URL = "https://zettelkasten.test"

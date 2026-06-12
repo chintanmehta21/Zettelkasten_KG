@@ -490,8 +490,8 @@ def _native_signin_enabled() -> bool:
     """Explicit master switch for the native Google sign-in flow.
 
     Must be truthy for the flow to activate — so deploying this code stays
-    DORMANT by default even when a client id resolves from the reused
-    ``NEXUS_YOUTUBE_*`` creds. Flip to true only AFTER: (1) the
+    DORMANT by default even when a client id resolves (including from the
+    discouraged ``NEXUS_YOUTUBE_*`` fallback). Flip to true only AFTER: (1) the
     ``/api/auth/google/callback`` redirect URI is registered on the Google
     client, (2) that client id is in Supabase → Auth → Providers → Google →
     Authorized Client IDs, and (3) ``PUBLIC_BASE_URL`` is set.
