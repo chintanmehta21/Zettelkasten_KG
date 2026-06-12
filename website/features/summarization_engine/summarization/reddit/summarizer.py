@@ -47,10 +47,19 @@ from website.features.summarization_engine.summarization.common.structured impor
 from website.features.summarization_engine.post_summary_transformation.rules.title import (
     trim_to_word_boundary as _tt_trim,
 )
+from website.features.summarization_engine.summarization.reddit.coverage import (
+    compute_coverage,
+    coverage_stance_sentence,
+)
 from website.features.summarization_engine.summarization.reddit.schema import (
     RedditCluster,
     RedditDetailedPayload,
     RedditStructuredPayload,
+    _consensus_phrase,
+)
+from website.features.summarization_engine.summarization.common.brief_repair import (
+    sentence_split as _sentence_split,
+    trim_fragment as _trim_fragment,
 )
 
 _log = logging.getLogger(__name__)
@@ -317,6 +326,48 @@ def _build_minimum_safe_payload(
     )
 
 
+# Wave 1A: the brief's stance sentence is a hardcoded template built in
+# schema._repair_brief_summary BEFORE enrichment runs (it has no ingest
+# counts). Here we DO have counts, so we replace that one sentence with a
+# coverage-scoped claim — or drop it (anecdote/unknown). Selection bias means
+# "consensus among fetched" != thread consensus, so claims are scoped to the
+# fetched frame (Glenski 2017, arXiv:1703.05267).
+_STANCE_SENTENCE_MARKERS = ("consensus stayed around", "most converged on", "many leaned toward")
+
+
+def _rewrite_stance_sentence(brief: str, payload: RedditStructuredPayload, ingest: IngestResult) -> str:
+    # Only rewrite when a hardcoded stance sentence is present; otherwise leave
+    # the brief byte-identical (min-safe + held-out 5-7-sentence briefs).
+    if not any(m in brief.lower() for m in _STANCE_SENTENCE_MARKERS):
+        return brief
+    sentences = _sentence_split(brief)
+    if not sentences:
+        return brief
+    ctx = compute_coverage(ingest.metadata)
+    dominant = _trim_fragment(
+        _consensus_phrase(payload.detailed_summary.reply_clusters,
+                          payload.detailed_summary.counterarguments),
+        12,
+    )
+    replacement = coverage_stance_sentence(ctx, dominant=dominant)
+    kept = [s for s in sentences if not any(m in s.lower() for m in _STANCE_SENTENCE_MARKERS)]
+    if replacement:
+        # Reinsert at the original stance position (index 2 in the rebuilt
+        # template: OP / dominant / [stance]); fall back to append.
+        insert_at = min(2, len(kept))
+        kept = kept[:insert_at] + [replacement] + kept[insert_at:]
+    rebuilt = " ".join(kept).strip()
+    # Keep within the schema bound the repair function enforces (<=400 chars,
+    # 5-7 sentences when rebuilt; dropping one keeps us >=3 which the min-safe
+    # path already tolerates).
+    if len(rebuilt) > 400:
+        from website.features.summarization_engine.summarization.common.brief_repair import (
+            clip_to_sentence_window,
+        )
+        rebuilt = clip_to_sentence_window(_sentence_split(rebuilt), max_sentences=7, max_chars=400)
+    return rebuilt or brief
+
+
 def _apply_ingest_enrichments(
     payload: RedditStructuredPayload, ingest: IngestResult
 ) -> RedditStructuredPayload:
@@ -342,6 +393,8 @@ def _apply_ingest_enrichments(
         detailed = deepcopy(payload.detailed_summary)
         detailed.moderation_context = note
         payload.detailed_summary = detailed
+
+    payload.brief_summary = _rewrite_stance_sentence(payload.brief_summary, payload, ingest)
     return payload
 
 
