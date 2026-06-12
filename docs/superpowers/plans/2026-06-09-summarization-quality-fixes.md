@@ -13,10 +13,10 @@
 ---
 
 ## ⚠️ Open decisions (operator must approve BEFORE the gated tasks)
-- **D1 — Eval version bump + RE-JUDGE.** Fixing the schema feed (Phase A) changes `summary.json` → `summary_sha` → judge cache-miss → a genuine re-judge of 81×judges = **real API cost (~$8 order)**. Post-fix scores will legitimately drop and are **not comparable** to iter-001…005. *Approve the re-judge spend + the version bump before running it.*
-- **D2 — Sol 1 raw-source provenance.** The production ingest cache (`docs/summary_eval/_cache/ingests/`) may NOT cover all 81 prod zettels' URLs. Options: (a) re-ingest each URL at freeze (network + reddit/youtube anti-bot risk), (b) use cache where present + `body_md_fallback` flag elsewhere, (c) defer Sol 1. *Pick before Phase B.*
-- **D3 — Touching production at all (Waves 1–2).** Waves 1–2 edit live `website/features/summarization_engine/`. *Confirm before any prod-summarizer code is written.*
-- **D4 — Reddit thresholds** (`coverage ≥ 0.60 AND fetched ≥ 10`) and **GitHub manifest-fetch** (+2–3 Contents-API calls/repo ingest) — confirm during their wave.
+- **D1 — Eval version bump + RE-JUDGE. ✅ RESOLVED 2026-06-09 → NO re-judge** (operator declined the ~$8 spend). Phase A still ships the schema-feed fix (code + contract test) so **future** freezes carry `tags`/`mini_title`; the existing 81 are **not** re-scored this iteration — the current baseline stays the reference. (Re-freezing without re-judging would desync `summary.json` from the cached judge scores, so leave the frozen corpus as-is — see Step A7.)
+- **D2 — Sol 1 raw-source provenance. ✅ RESOLVED 2026-06-09 → (b) cache-where-present + fallback.** Use the 38/81 cached ingests in `docs/summary_eval/_cache/ingests/` (github 11/12, web 14/19, reddit 9/15, newsletter 1/2, youtube 3/33); **operator re-ingests the raw-text for the misses out-of-band**. Phase B stamps `evidence_source` ∈ {`production_ingest_cache`, `reingest`, `body_md_fallback`} per zettel so provenance is explicit.
+- **D3 — Touching production at all (Waves 1–2). ✅ RESOLVED 2026-06-09 → approved.** Waves 1–2 may edit live `website/features/summarization_engine/`; each still expands into its own code-complete plan + TDD before code lands.
+- **D4 — GitHub manifest-fetch. ✅ RESOLVED 2026-06-09 → Option B (REST piggyback) + token** (research: `docs/claude_audits/github_single_call_research_2026-06-09.md`). Reuse the root `/contents` listing the ingestor already fetches to detect manifests, fetch only the present ones (**+1–2 calls, not 2–3**); token-gated on a 0-permission fine-grained `GITHUB_TOKEN` (operator provisions on the droplet — this also fixes the pre-existing 60/hr-anonymous production risk). **Reddit thresholds** (`coverage ≥ 0.60 AND fetched ≥ 10`) — still confirm during Wave 1A.
 
 ---
 
@@ -125,7 +125,7 @@ git add docs/zettel_eval_v1/scripts/01_freeze_manifest.py docs/zettel_eval_v1/te
 git commit -m "fix: feed judge the rubric fields tags+label from structured_payload"
 ```
 
-- [ ] **Step A7: 🚦 GATE D1 — re-freeze + re-judge (operator-approved spend).** Only after operator approves: `python docs/zettel_eval_v1/scripts/01_freeze_manifest.py` (re-freeze, free) then re-run `02_run_judge.py` for the chosen iter(s) (judge API cost). Stamp a new manifest `frozen_at` + `eval_schema_version`. Do NOT run without D1 approval.
+- [ ] **Step A7: 🚦 GATE D1 — SKIPPED per operator (no re-judge).** Operator declined the re-judge spend (D1). The schema-feed fix applies to **future** freezes only; do **not** re-freeze + re-judge the existing 81 this iteration (a free re-freeze without the paid re-judge would desync `summary.json` from the cached judge scores). Revisit if/when a fresh eval iteration is commissioned.
 
 ## Phase B — True-source evidence reference (Sol 1)  🚦 BLOCKED on decision D2
 
@@ -152,8 +152,8 @@ git commit -m "fix: feed judge the rubric fields tags+label from structured_payl
 
 ## Wave 2 — GitHub interface evidence-ladder (Sol 3)
 - **Root cause (verified):** README regex output (`readme_signals.py` `_ENDPOINT_PATH`/`_CLI_FLAG`) is injected as "must-preserve" in `prompts.py::_signals_slot` → the LLM echoes `/sub` (from `</sub>`), `--Please` (from "Please cite"), `/center`.
-- **Fix spec:** (M1) refusal-first — default "library/repository overview, no verified interface artifact" and flip to "verified surface" only on a HIGH-rung hit; (M2) **demote the regex out of must-preserve** (corroboration-only; `_is_bogus_surface` blocklist = backstop); (M3) top rung = parse `package.json` `bin` / `pyproject [project.scripts]` / `Cargo [[bin]]` / committed OpenAPI — **new ingestor fetch** (`source_ingest/github/ingest.py` `_fetch_file_contents`), +2–3 Contents-API GETs (**D4**), `tomllib`, silent degrade, stay on `api.github.com`; gate the label on artifact-PRESENCE, not `archetype.confidence`.
-- **Tests:** the verified fabricated tokens are NOT emitted for thin-API repos; a repo with a real `package.json` `bin` DOES surface its real commands; `requests` (real API, no manifest bin) → "library overview, no machine-verified CLI/HTTP artifact" (true + defensible).
+- **Fix spec:** (M1) refusal-first — default "library/repository overview, no verified interface artifact" and flip to "verified surface" only on a HIGH-rung hit; (M2) **demote the regex out of must-preserve** (corroboration-only; `_is_bogus_surface` blocklist = backstop); (M3) top rung = parse `package.json` `bin` / `pyproject [project.scripts]` + `console_scripts` / `setup.cfg` console_scripts / `Cargo [[bin]]` / committed OpenAPI. **Option B (REST piggyback, per D4):** reuse the root `/contents` listing already fetched at `ingest.py:471` to detect which manifests exist at root, then read only the present ones via the existing `_fetch_file_contents` (`ingest.py:527`) — **+1–2 Contents GETs, no new request mechanism**; `tomllib` (stdlib) for TOML; stay on `api.github.com`. **Token-gated:** with `GITHUB_TOKEN` present (`ingest.py:68-70` already wires `Authorization: Bearer`) the reads run authenticated (5,000/hr); **with no token, gracefully skip manifest verification and fall back to M1's refusal-first label — never fabricate.** Gate the "verified surface" label on artifact-PRESENCE, not `archetype.confidence`. (`openapi.*` is often nested → root-only coverage is best-effort; an optional single recursive Trees call can resolve nested paths later if needed.)
+- **Tests:** the verified fabricated tokens are NOT emitted for thin-API repos; a repo with a real `package.json` `bin` DOES surface its real commands; `requests` (real API, no manifest bin) → "library overview, no machine-verified CLI/HTTP artifact" (true + defensible); **no-token / anonymous path → manifest verification is skipped and M1's refusal-first label is used (no fabrication, no crash)**; a manifest absent from the root listing → **zero** wasted fetch calls.
 - **Scope:** manifest-fetch top rung = GitHub-only; the regex-demotion rule is cross-source.
 
 ---
