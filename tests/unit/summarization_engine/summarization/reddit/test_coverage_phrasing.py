@@ -175,3 +175,60 @@ def test_missing_yaml_falls_back_to_baked_defaults(monkeypatch, tmp_path):
     ctx = compute_coverage(_md(num_comments=50, fetched_comment_count=30))
     assert ctx.tier == "consensus"  # baked defaults still gate correctly
     reset_coverage_config_cache()
+
+
+from website.features.summarization_engine.summarization.reddit.summarizer import (
+    _apply_ingest_enrichments,
+)
+
+
+def _payload_with_hardcoded_consensus() -> RedditStructuredPayload:
+    detailed = RedditDetailedPayload(
+        op_intent="OP asks whether index funds beat stock picking for beginners.",
+        reply_clusters=[
+            RedditCluster(theme="Index funds win", reasoning="Low fees, broad exposure."),
+            RedditCluster(theme="Some prefer picking", reasoning="A minority enjoy research."),
+        ],
+        counterarguments=["A few argued individual picks can outperform."],
+        unresolved_questions=["What time horizon assumed?"],
+        moderation_context=None,
+    )
+    # Force the rebuild path (brief outside 5-7 / >400) so the hardcoded
+    # "Consensus stayed around ..." sentence is present, mirroring production.
+    return RedditStructuredPayload(
+        mini_title="r/investing index funds vs picking",
+        brief_summary="too short",
+        tags=["investing", "index-funds", "stocks", "beginners", "reddit-investing", "money", "etf"],
+        detailed_summary=detailed,
+    )
+
+
+def test_enrichment_rewrites_consensus_sentence_to_scoped_when_high_coverage():
+    payload = _payload_with_hardcoded_consensus()
+    assert "Consensus stayed around" in payload.brief_summary  # precondition from schema repair
+    ingest = _ingest({"subreddit": "investing", "num_comments": 50, "fetched_comment_count": 30})
+    enriched = _apply_ingest_enrichments(payload, ingest)
+    low = enriched.brief_summary.lower()
+    assert "consensus stayed around" not in low
+    assert "30 of 50" in enriched.brief_summary
+    assert "most-visible" in low or "most visible" in low
+    # Brief stays within the schema char bound.
+    assert len(enriched.brief_summary) <= 400
+
+
+def test_enrichment_drops_consensus_sentence_when_coverage_unknown():
+    payload = _payload_with_hardcoded_consensus()
+    ingest = _ingest({"subreddit": "investing", "num_comments": 0})  # unknown
+    enriched = _apply_ingest_enrichments(payload, ingest)
+    low = enriched.brief_summary.lower()
+    assert "consensus stayed around" not in low
+    assert "consensus" not in low  # unknown tier never asserts
+
+
+def test_enrichment_brief_stays_within_sentence_bound_after_drop():
+    payload = _payload_with_hardcoded_consensus()
+    ingest = _ingest({"subreddit": "investing", "num_comments": 200, "fetched_comment_count": 4})  # anecdote
+    enriched = _apply_ingest_enrichments(payload, ingest)
+    from website.features.summarization_engine.summarization.common.brief_repair import sentence_split
+    n = len(sentence_split(enriched.brief_summary))
+    assert 3 <= n <= 7, f"brief sentence count out of bound after drop: {n}"
