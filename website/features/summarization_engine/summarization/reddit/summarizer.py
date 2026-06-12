@@ -276,12 +276,13 @@ def _build_minimum_safe_payload(
     title = str(ingest.metadata.get("title") or "thread").strip() or "thread"
     subreddit_tag = f"r-{subreddit.lower().replace('_', '-')}"
     mini_title = _tt_trim(f"r/{subreddit} {title}", 60) or f"r/{subreddit} thread"
+    # Wave 1A: this path knows nothing about the thread's stance distribution
+    # (unrecoverable extraction) — never assert consensus/dissent here.
     brief_sentences = [
         f"OP posted in r/{subreddit} about {title[:120]}.",
-        "The thread contained replies that could not be fully clustered by the summarizer.",
-        "Consensus stayed around general discussion of the topic.",
-        "Dissent was not reliably identified in the visible replies.",
-        "Caveat: structured extraction degraded; only minimal metadata is available.",
+        "Structured extraction degraded, so the reply breakdown could not be reconstructed.",
+        "No representativeness claim can be made about the thread from the available sample.",
+        "Caveat: only minimal post metadata is available for this capture.",
     ]
     brief = " ".join(brief_sentences)[:400]
     clusters = [
