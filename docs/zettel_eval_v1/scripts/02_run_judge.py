@@ -59,6 +59,23 @@ CALIB_SET = EVAL_ROOT / "_config" / "judge_calibration_set.json"
 RUBRIC_PATH = REPO_ROOT / "docs" / "summary_eval" / "_config" / "rubric_universal.yaml"
 
 
+def read_faithfulness_source(data_dir: Path) -> str:
+    """TRUE source for faithfulness: source_evidence.json.raw_text (Sol 1).
+    Falls back to source_text.md for bundles frozen before Sol 1 / when evidence
+    raw_text is empty. Data-source only — judge logic unchanged."""
+    ev_path = data_dir / "source_evidence.json"
+    if ev_path.exists():
+        try:
+            ev = json.loads(ev_path.read_text(encoding="utf-8"))
+            raw = (ev or {}).get("raw_text") or ""
+            if raw.strip():
+                return raw
+        except Exception:
+            pass
+    legacy = data_dir / "source_text.md"
+    return legacy.read_text(encoding="utf-8") if legacy.exists() else ""
+
+
 def _parse_api_env_lines(text: str) -> list[str]:
     """Extract Gemini key lines from an api_env-format string.
 
@@ -350,7 +367,7 @@ async def main_async(args) -> int:
         if not data_dir.exists():
             print(f"  [{i}/{len(zettels)}] SKIP {wz_id}: _data bundle missing")
             continue
-        source_text = (data_dir / "source_text.md").read_text(encoding="utf-8")
+        source_text = read_faithfulness_source(data_dir)  # Sol 1: true source, fallback to source_text.md
         summary_json = json.loads((data_dir / "summary.json").read_text(encoding="utf-8"))
 
         if not source_text.strip() or not summary_json:
