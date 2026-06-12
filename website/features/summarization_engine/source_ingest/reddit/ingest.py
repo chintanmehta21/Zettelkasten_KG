@@ -110,6 +110,9 @@ class RedditIngestor(BaseIngestor):
                 "num_comments": num_comments,
                 "rendered_comment_count": rendered_count,
                 "nested_reply_count": nested_reply_count,
+                # Wave 1A: true fetched total = top-level + nested replies.
+                # Coverage gates on this; divergence stays rendered-based (harness key).
+                "fetched_comment_count": rendered_count + nested_reply_count,
                 "comment_divergence_pct": divergence_pct,
                 "permalink": post.get("permalink"),
                 "pullpush_fetched": pullpush_fetched,
