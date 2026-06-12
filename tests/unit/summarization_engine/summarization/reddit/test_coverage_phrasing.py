@@ -8,8 +8,26 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from website.features.summarization_engine.summarization.common.brief_repair import (
+    sentence_split,
+)
 from website.features.summarization_engine.core.models import IngestResult, SourceType
+from website.features.summarization_engine.summarization.reddit.coverage import (
+    CoverageContext,
+    compute_coverage,
+    coverage_stance_sentence,
+    reset_coverage_config_cache,
+)
+from website.features.summarization_engine.summarization.reddit.layout import (
+    compose_reddit_detailed,
+)
+from website.features.summarization_engine.summarization.reddit.schema import (
+    RedditCluster,
+    RedditDetailedPayload,
+    RedditStructuredPayload,
+)
 from website.features.summarization_engine.summarization.reddit.summarizer import (
+    _apply_ingest_enrichments,
     _build_minimum_safe_payload,
 )
 
@@ -44,16 +62,6 @@ def test_min_safe_fallback_stays_within_char_bound():
     assert len(payload.brief_summary) <= 400
 
 
-from website.features.summarization_engine.summarization.reddit.layout import (
-    compose_reddit_detailed,
-)
-from website.features.summarization_engine.summarization.reddit.schema import (
-    RedditCluster,
-    RedditDetailedPayload,
-    RedditStructuredPayload,
-)
-
-
 def _payload_no_questions_no_counters() -> RedditStructuredPayload:
     detailed = RedditDetailedPayload(
         op_intent="OP shares a workflow tip.",
@@ -81,14 +89,6 @@ def test_layout_closing_remarks_makes_no_thread_wide_consensus_claim():
     text = " ".join(closing.bullets).lower()
     assert "consensus" not in text, f"closing remarks must not assert consensus: {closing.bullets!r}"
     assert closing.bullets and closing.bullets[0].strip(), "closing remarks must stay non-empty"
-
-
-from website.features.summarization_engine.summarization.reddit.coverage import (
-    CoverageContext,
-    compute_coverage,
-    coverage_stance_sentence,
-    reset_coverage_config_cache,
-)
 
 
 def _md(**kw) -> dict:
@@ -177,11 +177,6 @@ def test_missing_yaml_falls_back_to_baked_defaults(monkeypatch, tmp_path):
     reset_coverage_config_cache()
 
 
-from website.features.summarization_engine.summarization.reddit.summarizer import (
-    _apply_ingest_enrichments,
-)
-
-
 def _payload_with_hardcoded_consensus() -> RedditStructuredPayload:
     detailed = RedditDetailedPayload(
         op_intent="OP asks whether index funds beat stock picking for beginners.",
@@ -229,6 +224,5 @@ def test_enrichment_brief_stays_within_sentence_bound_after_drop():
     payload = _payload_with_hardcoded_consensus()
     ingest = _ingest({"subreddit": "investing", "num_comments": 200, "fetched_comment_count": 4})  # anecdote
     enriched = _apply_ingest_enrichments(payload, ingest)
-    from website.features.summarization_engine.summarization.common.brief_repair import sentence_split
     n = len(sentence_split(enriched.brief_summary))
     assert 3 <= n <= 7, f"brief sentence count out of bound after drop: {n}"
