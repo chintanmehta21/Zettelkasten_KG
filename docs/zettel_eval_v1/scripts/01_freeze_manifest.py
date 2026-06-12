@@ -225,7 +225,8 @@ def write_zettel_bundle(row: dict, *, dry_run: bool) -> tuple[str, str]:
         json.dumps(summary_payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    return wz_id, "written"
+    # 2nd element = evidence label (was "written") so main() can tally true-source %.
+    return wz_id, evidence_source
 
 
 def update_manifest(rows: list[dict], *, dry_run: bool) -> None:
@@ -277,11 +278,24 @@ def main() -> int:
         return 1
 
     written = 0
+    n_true_source = 0
+    n_fallback = 0
     for r in rows:
         _, status = write_zettel_bundle(r, dry_run=args.dry_run)
-        if status == "written":
-            written += 1
+        if status == "dry-run":
+            continue
+        written += 1
+        if status == "production_ingest_cache":
+            n_true_source += 1
+        elif status == "body_md_fallback":
+            n_fallback += 1
     print(f"wrote {written} per-zettel bundles to {DATA_ROOT}")
+    if written:
+        pct = 100.0 * n_true_source / written
+        # Harness-health (Sol 1): faithfulness is trustworthy only on true-source items;
+        # body_md_fallback items are circular and should be EXCLUDED from faithfulness stats.
+        print(f"true-source coverage: {n_true_source}/{written} ({pct:.0f}%) "
+              f"via production_ingest_cache; {n_fallback} body_md_fallback (EXCLUDABLE)")
 
     update_manifest(rows, dry_run=args.dry_run)
     print(f"manifest updated at {MANIFEST}")
