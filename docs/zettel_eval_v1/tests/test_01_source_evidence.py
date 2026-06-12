@@ -146,3 +146,22 @@ def test_bundle_dry_run_writes_nothing(tmp_path, monkeypatch):
     wz_id, status = m.write_zettel_bundle(_row("wz-dry", "https://x/y", "body"), dry_run=True)
     assert status == "dry-run"
     assert not (tmp_path / "_data" / "wz-dry").exists()
+
+
+def test_bundle_returns_evidence_source_label(tmp_path, monkeypatch):
+    m = _mod()
+    monkeypatch.setattr(m, "DATA_ROOT", tmp_path / "_data")
+    cache_dir = tmp_path / "ingests"
+    cache_dir.mkdir()
+    (cache_dir / "h.json").write_text(json.dumps({
+        "url": "https://youtube.com/watch?v=L", "source_type": "youtube",
+        "raw_text": "R", "ingestor_version": "2.0.0", "fetched_at": "2026-04-24T00:00:00Z",
+    }), encoding="utf-8")
+    monkeypatch.setattr(m, "INGEST_CACHE_DIR", cache_dir)
+
+    wz_id, status = m.write_zettel_bundle(
+        _row("wz-lab", "https://youtube.com/watch?v=L", "body"), dry_run=False)
+    assert status == "production_ingest_cache"  # status doubles as the evidence label
+    wz_id2, status2 = m.write_zettel_bundle(
+        _row("wz-lab2", "https://youtube.com/watch?v=MISS", "body"), dry_run=False)
+    assert status2 == "body_md_fallback"
