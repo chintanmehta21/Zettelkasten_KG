@@ -131,12 +131,12 @@ class YouTubeStructuredPayload(BaseModel):
                     break
             # Step 4: deterministic neutral sentinel when nothing plausible.
             self.speakers = [coerced] if coerced else ["The speaker"]
-        # Single source of truth for confidence (reused by the detector
-        # override seam so the two resolvers can never desync — Wave 1B M5).
+        # Confidence from the ORIGINAL raw_speakers (pre-filter/coercion) so
+        # placeholder-presence is kept: mixed->low, all-placeholder/coerced->missing.
         from website.features.summarization_engine.summarization.youtube.attribution import (
             reconcile_attribution_confidence,
         )
-        self.attribution_confidence = reconcile_attribution_confidence(self.speakers)
+        self.attribution_confidence = reconcile_attribution_confidence(raw_speakers)
         return self
 
     @model_validator(mode="after")
