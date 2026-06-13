@@ -176,4 +176,26 @@ jobs:
             # /opt/zettelkasten/logs/caddy is owned by deploy:deploy per
             # deploy.sh — readable directly without sudo.
             tail -n ${LINES} /opt/zettelkasten/logs/caddy/access.log 2>/dev/null || true
+            # Read-only caddy upstream/admin diagnostics — surfaces the
+            # deploy-cutover failure mode (first `caddy reload` per deploy
+            # fails verify -> restart -> broken health wait -> rollback).
+            echo "===== [caddy-cutover-diag] (read-only) ====="
+            SNIP=/opt/zettelkasten/caddy/upstream.snippet
+            AUTO=/opt/zettelkasten/caddy/config/caddy/autosave.json
+            echo "--- upstream token: snippet vs autosave (steady-state should MATCH) ---"
+            echo "snippet : $(grep -oE 'zettelkasten-(blue|green):10000' "$SNIP" 2>/dev/null | head -1)"
+            echo "autosave: $(grep -oE 'zettelkasten-(blue|green):10000' "$AUTO" 2>/dev/null | head -1)"
+            echo "--- autosave.json + snippet stat (owner / mtime) ---"
+            ls -l "$AUTO" "$SNIP" 2>&1 || echo "(missing)"
+            echo "--- /config dirs (autosave writability by caddy uid) ---"
+            ls -ld /opt/zettelkasten/caddy/config /opt/zettelkasten/caddy/config/caddy 2>&1 || true
+            echo "--- caddy container (user / init / health / started) ---"
+            docker inspect caddy --format 'user={{.Config.User}} init={{.HostConfig.Init}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} started={{.State.StartedAt}}' 2>&1 || true
+            echo "--- caddy admin reachability (exactly the Docker healthcheck cmd) ---"
+            docker exec caddy wget --quiet --tries=1 --spider http://localhost:2019/config/ 2>&1 && DIAG_RC=0 || DIAG_RC=$?
+            echo "healthcheck_wget_exit=${DIAG_RC}"
+            echo "--- live admin config upstream (what caddy actually serves NOW) ---"
+            docker exec caddy sh -c 'wget -qO- http://localhost:2019/config/ 2>/dev/null' 2>/dev/null | grep -oE 'zettelkasten-(blue|green):10000' | sort -u || echo "(admin GET failed/empty)"
+            echo "--- caddy version ---"
+            docker exec caddy caddy version 2>&1 | head -1 || true
             echo "===== END ====="
