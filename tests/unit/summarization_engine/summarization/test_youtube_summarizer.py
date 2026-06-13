@@ -119,3 +119,81 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
     assert captured["payload_class"] is YouTubeStructuredPayload
     # DV hint is always passed, even when empty — ensures the plumbing stays.
     assert captured["missing_facts_hint"] == []
+
+
+@pytest.mark.asyncio
+async def test_detector_override_recomputes_attribution_confidence(
+    mock_gemini_client, monkeypatch
+):
+    """M5: a speaker-detector override must recompute attribution_confidence
+    from the detected speakers, else the validator/detector resolvers desync
+    (a stale 'missing' would survive next to confirmed real speakers)."""
+    from website.features.summarization_engine.summarization.common import (
+        dense_verify,
+        dense_verify_runner,
+        speaker_detector,
+        structured,
+    )
+    from website.features.summarization_engine.summarization.youtube import (
+        summarizer as yt_mod,
+    )
+
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense", missing_facts=[], stance=None, archetype=None,
+            format_label=None, core_argument="x", closing_hook="y",
+        )
+
+    monkeypatch.setattr(yt_mod, "run_dense_verify", _fake_run_dense_verify)
+    dense_verify_runner._DV_CACHE.clear()
+
+    async def fake_extract(self, ingest, text, **kwargs):  # noqa: ARG001
+        from website.features.summarization_engine.core.models import (
+            DetailedSummarySection,
+            SummaryMetadata,
+            SummaryResult,
+        )
+
+        return SummaryResult(
+            mini_title="t",
+            brief_summary="b",
+            tags=["a", "b", "c", "d", "e", "f", "g"],
+            detailed_summary=[DetailedSummarySection(heading="H", bullets=["b"])],
+            metadata=SummaryMetadata(
+                source_type=SourceType.YOUTUBE,
+                url=ingest.url,
+                extraction_confidence="high",
+                confidence_reason="ok",
+                total_tokens_used=0,
+                total_latency_ms=0,
+                structured_payload={
+                    "speakers": ["unidentified host"],
+                    "attribution_confidence": "missing",  # STALE before override
+                },
+            ),
+        )
+
+    monkeypatch.setattr(structured.StructuredExtractor, "extract", fake_extract)
+    # Detector confirms two real speakers -> override the list AND recompute -> "high".
+    monkeypatch.setattr(
+        speaker_detector, "detect_youtube_speakers",
+        lambda **kwargs: ["Joe Rogan", "Lex Fridman"],
+    )
+
+    ingest = IngestResult(
+        source_type=SourceType.YOUTUBE,
+        url="https://youtube.com/watch?v=x",
+        original_url="https://youtube.com/watch?v=x",
+        raw_text="hello",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+    )
+
+    summarizer = YouTubeSummarizer(mock_gemini_client, {})
+    result = await summarizer.summarize(ingest)
+
+    sp = result.metadata.structured_payload
+    assert sp["speakers"] == ["Joe Rogan", "Lex Fridman"]
+    # recomputed from detected (both real) -> "high", NOT the stale "missing".
+    assert sp["attribution_confidence"] == "high"
