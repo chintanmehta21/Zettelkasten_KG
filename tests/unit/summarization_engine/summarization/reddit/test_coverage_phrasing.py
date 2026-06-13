@@ -134,6 +134,12 @@ def test_clamp_when_fetched_exceeds_total_but_floor_still_applies():
     ctx = compute_coverage(_md(num_comments=10, fetched_comment_count=30))
     assert ctx.coverage == 1.0
     assert ctx.tier == "consensus"
+    # Displayed denominator must also clamp so the sentence never reads
+    # "30 of 10" (incoherent "N of M" with M < N). total_display == max(N, M).
+    assert ctx.total >= ctx.fetched
+    sent = coverage_stance_sentence(ctx, dominant="index funds")
+    assert "30 of 10" not in sent, f"incoherent N-of-M leaked: {sent!r}"
+    assert "30 of 30" in sent, f"expected clamped denominator: {sent!r}"
 
 
 def test_clamp_high_coverage_but_tiny_n_is_not_consensus():
