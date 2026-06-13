@@ -853,7 +853,7 @@ def create_app(lifespan=None) -> FastAPI:
         )
         return PlainTextResponse(body, headers={"Cache-Control": "public, max-age=3600"})
 
-    @app.get("/sitemap.xml", include_in_schema=False)
+    @app.api_route("/sitemap.xml", methods=["GET", "HEAD"], include_in_schema=False)
     async def sitemap_xml():
         # Public, indexable URLs only; private app pages are CSR shells behind
         # auth and are intentionally omitted.

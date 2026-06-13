@@ -85,6 +85,17 @@ async def test_sitemap_well_formed_and_lists_exactly_the_public_urls(app):
     assert locs == {f"{ORIGIN}{p}" for p in PUBLIC_PATHS}
 
 
+async def test_sitemap_head_returns_200_with_no_body(app):
+    # Crawlers/monitors probe sitemaps with HEAD; it must not 405, and a HEAD
+    # response must carry the headers but no body.
+    async with _client(app) as c:
+        r = await c.head("/sitemap.xml")
+    assert r.status_code == 200, f"HEAD got {r.status_code}"
+    assert "xml" in r.headers.get("content-type", "")
+    assert "max-age" in r.headers.get("cache-control", "")
+    assert r.content == b""
+
+
 # ── crawler exclusion ────────────────────────────────────────────────────
 @pytest.mark.parametrize("path", ["/", "/about", "/pricing", "/knowledge-graph"])
 async def test_googlebot_is_not_redirected_to_mobile(app, path):
