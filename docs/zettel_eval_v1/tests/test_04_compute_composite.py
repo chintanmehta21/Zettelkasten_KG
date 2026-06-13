@@ -7,9 +7,20 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "docs" / "zettel_eval_v1" / "scripts" / "04_compute_composite.py"
 RUNS = REPO_ROOT / "docs" / "zettel_eval_v1" / "runs"
+
+# iter-001-baseline is a generated run tree (gitignored) — absent in CI and
+# fresh clones. Tests that read its artifacts skip (not fail) when absent; they
+# run for the operator who has completed a real eval run.
+_ITER001_PER_ZETTEL = RUNS / "iter-001-baseline" / "_overall" / "per_zettel"
+requires_iter001 = pytest.mark.skipif(
+    not _ITER001_PER_ZETTEL.exists() or not any(_ITER001_PER_ZETTEL.glob("*.json")),
+    reason="runs/iter-001-baseline artifacts absent (gitignored; produced by a real eval run)",
+)
 
 
 def _run(*args):
@@ -19,6 +30,7 @@ def _run(*args):
     )
 
 
+@requires_iter001
 def test_iter_001_baseline_emits_overall_manifest_results_csv():
     """After 04 runs, _overall/manifest_results.csv must exist with at least 1 row."""
     iter_dir = RUNS / "iter-001-baseline"
@@ -44,6 +56,7 @@ def test_iter_001_baseline_emits_overall_manifest_results_csv():
     assert not missing, f"missing CSV columns: {missing}"
 
 
+@requires_iter001
 def test_per_source_manifest_results_csv():
     """Each source_type folder must get its own manifest_results.csv filtered to those zettels."""
     iter_dir = RUNS / "iter-001-baseline"
@@ -64,6 +77,7 @@ def test_per_source_manifest_results_csv():
                 f"{src}/manifest_results.csv contains rows of other source_types"
 
 
+@requires_iter001
 def test_error_class_histogram_per_source():
     iter_dir = RUNS / "iter-001-baseline"
     overall_hist = iter_dir / "_overall" / "error_class_histogram.json"
@@ -77,6 +91,7 @@ def test_error_class_histogram_per_source():
         assert isinstance(v, int), f"histogram value for {k} is not int"
 
 
+@requires_iter001
 def test_iter_level_report_md():
     iter_dir = RUNS / "iter-001-baseline"
     report = iter_dir / "REPORT.md"
