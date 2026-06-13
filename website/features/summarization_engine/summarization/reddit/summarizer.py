@@ -181,6 +181,13 @@ class RedditSummarizer(BaseSummarizer):
                     structured_payload_dict
                 )
                 enriched = _apply_ingest_enrichments(validated, ingest)
+                # Coverage-scoped brief is the user-visible one: writers persist
+                # result.brief_summary, and the patch step below reads it — so it
+                # must carry the rewritten (scoped) brief, not the pre-rewrite
+                # consensus template.
+                result.brief_summary = enriched.brief_summary[
+                    : self._engine_config.structured_extract.brief_summary_max_chars
+                ]
                 if result.metadata is not None:
                     result.metadata.structured_payload = enriched.model_dump(mode="json")
                     # Propagate enriched tags back to the user-visible surface.
