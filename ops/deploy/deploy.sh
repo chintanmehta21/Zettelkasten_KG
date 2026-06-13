@@ -71,22 +71,33 @@ on_error() {
 trap on_error ERR
 
 # C (2026-06 cutover): serve a graceful 503 "maintenance" page (the Caddyfile
-# @maintenance matcher already reads /etc/caddy/maintenance.flag) during the
-# sequential-deploy window instead of raw 502s. /api/health bypasses the
-# matcher, so health probes and reload_caddy.sh's e2e cutover gate still work.
-# Best-effort: if the toggle can't run, the deploy proceeds unchanged. The EXIT
-# trap removes the flag on EVERY exit path (success, FATAL exit, or rollback) so
-# the site can never get stuck behind the page.
+# @maintenance matcher reads /data/maintenance.flag) during the sequential-deploy
+# window instead of raw 502s. /api/health bypasses the matcher, so health probes
+# and reload_caddy.sh's e2e cutover gate still work. The flag lives on the
+# host-mounted caddy volume (host $ROOT/caddy/data == caddy container /data) and
+# is toggled HOST-side here (not via docker exec) so cleanup can't fail even if
+# the caddy container is down at exit. Best-effort: if the toggle can't run, the
+# deploy proceeds unchanged. The EXIT trap removes the flag on EVERY exit path
+# (success, FATAL exit, or rollback) so the site can never get stuck behind it.
+MAINT_FLAG="$ROOT/caddy/data/maintenance.flag"
 maint_window() {
     if [[ "${1:-}" == "open" ]]; then
-        docker exec -u 0 caddy touch /etc/caddy/maintenance.flag 2>/dev/null \
-            && log "[maint] graceful 503 window OPEN" \
-            || log "[maint] WARN: could not open maintenance window (proceeding; raw 502s during cutover)"
+        if touch "$MAINT_FLAG" 2>/dev/null; then
+            chmod 644 "$MAINT_FLAG" 2>/dev/null || true
+            log "[maint] graceful 503 window OPEN"
+        else
+            log "[maint] WARN: could not open maintenance window (proceeding; raw 502s during cutover)"
+        fi
     else
-        docker exec -u 0 caddy rm -f /etc/caddy/maintenance.flag 2>/dev/null || true
+        rm -f "$MAINT_FLAG" 2>/dev/null || true
     fi
 }
 trap 'maint_window close' EXIT
+# Also fire cleanup on termination signals — the CI deploy step has an 8m
+# command_timeout and the rag-smoke can retry up to ~12m, so an external SIGTERM
+# is realistic; without this it would skip the EXIT trap and strand the flag
+# (SIGKILL stays uncoverable; the next deploy or a manual rm clears it).
+trap 'exit 143' TERM HUP INT
 
 ACTIVE=$(cat "$ACTIVE_FILE")
 if [[ "$ACTIVE" == "blue" ]]; then
