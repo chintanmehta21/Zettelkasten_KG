@@ -36,6 +36,14 @@ def _setup_sandbox_iter():
     """Copy a couple of iter-001 per_zettel JSONs into the sandbox iter so 03
     has structurally-valid input to augment. Returns the sandbox _overall dir."""
     src = RUNS / "iter-001-baseline" / "_overall" / "per_zettel"
+    # iter-001-baseline is a generated run tree (gitignored) — absent in CI and
+    # fresh clones. Skip (not fail) when its source fixtures aren't present; the
+    # test runs for the operator who has done a real eval run.
+    if not src.exists() or not any(src.glob("*.json")):
+        pytest.skip(
+            "runs/iter-001-baseline per_zettel fixtures absent "
+            "(gitignored; produced by a real eval run)"
+        )
     dst_overall = RUNS / _TEST_ITER / "_overall" / "per_zettel"
     dst_overall.mkdir(parents=True, exist_ok=True)
     dst_web = RUNS / _TEST_ITER / "web" / "per_zettel"
