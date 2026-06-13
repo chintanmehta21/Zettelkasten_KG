@@ -131,6 +131,7 @@ class GitHubSummarizer(BaseSummarizer):
                 summary_text=summary_text,
                 archetype=verdict.archetype,
                 signals=signals,
+                verified_interface=verified_interface,
             )
 
         extractor = StructuredExtractor(
@@ -224,6 +225,7 @@ def _build_graceful_fallback(
     summary_text: str,
     archetype: RepoArchetype,
     signals: ReadmeSignals,
+    verified_interface: dict | None = None,
 ) -> GitHubStructuredPayload:
     """Build a minimal but faithful GitHub payload from deterministic signals.
 
@@ -240,9 +242,13 @@ def _build_graceful_fallback(
     purpose = signals.purpose_sentence.strip() or _first_paragraph(summary_text) or (
         f"{owner_repo} is a documented software project."
     )
-    # Filter out obvious junk fragments from signal-derived pieces so the
-    # fallback brief doesn't surface unicode garbage or broken prose.
-    clean_surfaces = [s for s in signals.any_public_surface() if _looks_clean_surface(s)]
+    # Wave-2 review FIX 1: stay refusal-first here too. Only a machine-verified
+    # manifest artifact may name an interface; heuristic README surfaces
+    # (`/sub`, `/center`, `--Please`) are NOT named, mirroring prompts.py M1/M2.
+    vi = verified_interface or {}
+    verified = bool(vi.get("verified"))
+    verified_cmds = [str(c).strip() for c in (vi.get("commands") or []) if str(c).strip()]
+    clean_surfaces = verified_cmds if verified else []
     clean_stack = [
         s for s in signals.stack
         if _looks_clean(s) and s.strip().lower() != repo_name
@@ -273,10 +279,20 @@ def _build_graceful_fallback(
         if len(brief) < 120:
             brief = brief + " " + _as_sentence(purpose)
     else:
+        # Only assert a surface sentence when commands are machine-verified;
+        # otherwise stay on the grounded library/repository-overview framing.
+        surface_sentence = (
+            _as_sentence(f"Documented public surfaces include {surface_phrase}")
+            if clean_surfaces
+            else _as_sentence(
+                "This is a library/repository overview — no verified interface "
+                "artifact was found, so no CLI command or HTTP route is asserted"
+            )
+        )
         brief_sentences = [
             _as_sentence(purpose),
             _as_sentence(f"It is {archetype_hint} built with {stack_phrase}"),
-            _as_sentence(f"Documented public surfaces include {surface_phrase}"),
+            surface_sentence,
             _as_sentence(f"Users adopt it via {install_phrase}"),
         ]
         brief = _fit_sentences(brief_sentences, max_chars=450, min_sentences=3)
