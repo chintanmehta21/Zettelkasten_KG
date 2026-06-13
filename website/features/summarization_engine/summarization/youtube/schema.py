@@ -159,6 +159,7 @@ class YouTubeStructuredPayload(BaseModel):
             chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
             demonstrations=list(self.detailed_summary.demonstrations or []),
             closing_takeaway=self.detailed_summary.closing_takeaway,
+            attribution_confidence=self.attribution_confidence,
         )
         return self
 
@@ -423,6 +424,7 @@ def _repair_brief_summary(
     chapter_titles: list[str],
     demonstrations: list[str],
     closing_takeaway: str,
+    attribution_confidence: str,
 ) -> str:
     """Accept the LLM brief as-is when it already looks natural and
     hits the rubric target length. Otherwise extend or rebuild from
@@ -514,6 +516,7 @@ def _repair_brief_summary(
         chapter_titles=chapter_titles,
         demonstrations=demonstrations,
         closing_takeaway=closing_takeaway,
+        attribution_confidence=attribution_confidence,
     )
 
 
@@ -526,18 +529,25 @@ def _compose_structured_brief(
     chapter_titles: list[str],
     demonstrations: list[str],
     closing_takeaway: str,
+    attribution_confidence: str,
 ) -> str:
-    speaker = _primary_speaker(speakers) or "The speaker"
-    parts: list[str] = []
+    from website.features.summarization_engine.summarization.youtube.attribution import (
+        canonical_format,
+        compose_lead_sentence,
+    )
 
-    thesis_sentence = _first_sentence(thesis)
-    if thesis_sentence:
-        parts.append(
-            f"In this {format_name}, {speaker} argues that "
-            f"{thesis_sentence.lower().rstrip('.')}."
+    # Wave 1B: idempotent, confidence-gated, format-verb-aware lead (no doubling,
+    # no fabricated "The speaker", verb matches genre).
+    parts: list[str] = [
+        compose_lead_sentence(
+            format_name=format_name,
+            canonical_key=canonical_format(format_name),
+            thesis=thesis,
+            speakers=speakers,
+            attribution_confidence=attribution_confidence,
         )
-    else:
-        parts.append(f"This {format_name} is delivered by {speaker}.")
+    ]
+    speaker = _primary_speaker(speakers)  # "" when only placeholders; entity line abstains
 
     titles = [t for t in (chapter_titles or []) if t and t.strip()][:3]
     if titles:
@@ -549,7 +559,8 @@ def _compose_structured_brief(
 
     entity_text = [e for e in (entities or []) if e and e.strip()][:3]
     if entity_text:
-        parts.append(f"Along the way {speaker} references {_join_series(entity_text)}.")
+        subject = speaker if speaker else f"this {format_name}"
+        parts.append(f"Along the way {subject} references {_join_series(entity_text)}.")
 
     closing_sentence = _first_sentence(closing_takeaway)
     if closing_sentence:
