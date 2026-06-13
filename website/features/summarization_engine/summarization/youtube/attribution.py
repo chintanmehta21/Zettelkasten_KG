@@ -145,16 +145,35 @@ def has_leading_attribution(thesis: str) -> bool:
     return bool(_LEADING_ATTRIBUTION_RE.match(_canon(thesis)))
 
 
-# Wave 1B — connectors used by compose_lead_sentence's OWN agentless frames
-# ("This {fmt} examines …", "This {fmt} sets out …", "In this {fmt}, X centers
-# on …"). These are valid lead sentences but carry no complementised reporting
-# clause, so has_leading_attribution does NOT match them. The composer must
-# still recognise its own output and lift it verbatim, else f(f(x)) != f(x)
-# (re-wrapping an already-composed agentless lead). Pure string compare on the
-# canonical form — no regex, so the ReDoS guarantee is untouched.
-def _opens_with_own_agentless_frame(thesis_canon: str, format_name: str) -> bool:
-    """True iff ``thesis_canon`` (already _canon'd, lowercased here) opens with
-    one of compose_lead_sentence's own agentless frames for ``format_name``."""
+# Wave 1B — every lead phrase compose_lead_sentence can emit inside an
+# "In this {fmt}, {speaker} <phrase> …" frame: all agented reporting-verb
+# phrases ("explains that", "walks through how", "argues that", …) plus the
+# agentless "centers on". Built FROM _VERB_AGENTED so it can never drift when a
+# verb is added/changed. has_leading_attribution's anchored regex only catches
+# phrases whose reporting verb sits immediately before "that"/"how"; leads like
+# "walks through how" (verb "walks" separated from "how" by "through") escape
+# it, so the composer must recognise its own emitted leads here to stay
+# idempotent (f(f(x)) == f(x)).
+_OWN_LEAD_PHRASES = frozenset(
+    phrase for table in _VERB_AGENTED.values() for phrase in table.values()
+) | {"centers on"}
+
+
+# Wave 1B — connectors used by compose_lead_sentence's OWN lead frames:
+#   • agentless     "This {fmt} examines …", "This {fmt} sets out …"
+#   • agented/frame "In this {fmt}, {speaker} <_OWN_LEAD_PHRASES phrase> …"
+# These are valid lead sentences but the agentless ones carry no complementised
+# reporting clause (and some agented ones, e.g. "walks through how", place the
+# verb away from the complementiser), so has_leading_attribution does NOT match
+# them all. The composer must still recognise its own output and lift it
+# verbatim, else f(f(x)) != f(x) (re-wrapping an already-composed lead). Pure
+# string compare on the canonical form — no regex, so the ReDoS guarantee is
+# untouched.
+def _opens_with_own_lead(thesis_canon: str, format_name: str) -> bool:
+    """True iff ``thesis_canon`` (already _canon'd) opens with one of
+    compose_lead_sentence's own lead frames for ``format_name`` — agentless
+    ("This {fmt} examines/sets out …") or agented/frame ("In this {fmt},
+    {speaker} <_OWN_LEAD_PHRASES> …")."""
     fmt = (format_name or "").strip().lower()
     if not fmt:
         return False
@@ -165,9 +184,10 @@ def _opens_with_own_agentless_frame(thesis_canon: str, format_name: str) -> bool
         rest = low[len(this_prefix):]
         if any(rest.startswith(c) for c in ("examines ", "sets out ")):
             return True
-    # "In this {fmt}, X centers on ..." (speaker + agentless-format frame)
+    # "In this {fmt}, {speaker} <own lead phrase> ..." — covers "centers on"
+    # AND every agented verb phrase, so any future verb is auto-recognised.
     in_prefix = f"in this {fmt}, "
-    if low.startswith(in_prefix) and " centers on " in low:
+    if low.startswith(in_prefix) and any(p in low for p in _OWN_LEAD_PHRASES):
         return True
     return False
 
@@ -212,9 +232,10 @@ def compose_lead_sentence(
     # it verbatim instead of prepending another (kills DOUBLING + makes f(f(x))==f(x)).
     if has_leading_attribution(thesis_sentence):
         return lift_leading_attribution(thesis_sentence)
-    # IDEMPOTENCY (agentless): also lift the composer's OWN agentless frames so
-    # feeding a composed agentless lead back in is not re-wrapped (f(f(x))==f(x)).
-    if _opens_with_own_agentless_frame(_canon(thesis_sentence), format_name):
+    # IDEMPOTENCY: also lift the composer's OWN lead frames (agentless AND
+    # agented, e.g. "walks through how" whose verb escapes the anchored
+    # detector) so feeding a composed lead back in is not re-wrapped (f(f(x))==f(x)).
+    if _opens_with_own_lead(_canon(thesis_sentence), format_name):
         return lift_leading_attribution(thesis_sentence)
 
     body = thesis_sentence.rstrip(".")
