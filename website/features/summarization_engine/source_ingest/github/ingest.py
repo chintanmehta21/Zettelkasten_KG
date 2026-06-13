@@ -130,11 +130,14 @@ class GitHubIngestor(BaseIngestor):
                     char_cap=int(config.get("doc_char_cap", _DOC_FILE_CHAR_CAP)),
                 )
 
-            # Wave 2 (M3, Option B/D4): interface evidence-ladder. Reuse a single
-            # root /contents listing to detect+read only present manifests; skip
-            # entirely when no token (anonymous 60/hr budget is too scarce).
+            # Wave 2 (M3, Option B/D4): interface evidence-ladder. A single root
+            # /contents listing detects+reads only present manifests. Manifest
+            # verification is token-gated, so with NO token we skip the listing
+            # GET too — it would be wasted (anonymous 60/hr budget is scarce) and
+            # this is a distinct GET from fetch_docs' own listing, so skipping is
+            # clean. Refusal-first verdict stands.
             verified_interface = build_interface_verdict({}).as_metadata()
-            if config.get("verify_interface", True):
+            if config.get("verify_interface", True) and token:
                 root_listing = await _optional_json(
                     client,
                     f"https://api.github.com/repos/{owner}/{repo}/contents",
