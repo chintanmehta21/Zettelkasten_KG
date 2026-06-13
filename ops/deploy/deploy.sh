@@ -70,6 +70,24 @@ on_error() {
 }
 trap on_error ERR
 
+# C (2026-06 cutover): serve a graceful 503 "maintenance" page (the Caddyfile
+# @maintenance matcher already reads /etc/caddy/maintenance.flag) during the
+# sequential-deploy window instead of raw 502s. /api/health bypasses the
+# matcher, so health probes and reload_caddy.sh's e2e cutover gate still work.
+# Best-effort: if the toggle can't run, the deploy proceeds unchanged. The EXIT
+# trap removes the flag on EVERY exit path (success, FATAL exit, or rollback) so
+# the site can never get stuck behind the page.
+maint_window() {
+    if [[ "${1:-}" == "open" ]]; then
+        docker exec -u 0 caddy touch /etc/caddy/maintenance.flag 2>/dev/null \
+            && log "[maint] graceful 503 window OPEN" \
+            || log "[maint] WARN: could not open maintenance window (proceeding; raw 502s during cutover)"
+    else
+        docker exec -u 0 caddy rm -f /etc/caddy/maintenance.flag 2>/dev/null || true
+    fi
+}
+trap 'maint_window close' EXIT
+
 ACTIVE=$(cat "$ACTIVE_FILE")
 if [[ "$ACTIVE" == "blue" ]]; then
     IDLE="green"
@@ -202,6 +220,7 @@ fi
 # 502s while Caddy points at the now-stopped ACTIVE color until the post-
 # assert flip below. Acceptable for a single-droplet 2 GB target; iter-04
 # can revisit (larger droplet, smaller stage1_k, or batched encoding).
+maint_window open
 log "[seq-deploy] Stopping ACTIVE color ${ACTIVE} to free memory for ${IDLE}..."
 ACTIVE_CONTAINER_NAME_PRE="zettelkasten-${ACTIVE}"
 ACTIVE_CONTAINER_ID_PRE="$(docker inspect --format '{{.Id}}' "$ACTIVE_CONTAINER_NAME_PRE" 2>/dev/null || true)"
@@ -457,6 +476,7 @@ if (( PUBLIC_SMOKE_OK == 0 )); then
     exit 90
 fi
 log "[caddy-smoke] public probe via Caddy OK (HTTP 200)"
+maint_window close
 
 ACTIVE_CONTAINER_NAME="zettelkasten-${ACTIVE}"
 ACTIVE_CONTAINER_ID="$(docker inspect --format '{{.Id}}' "$ACTIVE_CONTAINER_NAME" 2>/dev/null || true)"
