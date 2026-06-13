@@ -132,6 +132,10 @@ def compute_coverage(metadata: dict[str, Any]) -> CoverageContext:
     if total <= 0 or not has_fetched:
         return CoverageContext(tier="unknown", fetched=fetched, total=max(total, 0), coverage=None)
 
+    # Stale num_comments can report fewer comments than we fetched. Clamp the
+    # displayed denominator to max(fetched, total) so the rendered "N of M"
+    # never reads "30 of 10"; this also keeps coverage == fetched/total = 1.0.
+    total = max(fetched, total)
     coverage = fetched / total
     if coverage > 1.0:
         coverage = 1.0  # clamp; floor still governs the tier
