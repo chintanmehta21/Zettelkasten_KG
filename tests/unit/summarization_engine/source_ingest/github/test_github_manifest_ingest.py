@@ -115,3 +115,104 @@ async def test_case_insensitive_filename_match():
     assert verdict["verified"] is True
     assert verdict["commands"] == ["rg"]
     assert client.calls[-1].endswith("/contents/Cargo.toml")
+
+
+# --- Wave-2 review FIX 2: the no-token path must spend ZERO /contents GETs ---
+# (the root listing GET is pointless when manifest verification is skipped).
+
+
+class _IngestFakeResponse:
+    def __init__(self, status_code: int, payload):
+        self.status_code = status_code
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class _IngestRecordingClient:
+    """Async-context httpx stand-in for GitHubIngestor.ingest that records every
+    GET URL and serves a minimal repo payload (404 for everything else)."""
+
+    def __init__(self):
+        self.calls: list[str] = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def get(self, url, **kwargs):
+        self.calls.append(url)
+        if url.rstrip("/").endswith("/repos/owner/repo"):
+            return _IngestFakeResponse(
+                200,
+                {
+                    "full_name": "owner/repo",
+                    "description": "demo",
+                    "default_branch": "main",
+                    "language": "Python",
+                    "topics": [],
+                },
+            )
+        # README / languages / issues / commits / contents -> empty-ish.
+        return _IngestFakeResponse(404, {})
+
+
+def _patch_httpx(monkeypatch, client):
+    # ingest() does ``async with httpx.AsyncClient(...) as client`` — return our
+    # recording stand-in regardless of constructor kwargs.
+    monkeypatch.setattr(
+        gh_ingest.httpx, "AsyncClient", lambda *a, **k: client
+    )
+
+
+_NO_SIGNAL_CFG = {
+    "fetch_docs": False,
+    "fetch_issues": False,
+    "fetch_commits": False,
+    "verify_interface": True,
+}
+
+
+@pytest.mark.asyncio
+async def test_ingest_no_token_spends_zero_contents_gets(monkeypatch):
+    """No token -> the interface-ladder root /contents listing GET is skipped
+    entirely (it would be wasted: manifest verification is token-gated)."""
+    monkeypatch.setattr(gh_ingest, "_github_token", lambda config: "")
+    client = _IngestRecordingClient()
+    _patch_httpx(monkeypatch, client)
+
+    result = await gh_ingest.GitHubIngestor().ingest(
+        "https://github.com/owner/repo", config=dict(_NO_SIGNAL_CFG)
+    )
+
+    # Refusal-first verdict still attached.
+    assert result.metadata["verified_interface"]["verified"] is False
+    # ZERO /contents GETs of any kind on the anonymous path.
+    contents_gets = [c for c in client.calls if c.endswith("/contents") or "/contents/" in c]
+    assert contents_gets == [], f"anonymous path wasted GETs: {contents_gets}"
+
+
+@pytest.mark.asyncio
+async def test_ingest_with_token_fetches_listing_once(monkeypatch):
+    """Contrast: WITH a token the ladder spends exactly one root /contents
+    listing GET (and no per-file GET when no manifest is present)."""
+    monkeypatch.setattr(gh_ingest, "_github_token", lambda config: "ghp_fake")
+    client = _IngestRecordingClient()
+    _patch_httpx(monkeypatch, client)
+
+    result = await gh_ingest.GitHubIngestor().ingest(
+        "https://github.com/owner/repo", config=dict(_NO_SIGNAL_CFG)
+    )
+
+    assert result.metadata["verified_interface"]["verified"] is False
+    listing_gets = [c for c in client.calls if c.endswith("/contents")]
+    assert listing_gets == ["https://api.github.com/repos/owner/repo/contents"]
+    # The 404 listing means no manifest file probes either.
+    assert [c for c in client.calls if "/contents/" in c] == []
