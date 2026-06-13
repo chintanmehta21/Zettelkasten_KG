@@ -184,6 +184,12 @@ class YouTubeSummarizer(BaseSummarizer):
                 if result.metadata is not None and result.metadata.structured_payload:
                     sp = dict(result.metadata.structured_payload)
                     sp["speakers"] = detected
+                    # M5: recompute confidence from the detector's authoritative
+                    # speakers so the validator + detector resolvers can't desync.
+                    from website.features.summarization_engine.summarization.youtube.attribution import (
+                        reconcile_attribution_confidence,
+                    )
+                    sp["attribution_confidence"] = reconcile_attribution_confidence(detected)
                     result.metadata.structured_payload = sp
         except Exception as exc:  # noqa: BLE001
             _log.debug("speaker_detector failed (non-fatal): %s", exc)
