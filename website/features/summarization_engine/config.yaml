@@ -71,6 +71,11 @@ sources:
     fetch_docs: true
     max_docs: 4
     doc_char_cap: 4000
+    # Wave 2 (M3, Option B/D4): parse committed manifests (package.json bin,
+    # pyproject [project.scripts]/console_scripts, setup.cfg, Cargo [[bin]],
+    # OpenAPI) to ground the interface label. Token-gated: skipped when no
+    # GITHUB_TOKEN (anonymous). +1-2 Contents GETs per repo.
+    verify_interface: true
   newsletter:
     extractors: ["trafilatura", "readability", "newspaper4k"]
     # 2026-05-13 S2: dropped "twelveft" (12ft.io shut down July 2025).

@@ -5,11 +5,14 @@ command/entry-point names. Parsers never raise: malformed input -> []."""
 from __future__ import annotations
 
 from website.features.summarization_engine.summarization.github.manifest_signals import (
+    InterfaceVerdict,
+    MANIFEST_FILENAMES,
+    build_interface_verdict,
+    detect_openapi,
+    parse_cargo_bins,
     parse_package_json_bin,
     parse_pyproject_scripts,
     parse_setup_cfg_console_scripts,
-    parse_cargo_bins,
-    detect_openapi,
 )
 
 
@@ -136,13 +139,6 @@ def test_detect_openapi_rejects_unrelated_json():
 
 def test_detect_openapi_rejects_unrelated_yaml():
     assert detect_openapi("openapi.yaml", "name: something\nversion: 1\n") is False
-
-
-from website.features.summarization_engine.summarization.github.manifest_signals import (
-    InterfaceVerdict,
-    MANIFEST_FILENAMES,
-    build_interface_verdict,
-)
 
 
 def test_manifest_filenames_are_the_six_root_candidates():
