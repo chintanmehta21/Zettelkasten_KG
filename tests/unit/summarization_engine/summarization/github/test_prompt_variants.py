@@ -9,10 +9,18 @@ from __future__ import annotations
 
 import pytest
 
+from website.features.summarization_engine.summarization.github.archetype import (
+    RepoArchetype,
+)
 from website.features.summarization_engine.summarization.github.prompts import (
     STRUCTURED_EXTRACT_INSTRUCTION,
     _ARCHETYPE_FOCUS,
+    _signals_slot,
     select_github_prompt,
+    source_context_for,
+)
+from website.features.summarization_engine.summarization.github.readme_signals import (
+    ReadmeSignals,
 )
 
 
@@ -111,18 +119,6 @@ def test_all_known_archetypes_have_focus_blocks() -> None:
         assert arch.value in _ARCHETYPE_FOCUS, (
             f"Missing focus block for archetype {arch.value!r}"
         )
-
-
-from website.features.summarization_engine.summarization.github.archetype import (
-    RepoArchetype,
-)
-from website.features.summarization_engine.summarization.github.prompts import (
-    _signals_slot,
-    source_context_for,
-)
-from website.features.summarization_engine.summarization.github.readme_signals import (
-    ReadmeSignals,
-)
 
 
 def _bogus_signals() -> ReadmeSignals:
