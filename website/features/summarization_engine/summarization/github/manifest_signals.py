@@ -12,6 +12,7 @@ import configparser
 import json
 import logging
 import tomllib
+from dataclasses import dataclass, field
 
 _log = logging.getLogger(__name__)
 
@@ -125,3 +126,119 @@ def detect_openapi(filename: str, raw: str) -> bool:
                 return True
         return False
     return False
+
+
+# Root-level manifest candidates, lowercased to match the ingestor's
+# lower->actual filename map. openapi.* is best-effort root-only (these files
+# are frequently nested; root listing misses nested paths by design — D4).
+MANIFEST_FILENAMES: tuple[str, ...] = (
+    "package.json",
+    "pyproject.toml",
+    "setup.cfg",
+    "cargo.toml",
+    "openapi.json",
+    "openapi.yaml",
+    "openapi.yml",
+)
+
+_REFUSAL_LABEL = "library/repository overview — no verified interface artifact"
+
+
+@dataclass(frozen=True)
+class InterfaceVerdict:
+    """Result of the evidence ladder. `verified` flips the prompt label;
+    `commands` are real CLI command names; `kind` ∈ {none, cli, http, cli+http}.
+    `label` is the user-safe wording rendered into the prompt."""
+    verified: bool = False
+    commands: list[str] = field(default_factory=list)
+    kind: str = "none"
+    label: str = _REFUSAL_LABEL
+    source_files: list[str] = field(default_factory=list)
+
+    def as_metadata(self) -> dict:
+        return {
+            "verified": self.verified,
+            "commands": list(self.commands),
+            "kind": self.kind,
+            "label": self.label,
+            "source_files": list(self.source_files),
+        }
+
+
+def build_interface_verdict(manifests: dict[str, str]) -> InterfaceVerdict:
+    """Run the evidence ladder over the manifests found at repo root.
+
+    `manifests` maps a lowercased filename (one of MANIFEST_FILENAMES) to its
+    raw text. Empty/absent -> refusal-first verdict. CLI commands (npm bin,
+    console_scripts, Cargo [[bin]]) are the strongest signal and are named in
+    the label; committed OpenAPI yields an `http` verdict without command
+    names. Never raises."""
+    commands: list[str] = []
+    source_files: list[str] = []
+
+    pkg = manifests.get("package.json")
+    if pkg:
+        cmds = parse_package_json_bin(pkg)
+        if cmds:
+            commands.extend(cmds)
+            source_files.append("package.json")
+
+    pyproject = manifests.get("pyproject.toml")
+    if pyproject:
+        cmds = parse_pyproject_scripts(pyproject)
+        if cmds:
+            commands.extend(cmds)
+            source_files.append("pyproject.toml")
+
+    setup_cfg = manifests.get("setup.cfg")
+    if setup_cfg:
+        cmds = parse_setup_cfg_console_scripts(setup_cfg)
+        if cmds:
+            commands.extend(cmds)
+            source_files.append("setup.cfg")
+
+    cargo = manifests.get("cargo.toml")
+    if cargo:
+        cmds = parse_cargo_bins(cargo)
+        if cmds:
+            commands.extend(cmds)
+            source_files.append("cargo.toml")
+
+    has_http = False
+    for oa_name in ("openapi.json", "openapi.yaml", "openapi.yml"):
+        oa_raw = manifests.get(oa_name)
+        if oa_raw and detect_openapi(oa_name, oa_raw):
+            has_http = True
+            source_files.append(oa_name)
+            break
+
+    # Deduplicate command names, preserve discovery order.
+    seen: set[str] = set()
+    commands = [c for c in commands if not (c in seen or seen.add(c))]
+
+    has_cli = bool(commands)
+    if not has_cli and not has_http:
+        return InterfaceVerdict()  # refusal-first defaults
+
+    if has_cli and has_http:
+        kind = "cli+http"
+    elif has_cli:
+        kind = "cli"
+    else:
+        kind = "http"
+
+    if has_cli:
+        shown = ", ".join(commands[:6])
+        label = f"verified CLI interface — command(s): {shown}"
+        if has_http:
+            label += "; committed OpenAPI specification present"
+    else:
+        label = "verified HTTP interface — committed OpenAPI specification present"
+
+    return InterfaceVerdict(
+        verified=True,
+        commands=commands,
+        kind=kind,
+        label=label,
+        source_files=source_files,
+    )
