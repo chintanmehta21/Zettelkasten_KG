@@ -218,3 +218,43 @@ def test_detector_redos_adversarial_input_returns_quickly():
     lift_leading_attribution(evil)
     elapsed = time.perf_counter() - start
     assert elapsed < 0.5, f"detector too slow on adversarial input: {elapsed:.3f}s"
+
+
+# --- Task 4 WIRING: _compose_structured_brief actually USES compose_lead_sentence
+# (these drive the real Path-5 composer end-to-end; they would FAIL against the
+# pre-Wave-1B always-double / "The speaker" / fixed-"argues" code.)
+from website.features.summarization_engine.summarization.youtube.schema import (
+    _compose_structured_brief,
+)
+
+
+def _brief(thesis, *, fmt="commentary", conf="high", speakers=("Jane Doe",), entities=()):
+    return _compose_structured_brief(
+        format_name=fmt, thesis=thesis, speakers=list(speakers),
+        entities=list(entities), chapter_titles=[], demonstrations=[],
+        closing_takeaway="", attribution_confidence=conf,
+    )
+
+
+def test_structured_brief_wiring_no_doubling_when_thesis_attributed():
+    out = _brief("The host argues that inflation is structural.",
+                 fmt="commentary", conf="high", speakers=("the host",))
+    assert out.lower().count("argues that") == 1, f"doubled in composer: {out!r}"
+
+
+def test_structured_brief_wiring_missing_confidence_no_the_speaker():
+    out = _brief("Inflation is structural.", conf="missing", speakers=("The speaker",))
+    assert "the speaker" not in out.lower(), f"fabricated subject leaked: {out!r}"
+
+
+def test_structured_brief_wiring_lecture_uses_explains_not_argues():
+    out = _brief("Photosynthesis converts sunlight into chemical energy.",
+                 fmt="lecture", conf="high", speakers=("Dr. Lee",))
+    low = out.lower()
+    assert "explains" in low and "argues that" not in low, f"verb not format-conditional: {out!r}"
+
+
+def test_structured_brief_wiring_entity_sentence_abstains_when_missing():
+    out = _brief("Inflation is structural.", conf="missing",
+                 speakers=("The speaker",), entities=("CPI", "the Fed"))
+    assert "the speaker" not in out.lower(), f"entity sentence fabricated speaker: {out!r}"
