@@ -165,15 +165,43 @@ def _compose(thesis, fmt="commentary", conf="high", speakers=("Jane Doe",)):
     )
 
 
+# Every canonical verb-map key the composer may be handed (folded Literal +
+# classifier labels). Iterating the FULL cross-product proves no agented lead
+# the composer emits ("walks through how", "demonstrates how", "explains that",
+# "argues that", "suggests that", "reports that") can re-prepend on re-compose.
+_CANONICAL_FMT_KEYS = (
+    "lecture", "explainer", "commentary", "documentary", "news", "interview", "unknown",
+)
+
+
 def test_compose_lead_sentence_is_idempotent_over_corpus():
     # f(f(x)) == f(x): feeding the composer its own output as the thesis must
-    # not re-prepend / double the attribution clause. (Unicode UAX#15: NFC is
-    # itself idempotent; we canonicalise before the anchored compare.)
-    for thesis in _THESIS_CORPUS:
-        once = _compose(thesis)
-        # feed the produced sentence back in as the thesis
-        twice = _compose(once)
-        assert twice == once, f"not idempotent for {thesis!r}: once={once!r} twice={twice!r}"
+    # not re-prepend / double the attribution clause, for EVERY
+    # confidence x format x thesis combination. (Unicode UAX#15: NFC is itself
+    # idempotent; we canonicalise before the anchored compare.) This catches the
+    # explainer@low "walks through how" lead whose verb is not adjacent to "how"
+    # and so escaped the anchored detector, doubling on re-compose.
+    for conf in ("high", "low", "missing"):
+        for fmt in _CANONICAL_FMT_KEYS:
+            for thesis in _THESIS_CORPUS:
+                once = _compose(thesis, fmt=fmt, conf=conf)
+                # feed the produced sentence back in as the thesis
+                twice = _compose(once, fmt=fmt, conf=conf)
+                assert twice == once, (
+                    f"not idempotent for conf={conf!r} fmt={fmt!r} thesis={thesis!r}: "
+                    f"once={once!r} twice={twice!r}"
+                )
+
+
+def test_compose_explainer_low_walk_through_lead_is_idempotent():
+    # Explicit regression for the "walks through how" lead (explainer@low): the
+    # reporting verb "walks" is separated from "how" by "through", so the
+    # anchored detector misses it -> re-compose used to double the whole frame.
+    once = _compose("Markets overreact to news.", fmt="explainer", conf="low")
+    assert once == "In this explainer, Jane Doe walks through how markets overreact to news."
+    twice = _compose(once, fmt="explainer", conf="low")
+    assert twice == once, f"explainer@low doubled: once={once!r} twice={twice!r}"
+    assert twice.lower().count("walks through how") == 1, f"doubled lead: {twice!r}"
 
 
 def test_compose_does_not_double_when_thesis_already_attributed():
