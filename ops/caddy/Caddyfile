@@ -102,8 +102,15 @@ zettelkasten.in {
         max_size 18MB
     }
 
-    # Maintenance flag file → 503 (close connection so clients don't retry against a stale upstream)
-    @maintenance file /etc/caddy/maintenance.flag
+    # Maintenance flag → 503 (close connection so clients don't retry a stale upstream).
+    # deploy.sh toggles this flag on the host-mounted /data volume during the
+    # blue/green cutover window. NOTE: the `file` matcher resolves try_files under
+    # `root`, NOT as a filesystem-absolute path — without an explicit root it would
+    # stat under Caddy's process root (/srv) and never see the flag.
+    @maintenance file {
+        root /data
+        try_files /maintenance.flag
+    }
     handle @maintenance {
         respond "Service is under maintenance. We'll be back shortly." 503 {
             close
