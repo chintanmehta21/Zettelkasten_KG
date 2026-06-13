@@ -997,16 +997,16 @@ def create_app(lifespan=None) -> FastAPI:
 
     @app.get("/about")
     async def about(request: Request):
-        if _is_mobile(request):
-            return RedirectResponse(url="/m/", status_code=302)
+        # OAuth "App home page" + sitemap'd URL: served to ALL UAs (no /m/
+        # redirect) so Google's mobile-first crawler never hits a 302 here.
         response = _render_with_shell(ABOUT_DIR / "index.html")
         return _maybe_set_desktop_cookie(request, response)
 
     # Standalone, server-rendered legal pages. Distinct crawlable URLs (no
-    # login, no redirect — intentionally NOT UA-gated like /about) on the
-    # verified domain, as required for Google OAuth brand verification. The
-    # /about modal keeps its own mirror of this copy in about.js (keep both in
-    # sync); these pages are what Google + the direct links resolve to.
+    # login, no redirect — like /about, NOT UA-gated) on the verified domain,
+    # as required for Google OAuth brand verification. The /about modal keeps
+    # its own mirror of this copy in about.js (keep both in sync); these pages
+    # are what Google + the direct links resolve to.
     @app.get("/privacy")
     async def privacy_page(request: Request):
         from website.core.legal_content import render_legal_page_html

@@ -46,8 +46,8 @@ class TestLegalPages:
 
     @pytest.mark.parametrize("path,key,section", PAGES)
     def test_no_redirect_even_for_mobile_ua(self, client, path, key, section):
-        # Google requires a static URL (no redirect). Unlike /about, the legal
-        # pages must serve content directly regardless of user-agent.
+        # Google requires a static URL (no redirect): the legal pages — like
+        # /about (the OAuth home page) — serve content directly for any UA.
         resp = client.get(
             path,
             headers={"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"},
