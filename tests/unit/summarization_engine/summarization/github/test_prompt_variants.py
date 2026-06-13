@@ -111,3 +111,76 @@ def test_all_known_archetypes_have_focus_blocks() -> None:
         assert arch.value in _ARCHETYPE_FOCUS, (
             f"Missing focus block for archetype {arch.value!r}"
         )
+
+
+from website.features.summarization_engine.summarization.github.archetype import (
+    RepoArchetype,
+)
+from website.features.summarization_engine.summarization.github.prompts import (
+    _signals_slot,
+    source_context_for,
+)
+from website.features.summarization_engine.summarization.github.readme_signals import (
+    ReadmeSignals,
+)
+
+
+def _bogus_signals() -> ReadmeSignals:
+    # The verified fabrication tokens, exactly as the README regex emits them.
+    return ReadmeSignals(
+        install_cmds=("pip install requests",),
+        endpoints=("/sub", "/center"),
+        cli_flags=("--Please",),
+        decorators=(),
+        inline_code=(),
+        first_code_block="",
+        stack=("Python",),
+        purpose_sentence="",
+    )
+
+
+def test_signals_slot_demotes_surface_to_corroboration():
+    """M2: README-regex surfaces must NOT be framed as 'must be preserved
+    verbatim'. They become corroboration-only."""
+    out = _signals_slot(_bogus_signals(), verified_interface=None)
+    lowered = out.lower()
+    # The must-preserve framing is gone for surfaces.
+    assert "must be preserved verbatim" not in lowered
+    # Corroboration framing is present (the regex output is now optional/checked).
+    assert "corrobor" in lowered or "only if" in lowered or "verify against" in lowered
+
+
+def test_signals_slot_refusal_first_when_no_verified_interface():
+    """M1: with no verified artifact, the slot states the refusal-first label."""
+    out = _signals_slot(_bogus_signals(), verified_interface=None)
+    assert "no verified interface artifact" in out.lower()
+
+
+def test_signals_slot_uses_verified_label_on_artifact_hit():
+    """M1: a HIGH-rung manifest hit flips to the verified-surface label and
+    names the real command(s)."""
+    vi = {
+        "verified": True,
+        "commands": ["eslint"],
+        "kind": "cli",
+        "label": "verified CLI interface — command(s): eslint",
+        "source_files": ["package.json"],
+    }
+    out = _signals_slot(_bogus_signals(), verified_interface=vi)
+    assert "verified cli interface" in out.lower()
+    assert "eslint" in out
+    # Even when verified, the bogus regex tokens are never elevated to verbatim.
+    assert "must be preserved verbatim" not in out.lower()
+
+
+def test_source_context_threads_verified_interface():
+    vi = {"verified": True, "commands": ["rg"], "kind": "cli",
+          "label": "verified CLI interface — command(s): rg", "source_files": ["cargo.toml"]}
+    ctx = source_context_for(RepoArchetype.CLI_TOOL, _bogus_signals(), verified_interface=vi)
+    assert "rg" in ctx
+    assert "verified cli interface" in ctx.lower()
+
+
+def test_source_context_refusal_first_default():
+    ctx = source_context_for(RepoArchetype.LIBRARY_THIN, _bogus_signals(), verified_interface=None)
+    assert "no verified interface artifact" in ctx.lower()

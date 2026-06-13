@@ -82,6 +82,9 @@ class GitHubSummarizer(BaseSummarizer):
             raw_text=ingest.raw_text or "",
             metadata=ingest.metadata or {},
         )
+        # Wave 2 (M1/M3): the machine-verified interface verdict stamped by the
+        # ingestor (refusal-first by default) threaded into the prompt.
+        verified_interface = (ingest.metadata or {}).get("verified_interface")
         _log.info(
             "github.summarizer archetype=%s confidence=%.3f reasons=%s",
             verdict.archetype.value,
@@ -111,7 +114,7 @@ class GitHubSummarizer(BaseSummarizer):
             ingest_inner: IngestResult, summary_text: str, schema_json: str
         ) -> str:
             return (
-                f"{source_context_for(verdict.archetype, signals)}\n\n"
+                f"{source_context_for(verdict.archetype, signals, verified_interface=verified_interface)}\n\n"
                 f"Return a JSON object that EXACTLY matches the following JSON schema "
                 f"for class GitHubStructuredPayload. Populate every required field "
                 f"from the SUMMARY below - do not invent facts. Use temperature 0 judgment.\n\n"

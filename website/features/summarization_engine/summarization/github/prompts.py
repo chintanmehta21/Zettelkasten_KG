@@ -103,39 +103,86 @@ _ARCHETYPE_GUIDANCE: dict[RepoArchetype, str] = {
 }
 
 
-def _signals_slot(signals: ReadmeSignals | None) -> str:
+def _signals_slot(
+    signals: ReadmeSignals | None,
+    *,
+    verified_interface: dict | None = None,
+) -> str:
+    """Build the README-signal + verified-interface slot.
+
+    M1: the interface label is refusal-first by default ("library/repository
+    overview — no verified interface artifact") and flips to the verified label
+    ONLY on a machine-parsed manifest hit (verified_interface["verified"]).
+    M2: README-regex surfaces are CORROBORATION-ONLY — never "must-preserve" —
+    so HTML scraps (`/sub`, `/center`) and prose tokens (`--Please`) can no
+    longer be echoed as documented interfaces (the verified root cause)."""
+    parts: list[str] = []
+
+    # --- Interface verdict (authoritative; refusal-first) ---
+    vi = verified_interface or {}
+    if vi.get("verified"):
+        parts.append(
+            "VERIFIED INTERFACE (parsed from a committed manifest — state this "
+            "as the repository's interface): " + str(vi.get("label", ""))
+        )
+        cmds = [c for c in (vi.get("commands") or []) if c]
+        if cmds:
+            parts.append(
+                "These command name(s) are machine-verified and may be stated "
+                "verbatim: " + " | ".join(cmds)
+            )
+    else:
+        parts.append(
+            "INTERFACE: library/repository overview — no verified interface "
+            "artifact. Do NOT assert a CLI command or HTTP route as the "
+            "repository's interface unless the README explicitly documents it; "
+            "prefer the grounded library-overview framing."
+        )
+
     if signals is None:
-        return ""
-    must_preserve: list[str] = []
+        return _join_slot(parts)
+
+    # Install commands remain a reliable, low-fabrication signal.
     clean_installs = [c for c in signals.install_cmds if c and not _is_bogus_surface(c)]
     if clean_installs:
-        must_preserve.append("INSTALL: " + " | ".join(clean_installs))
-    # Filter signal-derived surfaces so HTML scraps (`/div`) and code-fragment
-    # tokens (`except DuplicateRuleError`, `provide_automatic_options`) do not
-    # leak into the prompt's must-preserve slot. Leaking them causes the LLM
-    # to dutifully echo them as "documented public surfaces" in brief_summary,
-    # triggering invented_public_interface anti-pattern (hallucination_cap=60).
+        parts.append("INSTALL: " + " | ".join(clean_installs))
+
+    # M2: README-regex surfaces are corroboration-only. The _is_bogus_surface
+    # blocklist stays as a backstop, but framing — not the blocklist — is now
+    # the primary defense against echoing fabricated tokens.
     surfaces = [
         s for s in signals.any_public_surface()
         if s and not _is_bogus_surface(s) and not _is_install_cmd(s)
     ]
     if surfaces:
-        must_preserve.append("PUBLIC SURFACE: " + " | ".join(surfaces))
+        parts.append(
+            "POSSIBLE SURFACE TOKENS (heuristic, from README text — include ONLY "
+            "if the README clearly documents them as user-facing; otherwise OMIT, "
+            "do NOT treat as verified): " + " | ".join(surfaces)
+        )
+
     if signals.stack:
-        must_preserve.append("STACK: " + ", ".join(signals.stack))
-    if not must_preserve:
+        parts.append("STACK: " + ", ".join(signals.stack))
+
+    return _join_slot(parts)
+
+
+def _join_slot(parts: list[str]) -> str:
+    if not parts:
         return ""
-    return (
-        "\n\nREADME SIGNALS (must be preserved verbatim in detailed_summary, "
-        "and where relevant in brief_summary):\n- "
-        + "\n- ".join(must_preserve)
-    )
+    return "\n\nREPOSITORY SIGNALS:\n- " + "\n- ".join(parts)
 
 
-def source_context_for(archetype: RepoArchetype, signals: ReadmeSignals | None = None) -> str:
+def source_context_for(
+    archetype: RepoArchetype,
+    signals: ReadmeSignals | None = None,
+    *,
+    verified_interface: dict | None = None,
+) -> str:
     """Build the full GitHub source context string for a given archetype."""
     guidance = _ARCHETYPE_GUIDANCE.get(archetype, _ARCHETYPE_GUIDANCE[RepoArchetype.UNKNOWN])
-    return f"{_BASE_CONTEXT}\n\n{guidance}{_signals_slot(signals)}"
+    slot = _signals_slot(signals, verified_interface=verified_interface)
+    return f"{_BASE_CONTEXT}\n\n{guidance}{slot}"
 
 
 # Archetype-tuned focus blocks. Prepended to STRUCTURED_EXTRACT_INSTRUCTION so
