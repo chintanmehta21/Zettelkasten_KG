@@ -397,6 +397,10 @@ def test_sandbox_iter_id_is_not_a_real_iter():
 # tests pin both decode paths and the error path for unexpected shapes.
 
 def _import_predictor():
+    # The MiniCheckPredictor predict path needs torch (1.7GB, intentionally NOT
+    # in CI deps). Every test_predict_* routes through here, so skip them all
+    # when torch is absent (CI/dev); they run for anyone with torch installed.
+    pytest.importorskip("torch")
     import importlib.util
     spec = importlib.util.spec_from_file_location(
         "zettel_eval_v1_03_run_nli", SCRIPT
@@ -411,7 +415,7 @@ def _make_fake_predictor(softmax_output: list[float]):
     """Bypass __init__ (avoids the 1.7GB model load) and inject a mock model
     that produces the given softmax probabilities. Mirrors the real predict()
     plumbing so the shape-decode branch is exercised end-to-end."""
-    import torch
+    torch = pytest.importorskip("torch")
 
     MiniCheckPredictor = _import_predictor()
 
@@ -498,7 +502,7 @@ def test_predict_unexpected_shape_raises():
 def _make_batched_predictor(softmax_batch_output: list[list[float]]):
     """Mock that returns a 2-D batch of softmax rows. Each call to model(**inp)
     returns logits of shape [B, num_classes] which softmax to softmax_batch_output."""
-    import torch
+    torch = pytest.importorskip("torch")
     MiniCheckPredictor = _import_predictor()
 
     class _FakeBatch(dict):
@@ -561,7 +565,7 @@ def test_predict_batch_3class_mnli_path():
 
 def test_predict_batch_respects_batch_size_chunking():
     """4 claims at batch_size=2 → 2 forward passes; output order is preserved."""
-    import torch
+    torch = pytest.importorskip("torch")
     MiniCheckPredictor = _import_predictor()
 
     class _FakeBatch(dict):
@@ -771,7 +775,7 @@ def _make_chunked_predictor(per_chunk_softmax: dict[str, list[list[float]]]):
     depending on which premise chunk was tokenized. ``per_chunk_softmax``
     maps a substring marker → batched softmax rows. The tok stub records
     which chunk it last saw via a closure cell."""
-    import torch
+    torch = pytest.importorskip("torch")
     MiniCheckPredictor = _import_predictor()
 
     class _FakeBatch(dict):
