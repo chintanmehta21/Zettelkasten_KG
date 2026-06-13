@@ -26,6 +26,10 @@ from website.features.summarization_engine.source_ingest.utils import (
     raise_extraction,
     utc_now,
 )
+from website.features.summarization_engine.summarization.github.manifest_signals import (
+    MANIFEST_FILENAMES,
+    build_interface_verdict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,9 +118,9 @@ class GitHubIngestor(BaseIngestor):
                     params={"per_page": int(config.get("max_commits", 10))},
                 )
 
+            default_branch = repo_data.get("default_branch") or "main"
             extra_docs: list[tuple[str, str]] = []
             if config.get("fetch_docs", True):
-                default_branch = repo_data.get("default_branch") or "main"
                 extra_docs = await _fetch_extra_docs(
                     client,
                     owner,
@@ -124,6 +128,25 @@ class GitHubIngestor(BaseIngestor):
                     default_branch,
                     max_files=int(config.get("max_docs", _MAX_EXTRA_DOCS)),
                     char_cap=int(config.get("doc_char_cap", _DOC_FILE_CHAR_CAP)),
+                )
+
+            # Wave 2 (M3, Option B/D4): interface evidence-ladder. Reuse a single
+            # root /contents listing to detect+read only present manifests; skip
+            # entirely when no token (anonymous 60/hr budget is too scarce).
+            verified_interface = build_interface_verdict({}).as_metadata()
+            if config.get("verify_interface", True):
+                root_listing = await _optional_json(
+                    client,
+                    f"https://api.github.com/repos/{owner}/{repo}/contents",
+                    [],
+                )
+                verified_interface = await _fetch_manifest_signals(
+                    client,
+                    owner,
+                    repo,
+                    root_listing,
+                    default_branch,
+                    token_present=bool(token),
                 )
 
         docs_section = ""
@@ -187,6 +210,7 @@ class GitHubIngestor(BaseIngestor):
                 **{k: v for k, v in signals.root_dir_flags.items()},
             }
         )
+        metadata["verified_interface"] = verified_interface
 
         signal_lines = [
             f"Pages URL: {signals.pages_url or 'none'}",
@@ -551,6 +575,48 @@ async def _fetch_file_contents(
         return base64.b64decode(encoded).decode("utf-8", errors="replace")
     except Exception:
         return ""
+
+
+async def _fetch_manifest_signals(
+    client: httpx.AsyncClient,
+    owner: str,
+    repo: str,
+    listing: Any,
+    default_branch: str,
+    *,
+    token_present: bool,
+) -> dict[str, Any]:
+    """Option B (D4): from the root /contents listing already fetched, read only
+    the manifests that exist at root, parse them, and return the interface
+    verdict as a plain dict for IngestResult.metadata.
+
+    Token-gated: with no token we skip the reads entirely (the anonymous 60/hr
+    budget is too scarce to spend here) and return the refusal-first verdict.
+    Absent manifests cost ZERO extra GETs — we only fetch names the listing
+    already proved present."""
+    if not token_present:
+        return build_interface_verdict({}).as_metadata()
+    if not isinstance(listing, list):
+        return build_interface_verdict({}).as_metadata()
+
+    lower_to_actual = {
+        entry.get("name", "").lower(): entry.get("name", "")
+        for entry in listing
+        if isinstance(entry, dict)
+        and entry.get("type") == "file"
+        and entry.get("name")
+    }
+
+    manifests: dict[str, str] = {}
+    for candidate in MANIFEST_FILENAMES:
+        actual = lower_to_actual.get(candidate)
+        if not actual:
+            continue  # absent at root -> no fetch, no waste
+        body = await _fetch_file_contents(client, owner, repo, actual, default_branch)
+        if body:
+            manifests[candidate] = body
+
+    return build_interface_verdict(manifests).as_metadata()
 
 
 def _truncate(text: str, char_cap: int) -> str:
