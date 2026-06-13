@@ -155,6 +155,34 @@ def test_compose_no_first_pass_doubling_on_long_leading_subject():
     assert out == "Alice Bob Carol Dave Eve argues that things happen."
 
 
+def test_detector_fires_on_abbreviated_leading_subject():
+    # A leading subject with an abbreviation ("Dr.", "Mr.") + reporting verb +
+    # complementiser is still a full leading clause; the "." inside the subject
+    # token must not defeat detection.
+    assert has_leading_attribution("Dr. Lee demonstrates how Z works.")
+    assert has_leading_attribution("Mr. X argues that costs rise.")
+    assert has_leading_attribution(
+        "Dr. Rick Strassman explains that DMT binds serotonin receptors."
+    )
+
+
+def test_compose_no_first_pass_doubling_on_abbreviated_subject():
+    # "Dr. Lee demonstrates how ..." fed once must lift, not prepend a second
+    # reporting clause.
+    out = _compose("Dr. Lee demonstrates how Z works.",
+                   fmt="explainer", conf="high", speakers=("Jane Doe",))
+    assert out == "Dr. Lee demonstrates how Z works."
+    assert "argues that" not in out.lower(), f"prepended over abbrev subject: {out!r}"
+    assert out.lower().count("demonstrates how") == 1, f"first-pass doubled: {out!r}"
+
+
+def test_detector_abbrev_subject_does_not_break_interior_guards():
+    # Allowing "." in subject tokens must NOT make the interior-argues guards
+    # over-fire (no leading clause => still False).
+    assert not has_leading_attribution("Inflation, she argues, is structural.")
+    assert not has_leading_attribution("The paper that argues for cuts is flawed.")
+
+
 # --- lifter: returns the thesis with the leading clause preserved verbatim --
 def test_lift_returns_clause_plus_remainder_verbatim():
     text = "The host argues that inflation is structural."
