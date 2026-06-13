@@ -137,3 +137,79 @@ def test_apply_identifier_hints_derives_github_repo_from_url_without_metadata():
     patched = _apply_identifier_hints({"mini_title": "tiangolo/fastapi"}, ingest)
 
     assert patched["mini_title"] == "fastapi/fastapi"
+
+
+@pytest.mark.asyncio
+async def test_summarizer_threads_verified_interface_into_prompt(monkeypatch):
+    """The verdict stamped by the ingestor must reach the structured-extract
+    prompt so the LLM is told the machine-verified interface (M1/M3 end-to-end)."""
+    from website.features.summarization_engine.summarization.common import (
+        dense_verify,
+        dense_verify_runner,
+        structured,
+    )
+    from website.features.summarization_engine.summarization.github import (
+        summarizer as gh_mod,
+    )
+
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense", missing_facts=[], stance=None, archetype=None,
+            format_label=None, core_argument="x", closing_hook="y",
+        )
+
+    monkeypatch.setattr(gh_mod, "run_dense_verify", _fake_run_dense_verify)
+    dense_verify_runner._DV_CACHE.clear()
+
+    captured_prompt = {}
+
+    async def fake_extract(self, ingest, text, **kwargs):
+        from website.features.summarization_engine.core.models import (
+            DetailedSummarySection, SummaryMetadata, SummaryResult,
+        )
+        # Render the prompt the summarizer built so we can assert on it.
+        captured_prompt["text"] = self._prompt_builder(ingest, text, "{}")
+        return SummaryResult(
+            mini_title="ow/repo", brief_summary="b",
+            tags=["a", "b", "c", "d", "e", "f", "g"],
+            detailed_summary=[DetailedSummarySection(heading="H", bullets=["b"])],
+            metadata=SummaryMetadata(
+                source_type=SourceType.GITHUB, url=ingest.url,
+                extraction_confidence="high", confidence_reason="ok",
+                total_tokens_used=0, total_latency_ms=0,
+            ),
+        )
+
+    # Keep the real __init__ so self._prompt_builder is the summarizer's builder.
+    monkeypatch.setattr(structured.StructuredExtractor, "extract", fake_extract)
+
+    ingest = IngestResult(
+        source_type=SourceType.GITHUB,
+        url="https://github.com/ow/repo",
+        original_url="https://github.com/ow/repo",
+        raw_text="README\n# X\n</sub> Please cite </center>",
+        extraction_confidence="high", confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+        metadata={"verified_interface": {
+            "verified": True, "commands": ["mytool"], "kind": "cli",
+            "label": "verified CLI interface — command(s): mytool",
+            "source_files": ["pyproject.toml"],
+        }},
+    )
+
+    await GitHubSummarizer(mock_gemini_client_inst(), {}).summarize(ingest)
+
+    prompt = captured_prompt["text"].lower()
+    assert "verified cli interface" in prompt
+    assert "mytool" in captured_prompt["text"]
+    # The fabricated tokens are never framed as must-preserve.
+    assert "must be preserved verbatim" not in prompt
+
+
+def mock_gemini_client_inst():
+    from unittest.mock import AsyncMock
+
+    class Client:
+        generate = AsyncMock()
+
+    return Client()
