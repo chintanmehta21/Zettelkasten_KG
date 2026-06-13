@@ -5,8 +5,18 @@ Pure deterministic string/threshold logic — NO model call, NO network.
 """
 from __future__ import annotations
 
+import pytest
+
 from website.features.summarization_engine.summarization.youtube.attribution import (
+    canonical_format,
+    compose_lead_sentence,
+    has_leading_attribution,
+    lift_leading_attribution,
     reconcile_attribution_confidence,
+    reporting_verb_phrase,
+)
+from website.features.summarization_engine.summarization.youtube.schema import (
+    _compose_structured_brief,
 )
 
 
@@ -32,13 +42,6 @@ def test_reconcile_empty_is_missing():
 
 
 # --- Task 2: canonical format label fold ----------------------------------
-import pytest
-
-from website.features.summarization_engine.summarization.youtube.attribution import (
-    canonical_format,
-)
-
-
 @pytest.mark.parametrize(
     "raw,expected",
     [
@@ -81,11 +84,6 @@ def test_canonical_format_covers_every_literal_and_classifier_label():
 
 
 # --- Task 3: format-conditional reporting-verb phrase ---------------------
-from website.features.summarization_engine.summarization.youtube.attribution import (
-    reporting_verb_phrase,
-)
-
-
 def test_verb_lecture_high_is_explains():
     assert reporting_verb_phrase("lecture", "high") == "explains that"
 
@@ -122,12 +120,6 @@ def test_verb_unknown_format_is_agentless():
 
 
 # --- Task 4: idempotent, confidence-gated compose_lead_sentence -----------
-from website.features.summarization_engine.summarization.youtube.attribution import (
-    compose_lead_sentence,
-    has_leading_attribution,
-    lift_leading_attribution,
-)
-
 # --- detector: anchored, only fires on a LEADING whole clause -------------
 def test_detector_fires_on_leading_attribution_clause():
     assert has_leading_attribution("The host argues that inflation is structural.")
@@ -223,11 +215,6 @@ def test_detector_redos_adversarial_input_returns_quickly():
 # --- Task 4 WIRING: _compose_structured_brief actually USES compose_lead_sentence
 # (these drive the real Path-5 composer end-to-end; they would FAIL against the
 # pre-Wave-1B always-double / "The speaker" / fixed-"argues" code.)
-from website.features.summarization_engine.summarization.youtube.schema import (
-    _compose_structured_brief,
-)
-
-
 def _brief(thesis, *, fmt="commentary", conf="high", speakers=("Jane Doe",), entities=()):
     return _compose_structured_brief(
         format_name=fmt, thesis=thesis, speakers=list(speakers),
