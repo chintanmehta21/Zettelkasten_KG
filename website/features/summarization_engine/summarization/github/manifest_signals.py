@@ -10,11 +10,8 @@ from __future__ import annotations
 
 import configparser
 import json
-import logging
 import tomllib
 from dataclasses import dataclass, field
-
-_log = logging.getLogger(__name__)
 
 
 def parse_package_json_bin(raw: str) -> list[str]:

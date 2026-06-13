@@ -16,6 +16,17 @@ from website.features.summarization_engine.summarization.github.manifest_signals
 )
 
 
+def test_module_has_no_dead_logger():
+    """Wave-2 review FIX 3: the unused module logger (and its logging import)
+    were dead code — guard against reintroduction."""
+    from website.features.summarization_engine.summarization.github import (
+        manifest_signals,
+    )
+
+    assert not hasattr(manifest_signals, "_log")
+    assert not hasattr(manifest_signals, "logging")
+
+
 def test_package_json_bin_string_form():
     # npm: "bin": "cli.js" -> the command name defaults to the package "name".
     raw = '{"name": "eslint", "bin": "bin/eslint.js"}'
