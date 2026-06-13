@@ -126,7 +126,7 @@ _LEADING_ATTRIBUTION_RE = re.compile(
     r"^\s{0,3}"
     r"(?:in\s{1,3}this\s{1,3}\w{1,40}\s{0,3},\s{0,3})?"   # optional "In this <fmt>,"
     r"(?:the\s{1,3})?"                                      # optional leading "the"
-    r"\w{1,40}(?:\s{1,3}\w{1,40}){0,3}"                    # subject: 1-4 tokens (bounded)
+    r"\w{1,40}(?:\s{1,3}\w{1,40}){0,6}"                    # subject: 1-7 tokens (bounded)
     r"\s{1,3}(?:" + "|".join(_REPORTING_VERBS) + r")"      # reporting verb
     r"\s{1,3}(?:that|how)\b",                               # complementiser
     re.IGNORECASE,
