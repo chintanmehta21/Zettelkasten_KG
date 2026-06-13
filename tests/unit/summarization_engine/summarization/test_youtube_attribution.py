@@ -119,3 +119,102 @@ def test_verb_interview_and_documentary_are_agentless_even_at_high():
 
 def test_verb_unknown_format_is_agentless():
     assert reporting_verb_phrase("unknown", "high") is None
+
+
+# --- Task 4: idempotent, confidence-gated compose_lead_sentence -----------
+from website.features.summarization_engine.summarization.youtube.attribution import (
+    compose_lead_sentence,
+    has_leading_attribution,
+    lift_leading_attribution,
+)
+
+# --- detector: anchored, only fires on a LEADING whole clause -------------
+def test_detector_fires_on_leading_attribution_clause():
+    assert has_leading_attribution("The host argues that inflation is structural.")
+    assert has_leading_attribution("In this commentary, Jane Doe argues that X happens.")
+
+
+def test_detector_does_not_fire_on_interior_argues():
+    # "argues" appears, but NOT as a leading attribution clause -> must not fire.
+    assert not has_leading_attribution("Inflation, she argues, is structural and persistent.")
+    assert not has_leading_attribution("The paper that argues for rate cuts is flawed.")
+
+
+def test_detector_does_not_fire_without_reporting_verb():
+    assert not has_leading_attribution("The host of the show lives in Boston.")
+
+
+# --- lifter: returns the thesis with the leading clause preserved verbatim --
+def test_lift_returns_clause_plus_remainder_verbatim():
+    text = "The host argues that inflation is structural."
+    lifted = lift_leading_attribution(text)
+    assert lifted == "The host argues that inflation is structural."  # already a full sentence
+
+
+# --- IDEMPOTENCY PROPERTY (deterministic corpus loop; see FLAG-H) ----------
+_THESIS_CORPUS = [
+    "Inflation is structural, not transitory.",
+    "The host argues that inflation is structural.",
+    "the host argues that inflation is structural",          # lowercase, no period
+    "In this commentary, Jane Doe argues that markets overreact.",
+    "Dr. Rick Strassman explains that DMT binds serotonin receptors.",  # abbrev guard
+    "She argues, in passing, that the model is wrong.",       # interior
+    "",                                                       # empty
+    "The narrator examines an untold story.",
+    "THE HOST ARGUES THAT RATES STAY HIGH",                  # all caps
+    "Jane Doe suggests that the data is noisy.",   # NBSP / Unicode drift
+]
+
+
+def _compose(thesis, fmt="commentary", conf="high", speakers=("Jane Doe",)):
+    return compose_lead_sentence(
+        format_name=fmt, canonical_key=fmt, thesis=thesis,
+        speakers=list(speakers), attribution_confidence=conf,
+    )
+
+
+def test_compose_lead_sentence_is_idempotent_over_corpus():
+    # f(f(x)) == f(x): feeding the composer its own output as the thesis must
+    # not re-prepend / double the attribution clause. (Unicode UAX#15: NFC is
+    # itself idempotent; we canonicalise before the anchored compare.)
+    for thesis in _THESIS_CORPUS:
+        once = _compose(thesis)
+        # feed the produced sentence back in as the thesis
+        twice = _compose(once)
+        assert twice == once, f"not idempotent for {thesis!r}: once={once!r} twice={twice!r}"
+
+
+def test_compose_does_not_double_when_thesis_already_attributed():
+    out = _compose("The host argues that inflation is structural.",
+                   fmt="commentary", conf="high", speakers=("the host",))
+    low = out.lower()
+    assert low.count("argues that") == 1, f"doubled attribution: {out!r}"
+
+
+def test_compose_missing_confidence_is_speaker_free_and_no_the_speaker():
+    out = _compose("Inflation is structural.", conf="missing", speakers=("The speaker",))
+    low = out.lower()
+    assert "the speaker" not in low, f"fabricated subject leaked: {out!r}"
+    assert "argues that" not in low  # agentless on missing
+    assert out.endswith((".", "!", "?")) and out
+
+
+def test_compose_legitimate_repetition_not_mangled():
+    # A thesis that merely repeats a content word is left intact (no clause to lift).
+    out = _compose("Index funds beat index-tracking ETFs over index periods.",
+                   conf="high", speakers=("Jane Doe",))
+    assert "index" in out.lower()
+    assert out.endswith((".", "!", "?"))
+
+
+# --- ReDoS adversarial input must return fast -------------------------------
+def test_detector_redos_adversarial_input_returns_quickly():
+    import time
+    # Degenerate: long run of spaces + word chars that would blow up an
+    # unbounded/backtracking pattern. Anchored + bounded ranges -> linear.
+    evil = ("In this commentary, " + ("a" * 5000) + " " * 5000 + "argues that " + "z" * 5000)
+    start = time.perf_counter()
+    has_leading_attribution(evil)
+    lift_leading_attribution(evil)
+    elapsed = time.perf_counter() - start
+    assert elapsed < 0.5, f"detector too slow on adversarial input: {elapsed:.3f}s"
