@@ -136,6 +136,25 @@ def test_detector_does_not_fire_without_reporting_verb():
     assert not has_leading_attribution("The host of the show lives in Boston.")
 
 
+def test_detector_fires_on_long_leading_subject():
+    # A 5-6 token leading subject + reporting verb + "that" is still a full
+    # leading attribution clause; the bounded subject repetition must reach it
+    # so the composer lifts (not re-prepends -> no first-pass doubling).
+    assert has_leading_attribution("Alice Bob Carol Dave Eve argues that things happen.")
+    assert has_leading_attribution(
+        "Alice Bob Carol Dave Eve Frank argues that things happen."
+    )
+
+
+def test_compose_no_first_pass_doubling_on_long_leading_subject():
+    # 5-token subject thesis fed once: must lift the existing clause verbatim,
+    # never prepend a second "argues that".
+    out = _compose("Alice Bob Carol Dave Eve argues that things happen.",
+                   fmt="commentary", conf="high", speakers=("Jane Doe",))
+    assert out.lower().count("argues that") == 1, f"first-pass doubled: {out!r}"
+    assert out == "Alice Bob Carol Dave Eve argues that things happen."
+
+
 # --- lifter: returns the thesis with the leading clause preserved verbatim --
 def test_lift_returns_clause_plus_remainder_verbatim():
     text = "The host argues that inflation is structural."
