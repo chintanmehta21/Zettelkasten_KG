@@ -49,6 +49,13 @@ LOG_PREFIX="[ROLLBACK] " "$ROOT/deploy/reload_caddy.sh" | tee -a "$LOG" || {
     log "WARNING: Caddy reload failed. Run: $ROOT/deploy/reload_caddy.sh"
 }
 
+# Clear the graceful-503 maintenance gate now that the known-good color is
+# healthy and Caddy points at it — otherwise users keep seeing 503 over a
+# healthy backend during the failed-color teardown below. deploy.sh's EXIT trap
+# also clears it (idempotent); this just ends the window promptly on the
+# rollback path. Graceful 503 is preserved through the (cold-boot) restore above.
+rm -f "$ROOT/caddy/data/maintenance.flag" 2>/dev/null || true
+
 if docker ps --format '{{.Names}}' | grep -q "^zettelkasten-${OTHER}\$"; then
     log "Tearing down failed $OTHER container..."
     docker compose \
