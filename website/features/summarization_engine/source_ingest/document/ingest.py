@@ -48,6 +48,40 @@ _DOCX_READ_CHUNK = 64 * 1024
 class DocumentUploadError(ValueError):
     """Raised when an uploaded document cannot be accepted or extracted."""
 
+    recoverable = False
+
+
+class EncryptedDocumentError(DocumentUploadError):
+    """PDF requires a password we don't have."""
+
+    recoverable = False
+
+
+class CorruptDocumentError(DocumentUploadError):
+    """File is structurally broken beyond what the parser can repair."""
+
+    recoverable = False
+
+
+class NoTextLayerError(DocumentUploadError):
+    """Valid document with no extractable text layer (scanned / outlined)."""
+
+    recoverable = True
+
+    def __init__(self, *args, page_count: int = 0):
+        super().__init__(*args or ("This document has no selectable text.",))
+        self.page_count = page_count
+
+
+class GarbageTextError(DocumentUploadError):
+    """Text extracted but is mostly replacement chars (CID font w/o ToUnicode)."""
+
+    recoverable = True
+
+    def __init__(self, *args, page_count: int = 0):
+        super().__init__(*args or ("Extracted text was unreadable (no Unicode mapping).",))
+        self.page_count = page_count
+
 
 def _clean_filename(filename: str) -> str:
     name = Path(filename or "uploaded-document").name.strip()

@@ -45,7 +45,13 @@ from website.features.summarization_engine.core.errors import (
     UnsupportedVideoError,
 )
 from website.features.summarization_engine.post_summary_transformation import registry as _pst
-from website.features.summarization_engine.source_ingest.document import DocumentUploadError
+from website.features.summarization_engine.source_ingest.document import (
+    CorruptDocumentError,
+    DocumentUploadError,
+    EncryptedDocumentError,
+    GarbageTextError,
+    NoTextLayerError,
+)
 # require_entitlement is the REAL atomic reserve-and-consume gate (Phase 9).
 # The claim loop (claim_anon_session) calls it per claimed zettel; it is also
 # the gate the add path uses. Imported at module level so tests can patch
@@ -398,6 +404,51 @@ def _async_failure_error_payload(
             operation_id=operation_id,
             url=url,
             extra={"reason": exc.reason, "tier_results": list(exc.tier_results)},
+        )
+    # Specific document-upload subclasses MUST be checked before the generic
+    # DocumentUploadError branch below — they are subclasses, so the generic
+    # isinstance() would otherwise swallow them into the invalid-document slug.
+    if isinstance(exc, EncryptedDocumentError):
+        return _problem_dict(
+            status_code=422,
+            title="Password-protected document",
+            detail="This PDF is password-protected. Remove the password and re-upload.",
+            type_slug="document-encrypted",
+            operation_id=operation_id,
+            url=url,
+        )
+    if isinstance(exc, NoTextLayerError):
+        return _problem_dict(
+            status_code=422,
+            title="No selectable text",
+            detail=(
+                "This PDF has no selectable text (it looks scanned or printed-to-image). "
+                "Try pasting the source URL instead."
+            ),
+            type_slug="document-no-text-layer",
+            operation_id=operation_id,
+            url=url,
+        )
+    if isinstance(exc, GarbageTextError):
+        return _problem_dict(
+            status_code=422,
+            title="Unreadable text",
+            detail=(
+                "We couldn't read this document's text (its fonts have no Unicode mapping). "
+                "Try the source URL or a different export."
+            ),
+            type_slug="document-garbage-text",
+            operation_id=operation_id,
+            url=url,
+        )
+    if isinstance(exc, CorruptDocumentError):
+        return _problem_dict(
+            status_code=422,
+            title="Corrupt document",
+            detail="This file appears damaged and could not be read.",
+            type_slug="document-corrupt",
+            operation_id=operation_id,
+            url=url,
         )
     if isinstance(exc, DocumentUploadError):
         return _problem_dict(
