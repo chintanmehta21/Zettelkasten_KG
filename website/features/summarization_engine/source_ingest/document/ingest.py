@@ -110,14 +110,23 @@ def _extract_pdf(data: bytes) -> tuple[str, dict[str, Any]]:
 
     try:
         with fitz.open(stream=data, filetype="pdf") as doc:
+            if doc.needs_pass:
+                # Owner-only-protected PDFs (restrictions but no read password)
+                # open with an empty user password; authenticate() returns truthy.
+                if not doc.authenticate(""):
+                    raise EncryptedDocumentError(
+                        "PDF is password-protected; cannot read without the password."
+                    )
             pages = [page.get_text("text") for page in doc]
             metadata = {
                 "page_count": doc.page_count,
                 "pdf_title": compact_text(str((doc.metadata or {}).get("title") or "")),
                 "pdf_author": compact_text(str((doc.metadata or {}).get("author") or "")),
             }
+    except (EncryptedDocumentError, CorruptDocumentError):
+        raise
     except Exception as exc:
-        raise DocumentUploadError("Could not extract text from this PDF.") from exc
+        raise CorruptDocumentError("Could not extract text from this PDF.") from exc
     return "\n\n".join(pages), {k: v for k, v in metadata.items() if v not in ("", None)}
 
 
