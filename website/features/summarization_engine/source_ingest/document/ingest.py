@@ -117,11 +117,19 @@ def _extract_pdf(data: bytes) -> tuple[str, dict[str, Any]]:
                     raise EncryptedDocumentError(
                         "PDF is password-protected; cannot read without the password."
                     )
-            pages = [page.get_text("text") for page in doc]
+            pages, vector_count, image_count = [], 0, 0
+            for page in doc:
+                pages.append(page.get_text("text"))
+                # Character-sized vector drawings = "Text-Looking Vectors"
+                # (print-to-PDF outlines). Cheap structural signal.
+                vector_count += len(page.get_drawings())
+                image_count += len(page.get_images())
             metadata = {
                 "page_count": doc.page_count,
                 "pdf_title": compact_text(str((doc.metadata or {}).get("title") or "")),
                 "pdf_author": compact_text(str((doc.metadata or {}).get("author") or "")),
+                "vector_count": vector_count,
+                "image_count": image_count,
             }
     except (EncryptedDocumentError, CorruptDocumentError):
         raise
@@ -248,6 +256,18 @@ def extract_document_upload(
 
     cleaned = compact_text(text, max_chars=MAX_EXTRACTED_CHARS)
     if len(cleaned) < 50:
+        if extension == ".pdf":
+            # Scanned/outlined PDF (visual content but no text) → recoverable
+            # via vision; genuinely empty PDF stays terminal.
+            has_visual = (
+                metadata.get("vector_count", 0) >= 50
+                or metadata.get("image_count", 0) >= 1
+            )
+            if has_visual:
+                raise NoTextLayerError(
+                    "This PDF has no selectable text.",
+                    page_count=int(metadata.get("page_count", 0)),
+                )
         raise DocumentUploadError("Could not extract enough text from this document.")
 
     title = metadata.get("pdf_title") or _title_from_filename(safe_name)
