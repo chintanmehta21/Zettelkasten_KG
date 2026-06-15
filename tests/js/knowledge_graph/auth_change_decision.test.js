@@ -44,10 +44,12 @@ describe('subscriber is wired and synchronous', () => {
     expect(APP_SRC).toMatch(/ZKAuth\.onAuthStateChange\(/);
   });
   it('the onAuthStateChange callback contains no await (deadlock-safe)', () => {
+    // The closing `\n    });` (4-space indent) is load-bearing for this regex;
+    // if the subscriber is reindented, update the terminator here too.
     const m = APP_SRC.match(
       /onAuthStateChange\(function \(event, session\) \{([\s\S]*?)\n {4}\}\);/,
     );
-    expect(m).not.toBeNull();
+    expect(m, 'subscriber callback not matched — check the closing }); indentation').not.toBeNull();
     expect(m[1]).not.toMatch(/\bawait\b/);
   });
 });
