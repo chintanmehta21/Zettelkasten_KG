@@ -163,6 +163,7 @@ def test_csp_report_accepts_modern_array_format_returns_204():
         headers={"Content-Type": "application/reports+json"},
     )
     assert resp.status_code == 204
+    assert resp.content == b"", "204 must carry an empty body (modern-array path)"
 
 
 def test_csp_report_ignores_malformed_json_returns_204():
@@ -179,6 +180,7 @@ def test_csp_report_ignores_empty_body_returns_204():
     """Empty POST body → 204 silently."""
     resp = _client().post("/api/csp-report")
     assert resp.status_code == 204
+    assert resp.content == b"", "204 must carry an empty body (empty-request path)"
 
 
 def test_csp_report_rate_limit_silently_drops_excess():
