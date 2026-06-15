@@ -176,10 +176,15 @@ async def test_landing_has_valid_organization_jsonld(app):
     assert org["logo"].startswith("https://zettelkasten.in/")
 
 
-async def test_jsonld_is_landing_only(app):
+async def test_jsonld_confined_to_landing_and_about(app):
+    # JSON-LD belongs on the landing page (Organization/WebSite) and on /about
+    # (the Google OAuth consent-screen "App home page" — see
+    # test_about_structured_data). It must NOT leak onto the other public pages.
+    secondary = [p for p in PUBLIC_PATHS if p not in ("/", "/about")]
     async with _client(app) as c:
-        about = await c.get("/about", headers={"User-Agent": DESKTOP_UA})
-    assert "application/ld+json" not in about.text
+        for path in secondary:
+            r = await c.get(path, headers={"User-Agent": DESKTOP_UA})
+            assert "application/ld+json" not in r.text, f"unexpected JSON-LD on {path}"
 
 
 # ── AI-crawler policy: block training, never block search/index bots ─────
