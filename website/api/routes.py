@@ -1080,6 +1080,11 @@ async def csp_report(request: Request):
     Always returns 204 — never error to the client, who can't act on it
     anyway. Defensive: every parse/log step is wrapped so a malformed report
     never causes a 5xx.
+
+    The 204 MUST carry an empty body (RFC 9110 §6.4.1): use a bare ``Response``,
+    NOT ``JSONResponse(content=None)`` which emits ``b"null"``. A body on a 204
+    makes uvicorn/h11 raise ("Too much data for declared Content-Length"),
+    which was the source of the ``Unhandled exception on /api/csp-report`` spam.
     """
     # Rate limit per Cf-Connecting-Ip (or remote IP fallback) so a single
     # misbehaving page can't spam the log.
@@ -1096,7 +1101,7 @@ async def csp_report(request: Request):
     if len(bucket) >= _CSP_REPORT_RATE_LIMIT_MAX:
         # Silently drop — browser can't do anything with 429 here, and we
         # don't want CSP reports themselves to become a DDoS amplifier.
-        return JSONResponse(content=None, status_code=204)
+        return Response(status_code=204)
     bucket.append(now_ts)
 
     try:
@@ -1105,7 +1110,7 @@ async def csp_report(request: Request):
             body = body[:_CSP_REPORT_MAX_BYTES]
         parsed = json.loads(body) if body else {}
     except Exception:  # noqa: BLE001 — malformed JSON is the client's problem
-        return JSONResponse(content=None, status_code=204)
+        return Response(status_code=204)
 
     # Normalise both legacy (csp-report wrapper) + modern (array of reports)
     # into a flat list of report dicts.
@@ -1140,7 +1145,7 @@ async def csp_report(request: Request):
         except Exception:  # noqa: BLE001 — log path must never raise
             pass
 
-    return JSONResponse(content=None, status_code=204)
+    return Response(status_code=204)
 
 
 # Phase B read-path strength constants.

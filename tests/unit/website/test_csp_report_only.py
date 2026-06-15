@@ -215,3 +215,53 @@ def test_csp_report_caps_body_size():
     # Will likely 204 because the truncated bytes won't parse as JSON.
     # The critical assertion: NO 5xx.
     assert resp.status_code == 204
+
+
+def test_csp_report_204_responses_carry_empty_body():
+    """Every 204 path must return an EMPTY body — a 204 with content is the prod bug.
+
+    Root cause of the ``website.app:Unhandled exception on /api/csp-report``
+    spam: the handler returned ``JSONResponse(content=None, status_code=204)``,
+    which serialises ``None`` to a 4-byte ``b"null"`` body. RFC 9110 §6.4.1
+    forbids a body on 204, and the real ASGI server enforces it — h11 raises
+    ``LocalProtocolError: Too much data for declared Content-Length`` (httptools:
+    ``RuntimeError: Response content longer than Content-Length``) when the body
+    is pumped, surfacing as the unhandled-exception log plus an asyncio
+    ``protocol.data_received() call failed`` from the corrupted keep-alive
+    connection. TestClient's httpx transport does NOT enforce 204-no-body, so
+    the status-only assertions above stay green while prod throws — this pins
+    the empty body across all three return paths (normal / malformed / drop).
+    """
+    from website.api.routes import _CSP_REPORT_RATE_LIMIT_MAX
+
+    client = _client()
+    legacy = {"csp-report": {"violated-directive": "script-src", "blocked-uri": "x"}}
+
+    # Path 1 — normal report accepted + logged.
+    r_ok = client.post(
+        "/api/csp-report",
+        content=json.dumps(legacy),
+        headers={"Content-Type": "application/csp-report"},
+    )
+    assert r_ok.status_code == 204
+    assert r_ok.content == b"", f"204 (normal) must have empty body, got {r_ok.content!r}"
+
+    # Path 2 — malformed JSON early-return.
+    r_bad = client.post(
+        "/api/csp-report",
+        content=b"not-json-at-all{{",
+        headers={"Content-Type": "application/csp-report"},
+    )
+    assert r_bad.status_code == 204
+    assert r_bad.content == b"", f"204 (malformed) must have empty body, got {r_bad.content!r}"
+
+    # Path 3 — per-IP rate-limit silent drop.
+    last = r_ok
+    for _ in range(_CSP_REPORT_RATE_LIMIT_MAX + 5):
+        last = client.post(
+            "/api/csp-report",
+            content=json.dumps(legacy),
+            headers={"Content-Type": "application/csp-report"},
+        )
+    assert last.status_code == 204
+    assert last.content == b"", f"204 (rate-limited drop) must have empty body, got {last.content!r}"
