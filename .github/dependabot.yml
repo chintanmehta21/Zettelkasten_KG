@@ -1,0 +1,33 @@
+# Dependabot — controlled, CI-tested dependency upgrades.
+#
+# Root cause this addresses: the runtime/dev requirements used floating `>=`
+# floors only, so an upstream release (e.g. FastAPI 0.137.0's breaking
+# include_router refactor) could silently enter CI/prod. The lockfiles
+# (ops/requirements.txt + ops/requirements-dev.txt, compiled from the *.in
+# sources via `uv pip compile`) now pin exact versions; Dependabot opens a
+# single grouped PR each week to bump them, so every upgrade is reviewed and
+# gated by the pytest CI job before it can reach master.
+#
+# After a Dependabot PR merges (or before bumping a floor in a *.in), recompile:
+#   uv pip compile ops/requirements-dev.in --python-version 3.12 \
+#       --python-platform x86_64-unknown-linux-gnu --no-header -o ops/requirements-dev.txt
+#   uv pip compile ops/requirements.in --python-version 3.12 \
+#       --python-platform x86_64-unknown-linux-gnu --no-header \
+#       -c ops/requirements-dev.txt -o ops/requirements.txt
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/ops"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+    groups:
+      # One grouped PR for all Python deps — CI runs once, you review once.
+      python-deps:
+        patterns:
+          - "*"
