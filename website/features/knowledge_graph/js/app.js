@@ -121,6 +121,16 @@ function formatGraphLoadMetric(stats) {
   const nodes = Number(stats && stats.nodes) || 0;
   return '[kg] graph loaded: ' + nodes + ' nodes, ' + kb + ' KB, ' + ms + ' ms';
 }
+// A3 root-cause fix (2026-06-15): always send an EXPLICIT view. Omitting it
+// let the server infer the view from auth (authed -> 'my'), so an authed
+// user's "Global" toggle silently returned their personal graph. currentView
+// is binary ('global' | 'my'); anything not 'my' is treated as global.
+function buildGraphApiUrl(view, minStrength) {
+  const params = new URLSearchParams();
+  params.set('view', view === 'my' ? 'my' : 'global');
+  params.set('min_strength', String(minStrength));
+  return '/api/graph?' + params.toString();
+}
 /* test-exports:end */
 
 (function () {
@@ -743,11 +753,7 @@ function formatGraphLoadMetric(stats) {
     // Build /api/graph URL with `view` and `min_strength` (D-KG-6: the
     // server uses min_strength as part of its 30s cache key, so passing it
     // pre-filters payload AND keeps cache-key alignment with the client cull).
-    const params = new URLSearchParams();
-    if (currentView === 'my') params.set('view', 'my');
-    params.set('min_strength', String(minStrength));
-    const qs = params.toString();
-    const apiUrl = '/api/graph' + (qs ? ('?' + qs) : '');
+    const apiUrl = buildGraphApiUrl(currentView, minStrength);
     zkFetch(apiUrl, { headers: authHeaders() })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
