@@ -352,6 +352,15 @@
     </section>
   </div>
 
+  <!-- Auth client (no DOM): keeps the Supabase session fresh so view=my stays
+       authed, and installs the 401-retry + reauth-banner pipeline. This page
+       omits the shared header, so the bundle is loaded directly here (same set
+       as static/index.html, minus auth.js's desktop-DOM layer). Order: the lib,
+       then browser-cache, then zk_fetch, then auth-core — all before app.js. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106" crossorigin></script>
+  <script src="/browser-cache/js/cache.js?v=20260609a"></script>
+  <script src="/js/zk_fetch.js?v=20260526c"></script>
+  <script src="/auth/js/auth-core.js?v=20260601a"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three-spritetext@1.10.0/dist/three-spritetext.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.79.1/dist/3d-force-graph.min.js"></script>
@@ -364,6 +373,6 @@
   <script defer src="/vendor/katex/contrib/auto-render.min.js?v=20260519c"></script>
   <script src="/js/zk_summary_popup.js?v=20260524a"></script>
   <script src="/kg/js/kasten_modal.js?v=20260523a"></script>
-  <script src="/kg/js/app.js?v=20260609a"></script>
+  <script src="/kg/js/app.js?v=20260615a"></script>
 </body>
 </html>
