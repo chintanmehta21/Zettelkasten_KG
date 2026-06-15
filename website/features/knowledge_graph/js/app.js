@@ -659,6 +659,8 @@ function authChangeDecision(event, hasSession, currentView) {
       const decision = authChangeDecision(event, !!(session && session.user), currentView);
       if (!decision) return;
       isLoggedIn = decision.isLoggedIn;
+      // Boot-state bookkeeping only: per-request fetches re-read the token via
+      // authHeaders()/getStoredAuthToken(); kept honest for any future reader.
       authToken = decision.isLoggedIn ? getStoredAuthToken() : null;
       setPersonalEnabled(decision.personalEnabled);
       if (decision.switchToGlobal) {
