@@ -131,6 +131,20 @@ function buildGraphApiUrl(view, minStrength) {
   params.set('min_strength', String(minStrength));
   return '/api/graph?' + params.toString();
 }
+// A4 (2026-06-15): pure decision for live auth-state changes. Returns null
+// for no-op events (e.g. a session-less REPLAY/RESTORE at boot) so the
+// subscriber does nothing. On SIGNED_OUT while viewing Personal we switch
+// back to Global so the user never stares at a stale empty personal graph;
+// the teal reauth banner (zk_fetch.js / auth-core.js) prompts re-sign-in.
+function authChangeDecision(event, hasSession, currentView) {
+  if (hasSession) {
+    return { isLoggedIn: true, personalEnabled: true, switchToGlobal: false };
+  }
+  if (event === 'SIGNED_OUT') {
+    return { isLoggedIn: false, personalEnabled: false, switchToGlobal: currentView === 'my' };
+  }
+  return null;
+}
 /* test-exports:end */
 
 (function () {
@@ -633,6 +647,26 @@ function buildGraphApiUrl(view, minStrength) {
       }
       renderKastensSection();
       loadGraphData();
+    });
+  }
+
+  // A4: keep the Personal toggle + isLoggedIn in sync with live auth state.
+  // SYNCHRONOUS callback only — no await inside onAuthStateChange (Navigator
+  // Locks deadlock, supabase-js #2013). The reauth banner itself is owned by
+  // zk_fetch.js / auth-core.js; this only fixes the toggle + empty-graph UX.
+  if (window.ZKAuth && typeof window.ZKAuth.onAuthStateChange === 'function') {
+    window.ZKAuth.onAuthStateChange(function (event, session) {
+      const decision = authChangeDecision(event, !!(session && session.user), currentView);
+      if (!decision) return;
+      isLoggedIn = decision.isLoggedIn;
+      authToken = decision.isLoggedIn ? getStoredAuthToken() : null;
+      setPersonalEnabled(decision.personalEnabled);
+      if (decision.switchToGlobal) {
+        currentView = 'global';
+        localStorage.setItem(STORAGE_KEY_VIEW, 'global');
+        setViewBtns('global');
+        loadGraphData();
+      }
     });
   }
 
