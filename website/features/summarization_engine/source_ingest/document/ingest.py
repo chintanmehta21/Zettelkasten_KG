@@ -44,6 +44,16 @@ MAX_EXTRACTED_CHARS = 180_000
 MAX_DOCX_DECOMPRESSED_BYTES = 50 * 1024 * 1024
 _DOCX_READ_CHUNK = 64 * 1024
 
+# CID fonts w/o ToUnicode extract as U+FFFD — visually fine, semantically
+# garbage. Density gate (10%, tune on samples) stops feeding the LLM garbage.
+_UFFFD_DENSITY_THRESHOLD = 0.10
+
+
+def _ufffd_density(text: str) -> float:
+    if not text:
+        return 0.0
+    return text.count("�") / len(text)
+
 
 class DocumentUploadError(ValueError):
     """Raised when an uploaded document cannot be accepted or extracted."""
@@ -269,6 +279,12 @@ def extract_document_upload(
                     page_count=int(metadata.get("page_count", 0)),
                 )
         raise DocumentUploadError("Could not extract enough text from this document.")
+
+    if _ufffd_density(cleaned) > _UFFFD_DENSITY_THRESHOLD:
+        raise GarbageTextError(
+            "Extracted text was mostly unreadable.",
+            page_count=int(metadata.get("page_count", 0)),
+        )
 
     title = metadata.get("pdf_title") or _title_from_filename(safe_name)
     sections = {
