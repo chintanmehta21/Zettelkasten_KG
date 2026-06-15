@@ -1,7 +1,7 @@
 # Development & testing dependencies — NOT installed into the production image.
 # Install locally with: pip install -r ops/requirements.txt -r ops/requirements-dev.txt
 
--r requirements.txt
+-r requirements.in
 
 # Testing
 pytest>=9.0
