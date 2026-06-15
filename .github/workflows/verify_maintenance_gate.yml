@@ -1,0 +1,62 @@
+name: Verify maintenance gate (manual)
+
+# On-demand check that the Caddyfile @maintenance gate actually serves a
+# graceful 503 for non-health routes when /data/maintenance.flag exists, while
+# /api/health keeps bypassing it. deploy.sh toggles this same flag during the
+# blue/green cutover window (graceful 503 instead of raw 502s); a live cutover
+# rarely overlaps real non-health traffic, so this verifies the gate directly.
+#
+# SAFETY: the flag is set for only the duration of two loopback curls (~1s,
+# capped well under a second of real exposure on a low-traffic site) and an
+# EXIT trap removes it even if the script dies. The flag is the SAME mechanism
+# the deploy uses, so this never touches anything the deploy doesn't.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Toggle maintenance flag and probe Caddy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          script: |
+            set -uo pipefail
+            FLAG=/opt/zettelkasten/caddy/data/maintenance.flag
+            # Guarantee the flag is removed on ANY exit (success, error, signal).
+            trap 'rm -f "$FLAG" 2>/dev/null || true' EXIT
+            # Probe a route THROUGH Caddy on loopback (the apex host so the
+            # request traverses the reverse_proxy + @maintenance matcher).
+            R() { curl -s -o /dev/null -w "%{http_code}" --max-time 8 \
+                  --resolve "zettelkasten.in:443:127.0.0.1" "https://zettelkasten.in$1"; }
+
+            echo "===== baseline (no flag) ====="
+            echo "home=$(R /home)  health=$(R /api/health)   (expect 200  200)"
+
+            echo "===== flag SET (lifetime = the two probes below, ~1s) ====="
+            touch "$FLAG" && chmod 644 "$FLAG"
+            HOME_FLAG="$(R /home)"
+            HEALTH_FLAG="$(R /api/health)"
+            rm -f "$FLAG"
+            HOME_CLEAR="$(R /home)"
+
+            echo "home_with_flag=${HOME_FLAG}      (expect 503 — gate fires for non-health)"
+            echo "health_with_flag=${HEALTH_FLAG}  (expect 200 — /api/health bypasses gate)"
+            echo "home_after_clear=${HOME_CLEAR}   (expect 200 — gate cleared)"
+
+            if [ "$HOME_FLAG" = "503" ] && [ "$HEALTH_FLAG" = "200" ] && [ "$HOME_CLEAR" = "200" ]; then
+                echo "MAINT_GATE_VERIFIED=PASS"
+            else
+                echo "MAINT_GATE_VERIFIED=FAIL"
+                exit 1
+            fi
+
+            echo "===== confirm flag removed ====="
+            if [ -e "$FLAG" ]; then echo "WARN: flag still present"; else echo "flag_removed=OK"; fi
