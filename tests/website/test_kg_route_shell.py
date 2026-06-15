@@ -37,3 +37,30 @@ def test_knowledge_graph_route_omits_shared_header():
     # The route's OWN header + main content still present.
     assert 'class="kg-header"' in body, "KG's own header is missing"
     assert 'id="graph-container"' in body
+
+
+def test_knowledge_graph_loads_auth_client_bundle():
+    """A1/A2 (2026-06-15): /knowledge-graph must load the DOM-less auth client
+    so the Supabase token auto-refreshes (view=my stays authed) and the
+    401-retry + reauth-banner pipeline is active. Order matters: zk_fetch and
+    auth-core must precede app.js (app.js L129 captures window.zkFetch at eval)."""
+    app = create_app()
+    client = TestClient(app)
+    body = client.get("/knowledge-graph", headers={"User-Agent": "Mozilla/5.0 (desktop)"}).text
+    assert "@supabase/supabase-js@2.106" in body
+    assert "/browser-cache/js/cache.js" in body
+    assert "/js/zk_fetch.js" in body
+    assert "/auth/js/auth-core.js" in body
+    # Auth client must load BEFORE app.js (so window.zkFetch / window.ZKAuth exist).
+    assert body.index("/auth/js/auth-core.js") < body.index("/kg/js/app.js")
+    assert body.index("/js/zk_fetch.js") < body.index("/kg/js/app.js")
+
+
+def test_knowledge_graph_omits_desktop_auth_dom_layer():
+    """auth.js is the desktop-landing DOM layer (#login-btn / provider grid) KG
+    does not render; only auth-core.js (the DOM-less client) is loaded — the same
+    'auth-core without auth.js' pattern mobile uses."""
+    app = create_app()
+    client = TestClient(app)
+    body = client.get("/knowledge-graph", headers={"User-Agent": "Mozilla/5.0 (desktop)"}).text
+    assert "/auth/js/auth.js" not in body
