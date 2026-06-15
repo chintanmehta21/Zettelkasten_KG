@@ -28,6 +28,39 @@ if TYPE_CHECKING:
 
 _SUMMARIZE_SEMAPHORE = asyncio.Semaphore(2)
 
+# Bound per-document vision cost/latency: ~258 tokens/page. 30 pages ≈ 7.7k
+# vision tokens — safe for the latency budget and quota.
+MAX_VISION_RECOVERY_PAGES = 30
+
+
+async def _recover_document_text_via_vision(*, content, client, page_count):
+    """Recover a verbatim transcript from a no-text/garbage PDF via Gemini vision.
+
+    Sends the PDF bytes inline to ``generate_multimodal`` and returns the
+    stripped transcript. Raises ``NoTextLayerError`` when the document exceeds
+    ``MAX_VISION_RECOVERY_PAGES`` so the caller surfaces the no-text redirect UX.
+    """
+    from website.features.summarization_engine.source_ingest.document import NoTextLayerError
+    if page_count > MAX_VISION_RECOVERY_PAGES:
+        raise NoTextLayerError(
+            f"Document has {page_count} pages; too many to read by vision.",
+            page_count=page_count,
+        )
+    from google.genai import types as gtypes
+    prompt = (
+        "Transcribe ALL readable text from this document verbatim, preserving "
+        "reading order and headings. Output only the transcript text — no "
+        "commentary. If a page is blank, skip it."
+    )
+    contents = [
+        gtypes.Content(role="user", parts=[
+            gtypes.Part(inline_data=gtypes.Blob(mime_type="application/pdf", data=content)),
+            gtypes.Part(text=prompt),
+        ])
+    ]
+    result = await client.generate_multimodal(contents, label="document_vision_recovery")
+    return (getattr(result, "text", "") or "").strip()
+
 
 class SummaryDTO(BaseModel):
     title: str
@@ -241,15 +274,32 @@ async def run_add_document_pipeline(
     from website.features.summarization_engine.core.orchestrator import OrchestratedSummary
     from website.features.summarization_engine.source_ingest.document import (
         extract_document_upload,
+        NoTextLayerError,
+        GarbageTextError,
     )
     from website.features.summarization_engine.summarization import get_summarizer
     from website.features.user_pricing.models import Meter
 
-    ingest = extract_document_upload(
-        filename=filename,
-        content=content,
-        content_type=content_type,
-    )
+    try:
+        ingest = extract_document_upload(
+            filename=filename,
+            content=content,
+            content_type=content_type,
+        )
+    except (NoTextLayerError, GarbageTextError) as exc:
+        # No-text/garbage PDF: one-shot Gemini vision transcript, re-entered as
+        # .txt (suffix load-bearing — .pdf would re-parse). <50ch/over-ceiling=terminal.
+        client = gemini_client_factory()
+        recovered = await _recover_document_text_via_vision(
+            content=content, client=client, page_count=getattr(exc, "page_count", 0),
+        )
+        if len(recovered) < 50:
+            raise
+        ingest = extract_document_upload(
+            filename=Path(filename).stem + ".txt",
+            content=recovered.encode("utf-8"),
+            content_type="text/plain",
+        )
     user_sub = str(effective_user_id)
     await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
 
