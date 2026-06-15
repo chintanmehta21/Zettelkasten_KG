@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from starlette.routing import Mount
 
 from website.features.feedback import register
 
@@ -16,8 +17,10 @@ def test_register_returns_app() -> None:
 def test_register_mounts_static_dir() -> None:
     app = FastAPI()
     register(app)
-    routes = [r.path for r in app.routes]
-    assert any(p.startswith("/feedback-ui") for p in routes), routes
+    # Static dirs are top-level Starlette Mounts (public .path); robust to the
+    # FastAPI 0.137 route-tree change, which only wraps include_router nodes.
+    mount_paths = [r.path for r in app.routes if isinstance(r, Mount)]
+    assert any(p.startswith("/feedback-ui") for p in mount_paths), mount_paths
 
 
 def test_register_serves_templates_under_feedback_ui() -> None:
@@ -34,6 +37,6 @@ def test_register_serves_templates_under_feedback_ui() -> None:
 def test_register_adds_feedback_router() -> None:
     app = FastAPI()
     register(app)
-    paths = [r.path for r in app.routes]
-    # /api/feedback/health is part of the router
-    assert any("/api/feedback/health" in p for p in paths), paths
+    # Behavior-based: /api/feedback/health is registered (non-404). app.routes
+    # is a tree on FastAPI 0.137, so we probe the route instead of iterating it.
+    assert TestClient(app).get("/api/feedback/health").status_code != 404
