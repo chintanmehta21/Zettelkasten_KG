@@ -35,9 +35,13 @@ def _authed_client() -> TestClient:
 
 
 def test_refresh_route_is_mounted():
-    app = create_app()
-    paths = {getattr(r, "path", None) for r in app.routes}
-    assert "/api/zettels/refresh" in paths
+    # Behavior-based registration check — FastAPI 0.137 made app.routes a tree
+    # (an internal detail). 404 == not registered; 401/422 == registered
+    # (auth/validation run only after the path matches).
+    r = TestClient(create_app()).post(
+        "/api/zettels/refresh", json={"url": "https://example.com/a"}
+    )
+    assert r.status_code != 404
 
 
 def test_refresh_rejects_anonymous():

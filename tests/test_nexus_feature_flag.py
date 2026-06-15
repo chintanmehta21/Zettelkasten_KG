@@ -7,6 +7,7 @@ import sys
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from starlette.routing import Mount
 
 
 def _load_app_module():
@@ -20,27 +21,28 @@ class TestNexusFeatureFlag:
             app_module = _load_app_module()
             app = app_module.create_app()
 
-        routes = {route.path for route in app.routes}
-        assert "/home/nexus" in routes
-        assert "/home/nexus/css" in routes
-        assert "/home/nexus/js" in routes
-        assert any(path.startswith("/api/nexus") for path in routes)
-
+        # FastAPI 0.137 made app.routes a tree (an internal detail); assert via
+        # public, forward-compatible surfaces — OpenAPI schema for API routes,
+        # top-level Mounts for static dirs, a live request for the page.
         client = TestClient(app)
-        response = client.get("/home/nexus")
-        assert response.status_code == 200
+        assert client.get("/home/nexus").status_code == 200
+        api_paths = app.openapi()["paths"]
+        assert any(p.startswith("/api/nexus") for p in api_paths)
+        mount_paths = {r.path for r in app.routes if isinstance(r, Mount)}
+        assert "/home/nexus/css" in mount_paths
+        assert "/home/nexus/js" in mount_paths
 
     def test_disabled_excludes_nexus_routes_and_assets(self) -> None:
         with patch.dict("os.environ", {"NEXUS_ENABLED": "false"}, clear=True):
             app_module = _load_app_module()
             app = app_module.create_app()
 
-        routes = {route.path for route in app.routes}
-        assert "/home/nexus" not in routes
-        assert "/home/nexus/css" not in routes
-        assert "/home/nexus/js" not in routes
-        assert not any(path.startswith("/api/nexus") for path in routes)
-
+        # Disabled → page 404, no nexus API routes in the schema, no nexus
+        # static Mounts (see the enabled case for why we use these surfaces).
         client = TestClient(app)
-        response = client.get("/home/nexus")
-        assert response.status_code == 404
+        assert client.get("/home/nexus").status_code == 404
+        api_paths = app.openapi()["paths"]
+        assert not any(p.startswith("/api/nexus") for p in api_paths)
+        mount_paths = {r.path for r in app.routes if isinstance(r, Mount)}
+        assert "/home/nexus/css" not in mount_paths
+        assert "/home/nexus/js" not in mount_paths

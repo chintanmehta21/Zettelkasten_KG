@@ -9,7 +9,14 @@ def test_app_importable():
 
 
 def test_app_has_health_route():
+    from fastapi.testclient import TestClient
+
     from website.main import app
 
-    paths = [getattr(r, "path", "") for r in app.routes]
-    assert "/api/health" in paths or "/api/health/warm" in paths
+    # Behavior-based: app.routes is a tree on FastAPI 0.137 (an internal
+    # detail). A registered health path returns non-404.
+    client = TestClient(app)
+    assert (
+        client.get("/api/health").status_code != 404
+        or client.get("/api/health/warm").status_code != 404
+    )
