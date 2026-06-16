@@ -1721,6 +1721,21 @@ async def graph_data(
             detail="view=kasten requires a kasten_id query parameter",
         )
 
+    # Rev 3 (operator-approved 2026-06-16): view=my / kasten REQUIRE auth.
+    # Resolve the effective view exactly as run_view_graph does
+    # (_resolve_view): an explicit view wins; otherwise infer from auth.
+    # Anonymous callers asking for a personal/kasten view get a hard 401 so
+    # the frontend's zk_fetch 401->refresh->banner pipeline fires. Anonymous
+    # global (explicit or inferred) stays 200. We do NOT swap the dependency
+    # (get_optional_user must remain so the anonymous global path works).
+    effective_view = view or ("my" if user is not None else "global")
+    if effective_view in ("my", "kasten") and user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = await run_view_graph(
             user=user,
@@ -1745,21 +1760,41 @@ async def graph_data(
         len((payload or {}).get("nodes", []) or []),
     )
 
-    # Conditional-request + private-cache contract (audit 2026-06-04).
-    # `private` is mandatory: per-user graphs must never be edge-cached
-    # (Cloudflare async-SWR, 2026-02-26, would otherwise serve A's graph to B).
-    # ETag is a weak validator over the FINAL serialized body, so it reflects
-    # the exact view/min_strength/limit slice the client received; weak so a
-    # Cloudflare-rewritten validator still matches via if_none_match (RFC 7232).
+    # Conditional-request + cache contract (Part A + Part B Phase 1).
+    # ETag is a weak validator over the FINAL serialized body so it reflects
+    # the exact view/min_strength/limit slice; weak so a Cloudflare-rewritten
+    # validator still matches via if_none_match (RFC 7232 + CF-ETags note).
+    resolved = (payload or {}).get("meta", {}).get("view") or effective_view
+    if resolved == "global":
+        # Signal AnonSessionCookieMiddleware to suppress Set-Cookie on this
+        # response: a stray Set-Cookie header forces Cloudflare cache BYPASS,
+        # breaking the public edge-cache contract for view=global.
+        request.state.suppress_anon_cookie = True
     body = json.dumps(
         jsonable_encoder(payload), ensure_ascii=False, separators=(",", ":")
     ).encode("utf-8")
     etag = 'W/"' + hashlib.blake2s(body, digest_size=16).hexdigest() + '"'
-    cache_headers = {
-        "Cache-Control": "private, max-age=30, stale-while-revalidate=300",
-        "ETag": etag,
-        "Vary": "Accept-Encoding",
-    }
+
+    if resolved == "global":
+        # Part B Phase 1: the public community graph is edge-cacheable.
+        # `public` + `s-maxage` lets Cloudflare cache; `Vary: Accept-Encoding`
+        # ONLY (CF ignores every other Vary value — Vary: Authorization is false
+        # safety). No Set-Cookie is emitted on this path; a stray Set-Cookie
+        # forces Cloudflare BYPASS. The JS client also drops Authorization for
+        # global (headersForView in app.js) so no auth token is in the request.
+        cache_headers = {
+            "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
+            "ETag": etag,
+            "Vary": "Accept-Encoding",
+        }
+    else:
+        # view=my / kasten: per-user, NEVER edge-cached (CF async-SWR would
+        # otherwise serve user A's graph to user B). Part A behaviour unchanged.
+        cache_headers = {
+            "Cache-Control": "private, max-age=30, stale-while-revalidate=300",
+            "ETag": etag,
+            "Vary": "Accept-Encoding",
+        }
     if if_none_match(request.headers.get("if-none-match"), etag):
         return Response(status_code=304, headers=cache_headers)
     return Response(content=body, media_type="application/json", headers=cache_headers)

@@ -131,6 +131,14 @@ function buildGraphApiUrl(view, minStrength) {
   params.set('min_strength', String(minStrength));
   return '/api/graph?' + params.toString();
 }
+// Part B Phase 1: view=global is a PUBLIC, edge-cached response. Sending
+// Authorization on it makes Cloudflare BYPASS the cache (and risks keying a
+// private response as public). currentView is binary: 'my' keeps auth,
+// anything else (global) sends NO Authorization header.
+function headersForView(view, authHeadersFn) {
+  if (view === 'my') return authHeadersFn();
+  return {};
+}
 // A4 (2026-06-15): pure decision for live auth-state changes. Returns null
 // for no-op events (e.g. a session-less REPLAY/RESTORE at boot) so the
 // subscriber does nothing. On SIGNED_OUT while viewing Personal we switch
@@ -542,9 +550,20 @@ function authChangeDecision(event, hasSession, currentView) {
   // addable when it itself is user-owned OR shares a link with a user-owned
   // node — i.e. the user has earned visibility into it through their graph.
   function loadUserOwnedIds() {
+    // Part B hard-401: view=my now returns 401 for unauthenticated users
+    // (not the old 200-empty). A 401 here means the user is logged out
+    // (never-authenticated path); a genuinely-expired session fires the
+    // zk_fetch 401->refresh->banner pipeline first and may retry.
+    // Either way, on any non-OK (including 401), degrade to an empty set
+    // without breaking the page. The Personal toggle is already greyed for
+    // logged-out users so userOwnedIds=empty is the correct steady state.
     zkFetch('/api/graph?view=my', { headers: authHeaders() })
-      .then(r => r.ok ? r.json() : Promise.reject('user-graph'))
+      .then(r => {
+        if (r.status === 401) return null;  // logged-out: empty set, no throw
+        return r.ok ? r.json() : Promise.reject('user-graph');
+      })
       .then(data => {
+        if (!data) return;  // 401 degraded path: leave userOwnedIds empty
         userOwnedIds = new Set((data.nodes || []).map(n => n.id));
         _rebuildAddableSet();
         refreshOpenPanelAddBtn();
@@ -790,7 +809,7 @@ function authChangeDecision(event, hasSession, currentView) {
     // server uses min_strength as part of its 30s cache key, so passing it
     // pre-filters payload AND keeps cache-key alignment with the client cull).
     const apiUrl = buildGraphApiUrl(currentView, minStrength);
-    zkFetch(apiUrl, { headers: authHeaders() })
+    zkFetch(apiUrl, { headers: headersForView(currentView, authHeaders) })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
       .then(data => {
