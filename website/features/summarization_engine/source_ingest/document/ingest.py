@@ -118,8 +118,15 @@ def _extract_pdf(data: bytes) -> tuple[str, dict[str, Any]]:
     except Exception as exc:  # pragma: no cover - dependency is runtime-required.
         raise DocumentUploadError("PDF extraction is unavailable in this environment.") from exc
 
+    # POSIX RLIMIT_AS jail: bounds this single parse's address space so a
+    # pathological PDF self-OOMs (MemoryError → CorruptDocumentError below)
+    # instead of OOM-killing the worker. No-op on non-POSIX (Windows/CI).
+    from website.features.summarization_engine.source_ingest.document.resource_guard import (
+        parse_resource_limit,
+    )
+
     try:
-        with fitz.open(stream=data, filetype="pdf") as doc:
+        with parse_resource_limit(), fitz.open(stream=data, filetype="pdf") as doc:
             if doc.needs_pass:
                 # Owner-only-protected PDFs (restrictions but no read password)
                 # open with an empty user password; authenticate() returns truthy.
@@ -143,6 +150,8 @@ def _extract_pdf(data: bytes) -> tuple[str, dict[str, Any]]:
             }
     except (EncryptedDocumentError, CorruptDocumentError):
         raise
+    except MemoryError as exc:
+        raise CorruptDocumentError("Document is too complex to process safely.") from exc
     except Exception as exc:
         raise CorruptDocumentError("Could not extract text from this PDF.") from exc
     return "\n\n".join(pages), {k: v for k, v in metadata.items() if v not in ("", None)}
