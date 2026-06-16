@@ -71,7 +71,6 @@ async def test_set_private_round_trips_and_audits(asyncpg_pool, mint_user, bulk_
     assert [e["action"] for e in events][-1] == "make_public"
 
 
-@pytest.mark.xfail(reason="community_cache_version table lands in Task 0.7")
 @pytest.mark.asyncio
 async def test_read_cache_version_returns_int(asyncpg_pool):
     repo = CommunityGraphRepository()
