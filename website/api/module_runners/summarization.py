@@ -287,8 +287,9 @@ async def run_add_document_pipeline(
             content_type=content_type,
         )
     except (NoTextLayerError, GarbageTextError) as exc:
-        # No-text/garbage PDF: one-shot Gemini vision transcript, re-entered as
-        # .txt (suffix load-bearing — .pdf would re-parse). <50ch/over-ceiling=terminal.
+        # No-text PDF → paid vision recovery (re-entered as .txt). Reserve quota
+        # FIRST so over-quota users fail closed (idempotent w/ the gate below).
+        await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
         client = gemini_client_factory()
         recovered = await _recover_document_text_via_vision(
             content=content, client=client, page_count=getattr(exc, "page_count", 0),
