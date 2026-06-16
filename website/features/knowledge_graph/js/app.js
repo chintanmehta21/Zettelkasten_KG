@@ -139,6 +139,22 @@ function headersForView(view, authHeadersFn) {
   if (view === 'my') return authHeadersFn();
   return {};
 }
+// Part B Phase 1 — pure privacy-UX helpers (DOM wiring lives outside the fence).
+// Opt-OUT model: zettels are public by default; the action toggles privacy.
+function privacyToggleLabel(isPrivate) {
+  return isPrivate ? 'Make public' : 'Make private';
+}
+// Persistent "Private" badge spec, shown ONLY on hidden zettels. TEAL only
+// (amber is reserved for the /knowledge-graph 3D viz; never purple). Returns a
+// spec the DOM layer applies.
+function privacyBadge(isPrivate) {
+  if (!isPrivate) return { visible: false, text: '', className: '' };
+  return { visible: true, text: 'Private', className: 'kg-private-badge' };
+}
+// Undo toast copy after a toggle (NN/G: reversible action over a blocking modal).
+function undoToastText(nowPrivate) {
+  return nowPrivate ? 'Marked private. Undo?' : 'Made public. Undo?';
+}
 // A4 (2026-06-15): pure decision for live auth-state changes. Returns null
 // for no-op events (e.g. a session-less REPLAY/RESTORE at boot) so the
 // subscriber does nothing. On SIGNED_OUT while viewing Personal we switch
