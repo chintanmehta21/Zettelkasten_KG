@@ -73,6 +73,12 @@ class CorruptDocumentError(DocumentUploadError):
     recoverable = False
 
 
+class DocumentTooComplexError(DocumentUploadError):
+    """Parse hit the resource cap — pathological/oversized, not corrupt."""
+
+    recoverable = False
+
+
 class NoTextLayerError(DocumentUploadError):
     """Valid document with no extractable text layer (scanned / outlined)."""
 
@@ -151,7 +157,7 @@ def _extract_pdf(data: bytes) -> tuple[str, dict[str, Any]]:
     except (EncryptedDocumentError, CorruptDocumentError):
         raise
     except MemoryError as exc:
-        raise CorruptDocumentError("Document is too complex to process safely.") from exc
+        raise DocumentTooComplexError("Document is too complex to process safely.") from exc
     except Exception as exc:
         raise CorruptDocumentError("Could not extract text from this PDF.") from exc
     return "\n\n".join(pages), {k: v for k, v in metadata.items() if v not in ("", None)}

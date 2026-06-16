@@ -47,6 +47,7 @@ from website.features.summarization_engine.core.errors import (
 from website.features.summarization_engine.post_summary_transformation import registry as _pst
 from website.features.summarization_engine.source_ingest.document import (
     CorruptDocumentError,
+    DocumentTooComplexError,
     DocumentUploadError,
     EncryptedDocumentError,
     GarbageTextError,
@@ -450,6 +451,18 @@ def _async_failure_error_payload(
             operation_id=operation_id,
             url=url,
         )
+    if isinstance(exc, DocumentTooComplexError):
+        return _problem_dict(
+            status_code=422,
+            title="Document too complex",
+            detail=(
+                "This document is too complex or large to process safely. "
+                "Try a smaller or simpler file."
+            ),
+            type_slug="document-too-complex",
+            operation_id=operation_id,
+            url=url,
+        )
     if isinstance(exc, DocumentUploadError):
         return _problem_dict(
             status_code=422,
@@ -754,9 +767,29 @@ async def _run(
         from fastapi import HTTPException as _HTTPException
 
         from website.core.persist import SupabaseV2PersistError as _SupabaseV2PersistError
+        from website.features.summarization_engine.source_ingest.document import (
+            DocumentUploadError as _DocUploadError,
+        )
         from website.features.web_monitor import _hash_id, maybe_fire_app_error
 
-        if not isinstance(exc, (_HTTPException, ValueError, _SupabaseV2PersistError)):
+        if isinstance(exc, _DocUploadError):
+            # Per-scenario #app-errors visibility (encrypted/no-text/garbage/
+            # corrupt/too-complex); distinct dedup_key, 15-min throttle.
+            maybe_fire_app_error(
+                dedup_key=f"add_zettel_document:{type(exc).__name__}",
+                route="/api/zettels/add/document[async]",
+                exc_type=type(exc).__name__,
+                message=str(exc)[:400],
+                request_id=operation_id,
+                fields={
+                    "operation_id": operation_id,
+                    "user_hash": _hash_id(str(user_id)),
+                    "scenario": type(exc).__name__,
+                    "stage": "document_ingest",
+                },
+                severity="warning",
+            )
+        elif not isinstance(exc, (_HTTPException, ValueError, _SupabaseV2PersistError)):
             maybe_fire_app_error(
                 dedup_key=f"add_zettel_run:{type(exc).__name__}",
                 route="/api/zettels/add[async]",
