@@ -662,6 +662,36 @@ function authChangeDecision(event, hasSession, currentView) {
     setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 2900);
   }
 
+  // Part B Phase 1: undo toast for the Make-private / Make-public toggle.
+  // Extends showToast with an "Undo?" clickable action link. Teal, never purple.
+  // onUndo is called when the user clicks "Undo?"; the toast auto-hides either
+  // way after 4 s. Creates a fresh element so multiple rapid toggles each get
+  // their own toast (no race with the simple kg-toast singleton).
+  function showPrivacyUndoToast(text, onUndo) {
+    var t = document.createElement('div');
+    t.className = 'kg-toast';
+    t.style.cssText = 'display:flex;align-items:center;gap:0.5em;';
+    var msg = document.createElement('span');
+    msg.textContent = text.replace('Undo?', '').trim();
+    var undo = document.createElement('button');
+    undo.textContent = 'Undo';
+    undo.style.cssText = 'background:none;border:none;color:#14b8a6;cursor:pointer;font:inherit;padding:0;text-decoration:underline;';
+    var _dismissed = false;
+    undo.addEventListener('click', function () {
+      if (_dismissed) return;
+      _dismissed = true;
+      t.classList.remove('visible');
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 450);
+      if (typeof onUndo === 'function') onUndo();
+    });
+    t.appendChild(msg);
+    t.appendChild(undo);
+    document.body.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('visible'); });
+    setTimeout(function () { t.classList.remove('visible'); }, 4000);
+    setTimeout(function () { _dismissed = true; if (t.parentNode) t.parentNode.removeChild(t); }, 4500);
+  }
+
   if (viewToggle) {
     viewToggle.addEventListener('click', (e) => {
       const btn = e.target.closest('.kg-view-btn');
@@ -1534,6 +1564,99 @@ function authChangeDecision(event, hasSession, currentView) {
     // add that particular Kasten from Global to their own Kasten."
     if (addBtn) {
       _applyAddBtnState(node);
+    }
+
+    // Part B Phase 1 — Make-private / Make-public toggle.
+    // Only show the button when the selected node is user-owned (reuse
+    // userOwnedIds so BOLA is enforced at both the UI gate and the endpoint).
+    // No consent modal — the signup notice (Task 1.8) is the consent surface.
+    // The endpoint itself enforces ownership; the button is a UX gate only.
+    var privacyBtn = document.getElementById('panel-privacy');
+    var privateBadge = document.getElementById('panel-private-badge');
+    if (privacyBtn) {
+      var _isOwned = userOwnedIds.has(node.id);
+      if (_isOwned) {
+        var _isPrivate = !!(node._isPrivate);  // in-memory state; falsy = public (default)
+        var _badge = privacyBadge(_isPrivate);
+        // Apply badge visibility.
+        if (privateBadge) {
+          if (_badge.visible) {
+            privateBadge.textContent = _badge.text;
+            privateBadge.classList.remove('hidden');
+          } else {
+            privateBadge.classList.add('hidden');
+          }
+        }
+        // Apply button label + aria-pressed state.
+        privacyBtn.setAttribute('aria-pressed', String(_isPrivate));
+        privacyBtn.title = privacyToggleLabel(_isPrivate);
+        privacyBtn.setAttribute('aria-label', privacyToggleLabel(_isPrivate));
+        privacyBtn.classList.remove('hidden');
+        // Wire the click handler fresh each time the panel opens so it always
+        // closes over the current node reference.
+        privacyBtn.onclick = function () {
+          var _nowPrivate = !!(node._isPrivate);
+          var _endpoint = '/api/zettels/' + node.workspace_zettel_id + (_nowPrivate ? '/public' : '/private');
+          // workspace_zettel_id is the per-user overlay id (NOT canonical).
+          // The endpoint derives ownership from the Bearer JWT; never trust client sub.
+          if (!node.workspace_zettel_id) {
+            showToast('Privacy toggle unavailable for this zettel');
+            return;
+          }
+          zkFetch(_endpoint, { method: 'POST', headers: authHeaders() })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (typeof data.is_private !== 'boolean') throw new Error('unexpected');
+              // Flip in-memory state on the node.
+              node._isPrivate = data.is_private;
+              // Update badge.
+              var _newBadge = privacyBadge(node._isPrivate);
+              if (privateBadge) {
+                if (_newBadge.visible) {
+                  privateBadge.textContent = _newBadge.text;
+                  privateBadge.classList.remove('hidden');
+                } else {
+                  privateBadge.classList.add('hidden');
+                }
+              }
+              // Update button label + state.
+              privacyBtn.setAttribute('aria-pressed', String(node._isPrivate));
+              privacyBtn.title = privacyToggleLabel(node._isPrivate);
+              privacyBtn.setAttribute('aria-label', privacyToggleLabel(node._isPrivate));
+              // Show undo toast — clicking Undo fires the inverse endpoint.
+              showPrivacyUndoToast(undoToastText(node._isPrivate), function () {
+                var _undoEndpoint = '/api/zettels/' + node.workspace_zettel_id + (node._isPrivate ? '/public' : '/private');
+                zkFetch(_undoEndpoint, { method: 'POST', headers: authHeaders() })
+                  .then(function (r) { return r.json(); })
+                  .then(function (d) {
+                    if (typeof d.is_private !== 'boolean') return;
+                    node._isPrivate = d.is_private;
+                    var _undoBadge = privacyBadge(node._isPrivate);
+                    if (privateBadge) {
+                      if (_undoBadge.visible) {
+                        privateBadge.textContent = _undoBadge.text;
+                        privateBadge.classList.remove('hidden');
+                      } else { privateBadge.classList.add('hidden'); }
+                    }
+                    privacyBtn.setAttribute('aria-pressed', String(node._isPrivate));
+                    privacyBtn.title = privacyToggleLabel(node._isPrivate);
+                    privacyBtn.setAttribute('aria-label', privacyToggleLabel(node._isPrivate));
+                    // Refresh the graph so the global view reflects the change.
+                    if (currentView === 'global') loadGraphData();
+                  })
+                  .catch(function (e) { showToast('Undo failed'); });
+              });
+              // Refresh global view so the change is immediately visible.
+              if (currentView === 'global') loadGraphData();
+            })
+            .catch(function () { showToast('Privacy toggle failed'); });
+        };
+      } else {
+        // Not user-owned — hide button and badge.
+        privacyBtn.classList.add('hidden');
+        privacyBtn.onclick = null;
+        if (privateBadge) privateBadge.classList.add('hidden');
+      }
     }
 
     tags.innerHTML = (Array.isArray(node.tags) ? node.tags : []).map(

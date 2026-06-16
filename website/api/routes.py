@@ -1828,6 +1828,84 @@ def _is_supabase_uuid(value: str | None) -> bool:
         return False
 
 
+@router.post("/zettels/{workspace_zettel_id}/private")
+async def make_zettel_private(
+    workspace_zettel_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Hide ONE of the caller's zettels from the community graph (opt-out).
+
+    Verifies caller OWNS the workspace_zettel (BOLA → 403 if not), then flips
+    is_private=true. The repository writes the append-only privacy-audit row
+    and bumps the cross-worker cache version — this handler does NOT duplicate
+    those side-effects. Zettels are PUBLIC by default (opt-out model, Rev 3).
+    """
+    return await _set_zettel_private(workspace_zettel_id, user, private=True)
+
+
+@router.post("/zettels/{workspace_zettel_id}/public")
+async def make_zettel_public(
+    workspace_zettel_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Restore the caller's zettel to the community graph (undo opt-out).
+
+    Ownership enforced (BOLA → 403). Audit row + cache bump handled by the
+    repository's set_private, not here.
+    """
+    return await _set_zettel_private(workspace_zettel_id, user, private=False)
+
+
+async def _set_zettel_private(workspace_zettel_id: str, user: dict, *, private: bool):
+    """Shared implementation for /private and /public privacy endpoints.
+
+    Resolves the caller's workspace via get_supabase_v2_scope, checks that the
+    workspace_zettel belongs to that workspace (BOLA gate — never trusts a
+    client-supplied user_id), then calls CommunityGraphRepository.set_private
+    which atomically flips is_private, writes the zettel_privacy_events audit
+    row, and bumps the cross-worker community_cache_version counter.
+    """
+    from uuid import UUID as _UUID
+
+    from website.core.supabase_v2.repositories.community_repository import (
+        CommunityGraphRepository,
+    )
+
+    try:
+        wz_uuid = _UUID(str(workspace_zettel_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="workspace_zettel_id must be a UUID")
+
+    scope = get_supabase_v2_scope(user.get("sub"))
+    if scope is None:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    _content_repo, profile_id, workspace_id = scope
+
+    client = get_v2_client()
+    # BOLA ownership gate: the caller's workspace_id must own this overlay row.
+    # Never trust a client-supplied user_id — derive from the verified JWT sub.
+    owned = (
+        client.schema("content")
+        .table("workspace_zettels")
+        .select("id")
+        .eq("id", str(wz_uuid))
+        .eq("workspace_id", str(workspace_id))
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if not (owned.data or []):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    repo = CommunityGraphRepository(client)
+    # set_private writes the zettel_privacy_events audit row AND bumps the
+    # cross-worker cache version internally — do NOT duplicate them here.
+    repo.set_private(
+        workspace_zettel_id=wz_uuid, private=private, actor_user_id=profile_id
+    )
+    return {"workspace_zettel_id": str(wz_uuid), "is_private": private}
+
+
 @router.delete("/zettels/{node_id}")
 async def delete_zettel(
     node_id: str,
