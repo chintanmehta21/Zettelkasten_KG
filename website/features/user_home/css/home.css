@@ -1667,3 +1667,28 @@
     color: var(--text-muted);
     text-align: center;
 }
+
+/* Part B 1.8 — public-content notice (opt-out consent surface). Teal; never purple. */
+.home-public-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  background: rgba(20, 184, 166, 0.10);
+  border: 1px solid #14b8a6;
+  border-radius: 8px;
+  color: #0f766e;
+  font-size: 0.9rem;
+}
+.home-public-notice.hidden { display: none; }
+.home-public-notice-dismiss {
+  margin-left: auto;
+  background: #14b8a6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}

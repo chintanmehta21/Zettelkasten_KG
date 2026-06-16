@@ -5,6 +5,22 @@
  * and provides "Add Zettel" functionality.
  */
 
+/* test-exports:start */
+// Pure helpers — extracted so vitest can exercise them without booting the DOM.
+// The fence markers are load-bearing — tests/js/user_home/*.test.js regex-
+// extracts everything between them. Edit with care. (Mirrors app.js:12.)
+
+// Part B Phase 1 (opt-out): the public-content NOTICE is the consent surface
+// that replaces the per-publish modal. Show it once per browser until dismissed.
+function shouldShowPublicNotice(dismissedFlag) {
+  return !dismissedFlag;
+}
+function publicNoticeText() {
+  return 'Your saved zettels are public and shown with your display name. ' +
+         'Mark any private to hide it.';
+}
+/* test-exports:end */
+
 (function () {
   'use strict';
 
@@ -196,6 +212,25 @@
 
   async function init() {
     resolveDOM();
+
+    // Public-content notice (opt-out consent surface). Shows once; teal; no purple.
+    try {
+      var _noticeEl = document.getElementById('home-public-notice');
+      if (_noticeEl) {
+        if (shouldShowPublicNotice(localStorage.getItem('kg.publicNoticeDismissed'))) {
+          var _txt = _noticeEl.querySelector('.home-public-notice-text');
+          if (_txt) { _txt.textContent = publicNoticeText(); }
+          _noticeEl.classList.remove('hidden');
+        }
+        var _dismiss = document.getElementById('home-public-notice-dismiss');
+        if (_dismiss) {
+          _dismiss.addEventListener('click', function () {
+            localStorage.setItem('kg.publicNoticeDismissed', '1');
+            _noticeEl.classList.add('hidden');
+          });
+        }
+      }
+    } catch (_e) { /* notice is non-critical; never block home render */ }
 
     try {
       // Init Supabase client
