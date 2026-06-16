@@ -155,6 +155,15 @@ function privacyBadge(isPrivate) {
 function undoToastText(nowPrivate) {
   return nowPrivate ? 'Marked private. Undo?' : 'Made public. Undo?';
 }
+// Part B Phase 1 (2026-06-16): community empty-state decision. Only the GLOBAL
+// view shows "No community zettels yet"; Personal keeps its Part A empty state.
+// With the file-store retired this is the only empty-global path. Pure decision.
+function communityEmptyState(view, nodeCount) {
+  if (view === 'global' && (Number(nodeCount) || 0) === 0) {
+    return { show: true, text: 'No community zettels yet' };
+  }
+  return { show: false, text: '' };
+}
 // A4 (2026-06-15): pure decision for live auth-state changes. Returns null
 // for no-op events (e.g. a session-less REPLAY/RESTORE at boot) so the
 // subscriber does nothing. On SIGNED_OUT while viewing Personal we switch
@@ -928,6 +937,11 @@ function authChangeDecision(event, hasSession, currentView) {
           initGraph();
           updateStats();
         }
+        // Part B 1.6: empty-community overlay (global + 0 server nodes). Applied
+        // AFTER applyFilters/initGraph so the filter empty-state can't overwrite
+        // it; only the global view triggers it (communityEmptyState gates on view).
+        var _ce = communityEmptyState(currentView, (data.nodes || []).length);
+        if (_ce.show) showOverlay('overlay-empty', _ce.text);
         hideOverlay('overlay-loading');
         // X6: deep-link `?node=<id>` is now wired through `graph.onEngineStop`
         // (inside initGraph) so the focus fires precisely when the force
