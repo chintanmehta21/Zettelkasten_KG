@@ -21,8 +21,13 @@
   function _normalizeFailure(next) {
     var problem = (next && typeof next.error === 'object' && next.error) ? next.error : next;
     var inner = (problem && typeof problem.detail === 'object' && problem.detail) ? problem.detail : null;
+    var title = (problem && problem.title) || '';
+    var detailStr = (problem && typeof problem.detail === 'string') ? problem.detail : '';
+    var message = detailStr
+      ? (title ? (title + ' — ' + detailStr) : detailStr)
+      : (title || cleanProblemDetail(problem, 'Summary failed.'));
     return {
-      message: (problem && problem.title) || cleanProblemDetail(problem, 'Summary failed.'),
+      message: message,
       detail: inner || problem || next,
       problem: problem,
     };
