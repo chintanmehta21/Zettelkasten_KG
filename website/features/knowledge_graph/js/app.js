@@ -881,6 +881,9 @@ function authChangeDecision(event, hasSession, currentView) {
         } catch (_e) { /* metric must never break the load path */ }
         fullData.nodes = (fullData.nodes || []).map(node => {
           node.group = normalizeGroup(node.group);
+          // I1: seed the in-memory privacy flag the make-private toggle reads
+          // from the API's is_private field (Personal-view nodes now carry it).
+          node._isPrivate = !!node.is_private;
           return node;
         });
         // F8: shallow-clone instead of JSON round-trip. ForceGraph mutates
@@ -893,6 +896,9 @@ function authChangeDecision(event, hasSession, currentView) {
         };
         graphData.nodes = (graphData.nodes || []).map(node => {
           node.group = normalizeGroup(node.group);
+          // I1: same privacy-flag seed on the ForceGraph-rendered node objects
+          // (these are the ones handleNodeClick -> panel toggle receives).
+          node._isPrivate = !!node.is_private;
           return node;
         });
         nodeDegrees = computeDegrees(fullData);

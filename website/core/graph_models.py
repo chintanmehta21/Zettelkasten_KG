@@ -29,6 +29,13 @@ class KGGraphNode(BaseModel):
     # ``node.date || node.node_date || node.captured_at || node.created_at``
     owner: str | None = None  # display_name of the node creator (global view)
     contributors: int | None = None  # how many users captured this (global view)
+    # I1: per-user overlay id + privacy flag the /knowledge-graph make-private
+    # toggle reads. Emitted only on Personal-view nodes the caller owns; absent
+    # (None / default false) on Global/Community nodes. Without these declared,
+    # Pydantic's default extra="ignore" would silently drop them from the wire
+    # and the toggle's `if (!node.workspace_zettel_id)` guard would always trip.
+    workspace_zettel_id: str | None = None
+    is_private: bool = False
 
 
 class KGGraphLink(BaseModel):

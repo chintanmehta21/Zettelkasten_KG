@@ -54,6 +54,24 @@ DROP POLICY IF EXISTS workspace_zettels_community_reader_select ON content.works
 CREATE POLICY workspace_zettels_community_reader_select ON content.workspace_zettels
     FOR SELECT TO community_reader USING (is_private = false AND deleted_at IS NULL);
 
+-- The RPC (88) runs AS community_reader and INNER-JOINs three RLS-enabled lookup
+-- tables (content.canonical_zettels + core.workspaces + core.profiles, all
+-- ENABLE'd in 08_rls_policies.sql:11,12,20) that have NO community_reader policy
+-- — without these the join returns ZERO rows (fail-closed but non-functional:
+-- a permanently empty community graph). community_reader is reachable ONLY
+-- through the forced-predicate RPC (the is_private gate is the workspace_zettels
+-- policy above), so a permissive USING (true) on these lookup tables is safe:
+-- the RPC body only emits rows joined to a non-private workspace_zettel.
+DROP POLICY IF EXISTS canonical_zettels_community_reader_select ON content.canonical_zettels;
+CREATE POLICY canonical_zettels_community_reader_select ON content.canonical_zettels
+    FOR SELECT TO community_reader USING (true);
+DROP POLICY IF EXISTS workspaces_community_reader_select ON core.workspaces;
+CREATE POLICY workspaces_community_reader_select ON core.workspaces
+    FOR SELECT TO community_reader USING (true);
+DROP POLICY IF EXISTS profiles_community_reader_select ON core.profiles;
+CREATE POLICY profiles_community_reader_select ON core.profiles
+    FOR SELECT TO community_reader USING (true);
+
 COMMIT;
 
 NOTIFY pgrst, 'reload config';

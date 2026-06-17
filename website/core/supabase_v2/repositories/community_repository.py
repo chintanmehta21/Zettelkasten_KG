@@ -13,6 +13,7 @@ no caller can forget either.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -20,6 +21,8 @@ from uuid import UUID
 from supabase import Client
 
 from website.core.supabase_v2.client import get_v2_client
+
+logger = logging.getLogger(__name__)
 
 
 class CommunityGraphRepository:
@@ -95,8 +98,19 @@ class CommunityGraphRepository:
         # Cross-worker cache invalidation (the public graph changed).
         try:
             self.bump_cache_version()
-        except Exception:  # noqa: BLE001 — bump failure must not fail the toggle
-            pass
+        except Exception as exc:  # noqa: BLE001 — bump failure must not fail the toggle
+            # Privacy-staleness risk (make-private): a failed bump means the
+            # community cache keeps serving this now-private node until the
+            # in-process SWR TTL (~300s) + CDN s-maxage expire. The row IS
+            # private at rest immediately; only the cache is stale, and the
+            # window is bounded — but log so ops can spot a stuck counter.
+            logger.warning(
+                "community_cache_version bump failed after set_private "
+                "(private=%s, wz=%s); stale public-cache window up to SWR TTL: %r",
+                private,
+                workspace_zettel_id,
+                exc,
+            )
 
     def read_cache_version(self) -> int:
         """Return the current community cache version counter (Task 0.7)."""

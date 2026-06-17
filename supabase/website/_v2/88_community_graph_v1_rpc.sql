@@ -22,7 +22,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION content.community_graph_v1(
     p_limit int DEFAULT 5000,
-    p_min_strength float DEFAULT 0.0
+    p_min_strength float DEFAULT 0.0  -- reserved for Phase 3 edge filtering; no-op in Phase 1 (zero edges)
 )
 RETURNS TABLE (
     canonical_zettel_id uuid,

@@ -1,6 +1,9 @@
 -- Reverse migration 87. Idempotent.
 BEGIN;
   DROP POLICY IF EXISTS workspace_zettels_community_reader_select ON content.workspace_zettels;
+  DROP POLICY IF EXISTS canonical_zettels_community_reader_select ON content.canonical_zettels;
+  DROP POLICY IF EXISTS workspaces_community_reader_select ON core.workspaces;
+  DROP POLICY IF EXISTS profiles_community_reader_select ON core.profiles;
   DO $$
   BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'community_reader') THEN

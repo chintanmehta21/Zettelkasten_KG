@@ -997,6 +997,11 @@ _EXPORT_MAX_PER_WORKSPACE = 10000  # safety cap; current users are <100
 # UI double-clicks once the "Download my data" button lands.
 _EXPORT_RATE_LIMIT_WINDOW_SECONDS = 3600
 _EXPORT_RATE_LIMIT_MAX = 5
+# M1: per-user cap on the privacy toggle (/private + /public). 60/min absorbs
+# legitimate bulk opt-out from the KG UI while blocking a hot loop from
+# hammering the audit-row write + cache-version bump on the 2GB droplet.
+_SET_PRIVATE_RATE_LIMIT_WINDOW_SECONDS = 60
+_SET_PRIVATE_RATE_LIMIT_MAX = 60
 # Zettel content classes NOT in this export — surfaced to the user so the export
 # is explicitly "structured, commonly used, machine-readable" (Art. 20 wording)
 # AND honest about its scope.
@@ -1509,6 +1514,12 @@ def _v2_assemble_graph(
                     "url": str(canonical.get("normalized_url") or ""),
                     "date": str(pub_date),
                     "node_date": str(pub_date),
+                    # I1: the overlay row's UUID + privacy flag the make-private
+                    # toggle needs. Without these the app.js handler's
+                    # `if (!node.workspace_zettel_id)` guard trips on every click
+                    # and the only user privacy control is inert.
+                    "workspace_zettel_id": str(row.get("id") or ""),
+                    "is_private": bool(row.get("is_private")),
                 }
             )
 
@@ -1875,6 +1886,24 @@ async def _set_zettel_private(workspace_zettel_id: str, user: dict, *, private: 
         wz_uuid = _UUID(str(workspace_zettel_id))
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="workspace_zettel_id must be a UUID")
+
+    # M1: per-user rate limit (in-memory per-worker; same _rate_store pattern as
+    # me_export). Prune the window before counting so the dict stays bounded.
+    now_ts = time.time()
+    rate_key = f"set_private:{user['sub']}"
+    bucket = _rate_store[rate_key]
+    bucket[:] = [ts for ts in bucket if now_ts - ts < _SET_PRIVATE_RATE_LIMIT_WINDOW_SECONDS]
+    if len(bucket) >= _SET_PRIVATE_RATE_LIMIT_MAX:
+        retry_after = int(_SET_PRIVATE_RATE_LIMIT_WINDOW_SECONDS - (now_ts - bucket[0])) + 1
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "privacy_rate_limited",
+                "message": f"Too many privacy changes. Try again in {retry_after}s.",
+            },
+            headers={"Retry-After": str(max(1, retry_after))},
+        )
+    bucket.append(now_ts)
 
     scope = get_supabase_v2_scope(user.get("sub"))
     if scope is None:

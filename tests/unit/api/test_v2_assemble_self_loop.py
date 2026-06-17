@@ -126,6 +126,60 @@ def test_true_self_loop_still_dropped():
     assert len(graph.links) == 0, "True self-loop (src_id == dst_id) must be dropped"
 
 
+def test_nodes_emit_workspace_zettel_id_and_privacy_flag():
+    """I1: each Personal-view node MUST carry ``workspace_zettel_id`` (the
+    overlay UUID) and ``is_private`` so the /knowledge-graph make-private toggle
+    has a target. Without these the app.js guard `if (!node.workspace_zettel_id)`
+    trips on every click and the privacy control is dead."""
+    ws_id = uuid.uuid4()
+    canonical_id = "33333333-3333-3333-3333-333333333333"
+    overlay_id = str(uuid.uuid4())
+    overlay_rows = [
+        {
+            "id": overlay_id,
+            "canonical_zettel_id": canonical_id,
+            "ai_summary": "Test summary",
+            "user_tags": [],
+            "is_private": True,
+            "canonical": {
+                "id": canonical_id,
+                "title": "Private Zettel",
+                "source_type": "web",
+                "publication_date": "2026-06-16",
+                "normalized_url": "https://example.com/p",
+            },
+        }
+    ]
+    edges = [
+        {
+            "id": 1,
+            "src_node_id": 1,
+            "dst_node_id": 2,
+            "relation_type": "shared_tag",
+            "shared_tag_label": "python",
+            "weight": 0.9,
+            "workspace_strength": 0.75,
+            "connection_strength": 0.75,
+            "evidence_canonical_zettel_id": canonical_id,
+        }
+    ]
+    node_to_zettels = {1: [canonical_id], 2: [canonical_id]}
+    scope = _build_scope(ws_id, overlay_rows)
+    kg_repo = _build_kg_repo(edges=edges, node_to_zettels=node_to_zettels, metadata={})
+
+    with patch("website.api.routes.get_supabase_v2_scope_for_read", return_value=scope), \
+         patch("website.api.routes.V2KGRepository", return_value=kg_repo):
+        graph = _v2_assemble_graph(user_sub=str(uuid.uuid4()), limit=100, offset=0)
+
+    assert graph is not None
+    assert len(graph.nodes) == 1
+    node = graph.nodes[0]
+    # The overlay UUID the toggle POSTs to /api/zettels/{id}/private must survive
+    # KGGraphNode coercion (default extra="ignore" would drop an undeclared key).
+    assert node.workspace_zettel_id == overlay_id
+    assert node.is_private is True
+
+
 def test_distinct_overlay_distinct_kgnode_emits_regular_tag_link():
     """Sanity: two kg_nodes mapping to DIFFERENT overlays emit the normal
     tag link (not co_mention)."""
