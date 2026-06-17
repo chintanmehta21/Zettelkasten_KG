@@ -1677,7 +1677,7 @@
   padding: 0.6rem 0.9rem;
   background: rgba(20, 184, 166, 0.10);
   border: 1px solid #14b8a6;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: #0f766e;
   font-size: 0.9rem;
 }
@@ -1687,7 +1687,7 @@
   background: #14b8a6;
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 0.3rem 0.7rem;
   cursor: pointer;
   font-size: 0.85rem;
