@@ -25,6 +25,16 @@ def _blank_pdf() -> bytes:
     doc = fitz.open(); doc.new_page(); return doc.tobytes()
 
 
+def _vector_only_pdf(strokes=120) -> bytes:
+    # No text, no images — only vector strokes (the "outlined print-to-PDF"
+    # shape). Exercises the lazy get_drawings() branch (image_count == 0), which
+    # must still run when there are no images to settle "has visual content".
+    doc = fitz.open(); p = doc.new_page()
+    for i in range(strokes):
+        p.draw_line((20, 20 + i), (200, 20 + i))
+    return doc.tobytes()
+
+
 def test_image_only_pdf_is_recoverable_no_text_layer():
     with pytest.raises(NoTextLayerError):
         extract_document_upload(filename="scan.pdf", content=_image_only_pdf())
@@ -39,3 +49,9 @@ def test_truly_blank_pdf_is_terminal_not_recoverable():
     with pytest.raises(DocumentUploadError) as ei:
         extract_document_upload(filename="blank.pdf", content=_blank_pdf())
     assert not getattr(ei.value, "recoverable", False)
+
+
+def test_vector_outlined_no_image_pdf_is_recoverable():
+    # image_count == 0 → the lazy vector walk must run and detect the outline.
+    with pytest.raises(NoTextLayerError):
+        extract_document_upload(filename="outlined.pdf", content=_vector_only_pdf())

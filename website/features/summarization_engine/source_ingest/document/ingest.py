@@ -140,13 +140,18 @@ def _extract_pdf(data: bytes) -> tuple[str, dict[str, Any]]:
                     raise EncryptedDocumentError(
                         "PDF is password-protected; cannot read without the password."
                     )
-            pages, vector_count, image_count = [], 0, 0
+            pages, image_count = [], 0
             for page in doc:
                 pages.append(page.get_text("text"))
-                # Character-sized vector drawings = "Text-Looking Vectors"
-                # (print-to-PDF outlines). Cheap structural signal.
-                vector_count += len(page.get_drawings())
                 image_count += len(page.get_images())
+            # get_drawings() materializes every vector path — memory-heavy on a
+            # vector-dense PDF (it OOM'd the 2 GB box on an image-bearing scan).
+            # It's only needed to spot a no-IMAGE outlined ("print-to-PDF") page,
+            # so skip it whenever images already settle "has visual content".
+            vector_count = 0
+            if image_count == 0:
+                for page in doc:
+                    vector_count += len(page.get_drawings())
             metadata = {
                 "page_count": doc.page_count,
                 "pdf_title": compact_text(str((doc.metadata or {}).get("title") or "")),
