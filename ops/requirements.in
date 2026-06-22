@@ -8,7 +8,7 @@
 # (dev first, then runtime constrained to it, so both locks share versions.)
 
 # Settings / config management
-pydantic-settings[yaml]>=2.0
+pydantic-settings[yaml]>=2.14.2
 
 # HTTP client (async, for redirect resolution and web scraping)
 httpx>=0.28
@@ -20,7 +20,7 @@ beautifulsoup4>=4.12
 trafilatura>=2.0
 
 # Google Gemini API
-google-genai>=1.0,<2.0
+google-genai>=2.9.0,<3.0
 aiohttp>=3.10
 
 # YouTube transcript extraction
@@ -36,7 +36,7 @@ yt-dlp[default]>=2026.03.17
 # Upper-bounded: FastAPI is 0.x and ships breaking changes in MINOR releases
 # (0.137.0's include_router route-tree refactor broke CI). Cap to the current
 # minor; bump deliberately via the lockfile + Dependabot, not by surprise.
-fastapi>=0.137.1,<0.138
+fastapi>=0.138.0,<0.139
 uvicorn>=0.34
 gunicorn>=25.1
 
@@ -56,7 +56,7 @@ cryptography>=43.0
 
 # Graph algorithms (PageRank, community detection, centrality)
 networkx>=3.2
-scipy>=1.12
+scipy>=1.18.0
 # WAVE-C 1c-A.5: igraph for D-KG-5 — pinned ≥0.11 because that's the first
 # release where ``community_multilevel`` accepts a stable seed kwarg.
 igraph>=0.11
@@ -68,9 +68,9 @@ igraph>=0.11
 brotli>=1.1
 
 # Vector normalization for MRL-truncated embeddings
-numpy>=1.26
+numpy>=2.5.0
 chonkie>=1.6.0
-langfuse>=3.0.0,<4
+langfuse>=4.9.1,<5
 
 # Summarization engine v2
 feedparser>=6.0.11
@@ -78,7 +78,7 @@ PyMuPDF>=1.24
 arxiv>=2.1.0
 newspaper4k>=0.9.3
 python-podcastindex>=1.0.0
-sse-starlette>=2.0
+sse-starlette>=3.4.5
 pytest-httpx>=0.34
 python-multipart>=0.0.20
 
@@ -95,7 +95,7 @@ filetype>=1.2
 
 # Cascade reranker (FlashRank + BGE-base ONNX)
 flashrank>=0.2
-onnxruntime>=1.17
+onnxruntime>=1.27.0
 huggingface_hub>=0.20
 
 # Query metadata extraction (Phase 1)

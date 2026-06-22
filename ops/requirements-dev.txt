@@ -1,207 +1,737 @@
-aiohappyeyeballs==2.6.2   # via aiohttp
-aiohttp==3.14.1           # via deepeval, fsspec, instructor, langchain-community, -r ops/requirements.in
-aiosignal==1.4.0          # via aiohttp
-annotated-doc==0.0.4      # via fastapi, typer
-annotated-types==0.7.0    # via pydantic
-anyio==4.13.0             # via google-genai, httpx, openai, sse-starlette, starlette
-appdirs==1.4.4            # via ragas
-arxiv==4.0.0              # via -r ops/requirements.in
-asgi-lifespan==2.1.0      # via -r ops/requirements-dev.in
-asyncpg==0.31.0           # via -r ops/requirements.in
-attrs==26.1.0             # via aiohttp
-axe-playwright-python==0.1.7  # via -r ops/requirements-dev.in
-babel==2.18.0             # via courlan
-backoff==2.2.1            # via langfuse, posthog
-beautifulsoup4==4.15.0    # via newspaper4k, -r ops/requirements.in
-blake3==1.0.8             # via -r ops/requirements.in
-brotli==1.2.0             # via newspaper4k, yt-dlp, -r ops/requirements.in
-cachetools==7.1.4         # via -r ops/requirements.in
-certifi==2026.5.20        # via httpcore, httpx, requests, sentry-sdk, trafilatura, yt-dlp
-cffi==2.0.0               # via cryptography
-charset-normalizer==3.4.7  # via htmldate, requests, trafilatura
-chonkie==1.6.8            # via -r ops/requirements.in
-chonkie-core==0.10.2      # via chonkie
-click==8.3.3              # via deepeval, nltk, uvicorn
-courlan==1.4.0            # via trafilatura
-cryptography==49.0.0      # via google-auth, pyjwt, -r ops/requirements.in
-datasets==5.0.0           # via ragas, -r ops/requirements-dev.in
-dateparser==1.4.1         # via htmldate, -r ops/requirements.in
-deepeval==3.9.7           # via -r ops/requirements-dev.in
-defusedxml==0.7.1         # via youtube-transcript-api, -r ops/requirements.in
-deprecation==2.1.0        # via postgrest, storage3
-dill==0.4.1               # via datasets, multiprocess
-diskcache==5.6.3          # via ragas
-distro==1.9.0             # via google-genai, openai, posthog
-dnspython==2.8.0          # via email-validator
-docstring-parser==0.18.0  # via instructor
-email-validator==2.3.0    # via -r ops/requirements.in
-execnet==2.1.2            # via pytest-xdist
-fastapi==0.137.1          # via -r ops/requirements.in
-feedparser==6.0.12        # via newspaper4k, -r ops/requirements.in
-filelock==3.29.4          # via datasets, huggingface-hub, tldextract
-filetype==1.2.0           # via -r ops/requirements.in
-flashrank==0.2.10         # via -r ops/requirements.in
-flatbuffers==25.12.19     # via onnxruntime
-freezegun==1.5.5          # via -r ops/requirements-dev.in
-frozenlist==1.8.0         # via aiohttp, aiosignal
-fsspec==2026.4.0          # via datasets, huggingface-hub
-google-auth==2.54.0       # via google-genai
-google-genai==1.75.0      # via -r ops/requirements.in
-googleapis-common-protos==1.75.0  # via opentelemetry-exporter-otlp-proto-http
-greenlet==3.5.1           # via playwright, sqlalchemy
-grpcio==1.81.1            # via deepeval
-gunicorn==26.0.0          # via -r ops/requirements.in
-h11==0.16.0               # via httpcore, uvicorn
-h2==4.3.0                 # via httpx
-hf-xet==1.5.1             # via huggingface-hub
-hpack==4.1.0              # via h2
-htmldate==1.10.0          # via trafilatura
-httpcore==1.0.9           # via httpx
-httpx==0.28.1             # via chonkie, datasets, google-genai, huggingface-hub, langfuse, langgraph-sdk, langsmith, openai, postgrest, pytest-httpx, respx, storage3, supabase, supabase-auth, supabase-functions, -r ops/requirements.in
-httpx-sse==0.4.3          # via langchain-community
-huggingface-hub==1.16.1   # via datasets, tokenizers, -r ops/requirements.in
-hyperframe==6.1.0         # via h2
-idna==3.18                # via anyio, email-validator, httpx, requests, tldextract, yarl
-igraph==1.0.0             # via -r ops/requirements.in
-iniconfig==2.3.0          # via pytest
-instructor==1.15.3        # via ragas
-jinja2==3.1.6             # via deepeval, instructor
-jiter==0.14.0             # via instructor, openai
-joblib==1.5.3             # via nltk
-jsonpatch==1.33           # via langchain-core
-jsonpointer==3.1.1        # via jsonpatch
-justext==3.0.2            # via trafilatura
-langchain==1.3.9          # via ragas
-langchain-classic==1.0.8  # via langchain-community
-langchain-community==0.4.2  # via ragas
-langchain-core==1.4.7     # via langchain, langchain-classic, langchain-community, langchain-openai, langchain-text-splitters, langgraph, langgraph-checkpoint, langgraph-prebuilt, langgraph-sdk, ragas
-langchain-openai==1.3.2   # via ragas
-langchain-protocol==0.0.17  # via langchain-core, langgraph-sdk
-langchain-text-splitters==1.1.2  # via langchain-classic
-langfuse==3.15.0          # via -r ops/requirements.in
-langgraph==1.2.5          # via langchain
-langgraph-checkpoint==4.1.1  # via langgraph, langgraph-prebuilt
-langgraph-prebuilt==1.1.0  # via langgraph
-langgraph-sdk==0.4.2      # via langgraph
-langsmith==0.8.15         # via langchain-classic, langchain-community, langchain-core
-lxml==6.1.1               # via arxiv, htmldate, justext, lxml-html-clean, newspaper4k, trafilatura
-lxml-html-clean==0.4.5    # via lxml
-markdown-it-py==4.2.0     # via rich
-markupsafe==3.0.3         # via jinja2
-mdurl==0.1.2              # via markdown-it-py
-multidict==6.7.1          # via aiohttp, yarl
-multiprocess==0.70.19     # via datasets
-mutagen==1.47.0           # via yt-dlp
-nest-asyncio==1.6.0       # via deepeval, ragas
-networkx==3.6.1           # via ragas, -r ops/requirements.in
-newspaper4k==0.9.4.1      # via -r ops/requirements.in
-nltk==3.9.4               # via newspaper4k
-numpy==2.4.6              # via chonkie, datasets, flashrank, langchain-community, onnxruntime, pandas, ragas, scikit-network, scipy, -r ops/requirements.in
-onnxruntime==1.26.0       # via flashrank, -r ops/requirements.in
-openai==2.41.1            # via deepeval, instructor, langchain-openai, langfuse, ragas
-opentelemetry-api==1.42.1  # via deepeval, langfuse, opentelemetry-exporter-otlp-proto-http, opentelemetry-sdk, opentelemetry-semantic-conventions
-opentelemetry-exporter-otlp-proto-common==1.42.1  # via opentelemetry-exporter-otlp-proto-http
-opentelemetry-exporter-otlp-proto-http==1.42.1  # via langfuse
-opentelemetry-proto==1.42.1  # via opentelemetry-exporter-otlp-proto-common, opentelemetry-exporter-otlp-proto-http
-opentelemetry-sdk==1.42.1  # via deepeval, langfuse, opentelemetry-exporter-otlp-proto-http
-opentelemetry-semantic-conventions==0.63b1  # via opentelemetry-sdk
-orjson==3.11.9            # via langgraph-sdk, langsmith
-ormsgpack==1.12.2         # via langgraph-checkpoint
-packaging==25.0           # via datasets, deprecation, gunicorn, huggingface-hub, langchain-core, langfuse, langsmith, onnxruntime, pytest, pytest-rerunfailures, wheel
-pandas==3.0.3             # via datasets
-piexif==1.1.3             # via -r ops/requirements-dev.in
-pillow==12.2.0            # via newspaper4k, ragas, -r ops/requirements.in
-playwright==1.60.0        # via axe-playwright-python, pytest-playwright
-pluggy==1.6.0             # via pytest
-portalocker==3.2.0        # via deepeval
-postgrest==2.31.0         # via supabase
-posthog==7.19.1           # via deepeval
-prometheus-client==0.25.0  # via -r ops/requirements.in
-propcache==0.5.2          # via aiohttp, yarl
-protobuf==6.33.6          # via googleapis-common-protos, onnxruntime, opentelemetry-proto
-psycopg==3.3.4            # via -r ops/requirements.in
-psycopg-binary==3.3.4     # via psycopg
-pyarrow==24.0.0           # via datasets
-pyasn1==0.6.3             # via pyasn1-modules
-pyasn1-modules==0.4.2     # via google-auth
-pycparser==3.0            # via cffi
-pycryptodomex==3.23.0     # via yt-dlp
-pydantic==2.13.4          # via deepeval, fastapi, google-genai, instructor, langchain, langchain-classic, langchain-core, langfuse, langgraph, langsmith, openai, postgrest, pydantic-settings, ragas, realtime, storage3, supabase-auth
-pydantic-core==2.46.4     # via instructor, pydantic
-pydantic-settings==2.14.1  # via deepeval, langchain-community, -r ops/requirements.in
-pyee==13.0.1              # via playwright
-pyfiglet==1.0.4           # via deepeval
-pygments==2.20.0          # via pytest, rich
-pyjwt==2.13.0             # via supabase-auth, -r ops/requirements.in
-pymupdf==1.27.2.3         # via -r ops/requirements.in
-pytest==9.1.0             # via deepeval, pytest-asyncio, pytest-base-url, pytest-httpx, pytest-playwright, pytest-repeat, pytest-rerunfailures, pytest-xdist, -r ops/requirements-dev.in
-pytest-asyncio==1.4.0     # via deepeval, -r ops/requirements-dev.in
-pytest-base-url==2.1.0    # via pytest-playwright
-pytest-httpx==0.36.2      # via -r ops/requirements-dev.in, -r ops/requirements.in
-pytest-playwright==0.7.2  # via -r ops/requirements-dev.in
-pytest-repeat==0.9.4      # via deepeval
-pytest-rerunfailures==16.3  # via deepeval
-pytest-xdist==3.8.0       # via deepeval
-python-dateutil==2.9.0.post0  # via dateparser, freezegun, htmldate, newspaper4k, pandas
-python-dotenv==1.2.2      # via deepeval, pydantic-settings
-python-magic==0.4.27      # via -r ops/requirements.in
-python-multipart==0.0.32  # via -r ops/requirements.in
-python-podcastindex==1.15.0  # via -r ops/requirements.in
-python-slugify==8.0.4     # via pytest-playwright
-pytz==2026.2              # via dateparser
-pyyaml==6.0.3             # via datasets, huggingface-hub, langchain-classic, langchain-community, langchain-core, newspaper4k, pydantic-settings
-ragas==0.4.3              # via -r ops/requirements-dev.in
-razorpay==2.0.1           # via -r ops/requirements.in
-realtime==2.31.0          # via supabase
-regex==2026.5.9           # via dateparser, nltk, tiktoken
-requests==2.33.1          # via arxiv, datasets, deepeval, flashrank, google-auth, google-genai, instructor, langchain-classic, langchain-community, langsmith, newspaper4k, opentelemetry-exporter-otlp-proto-http, posthog, pytest-base-url, python-podcastindex, razorpay, requests-file, requests-toolbelt, tiktoken, tldextract, youtube-transcript-api, yt-dlp
-requests-file==3.0.1      # via tldextract
-requests-toolbelt==1.0.0  # via langsmith
-respx==0.22.0             # via -r ops/requirements-dev.in
-rich==14.3.4              # via deepeval, instructor, ragas, typer
-scikit-network==0.33.5    # via ragas
-scipy==1.17.1             # via scikit-network, -r ops/requirements.in
-sentry-sdk==2.62.0        # via deepeval
-setuptools==82.0.1        # via deepeval
-sgmllib3k==1.0.0          # via feedparser
-shellingham==1.5.4        # via typer
-six==1.17.0               # via python-dateutil
-slack-sdk==3.42.0         # via -r ops/requirements.in
-sniffio==1.3.1            # via asgi-lifespan, google-genai, openai
-soupsieve==2.8.4          # via beautifulsoup4
-sqlalchemy==2.0.51        # via langchain-classic, langchain-community
-sse-starlette==3.4.4      # via -r ops/requirements.in
-stamina==26.1.0           # via -r ops/requirements.in
-starlette==1.3.1          # via fastapi, sse-starlette
-storage3==2.31.0          # via supabase
-strenum==0.4.15           # via supabase-functions
-supabase==2.31.0          # via -r ops/requirements.in
-supabase-auth==2.31.0     # via supabase
-supabase-functions==2.31.0  # via supabase
-tabulate==0.9.0           # via deepeval
-tenacity==9.1.4           # via chonkie, deepeval, google-genai, instructor, langchain-community, langchain-core, stamina
-text-unidecode==1.3       # via python-slugify
-texttable==1.7.0          # via igraph
-tiktoken==0.13.0          # via langchain-openai, ragas
-tld==0.13.2               # via courlan
-tldextract==5.3.1         # via newspaper4k, -r ops/requirements.in
-tokenizers==0.23.1        # via flashrank
-tokie==0.0.10             # via chonkie
-tqdm==4.68.2              # via chonkie, datasets, deepeval, flashrank, huggingface-hub, nltk, openai, ragas
-trafilatura==2.1.0        # via -r ops/requirements.in
-typer==0.26.7             # via deepeval, huggingface-hub, instructor, ragas
-typing-extensions==4.15.0  # via aiohttp, aiosignal, anyio, beautifulsoup4, fastapi, google-genai, grpcio, huggingface-hub, langchain-core, langchain-protocol, newspaper4k, openai, opentelemetry-api, opentelemetry-exporter-otlp-proto-http, opentelemetry-sdk, opentelemetry-semantic-conventions, posthog, psycopg, pydantic, pydantic-core, pyee, pytest-asyncio, realtime, sqlalchemy, starlette, typing-inspection
-typing-inspection==0.4.2  # via fastapi, pydantic, pydantic-settings
-tzlocal==5.4              # via dateparser
-urllib3==2.7.0            # via courlan, htmldate, requests, sentry-sdk, trafilatura, yt-dlp
-uuid-utils==0.16.0        # via langchain-core, langsmith
-uvicorn==0.49.0           # via -r ops/requirements.in
-websockets==15.0.1        # via google-genai, langgraph-sdk, langsmith, realtime, yt-dlp
-wheel==0.47.0             # via deepeval
-wrapt==1.17.3             # via langfuse
-xxhash==3.7.0             # via datasets, langgraph, langsmith
-yarl==1.24.2              # via aiohttp, postgrest, storage3, supabase, supabase-functions
-youtube-transcript-api==1.2.4  # via -r ops/requirements.in
-yt-dlp==2026.6.9          # via -r ops/requirements.in
-yt-dlp-ejs==0.8.0         # via yt-dlp
-zstandard==0.25.0         # via langsmith
+aiohappyeyeballs==2.6.2
+    # via aiohttp
+aiohttp==3.14.1
+    # via
+    #   -r requirements.in
+    #   deepeval
+    #   fsspec
+    #   instructor
+    #   langchain-community
+aiosignal==1.4.0
+    # via aiohttp
+annotated-doc==0.0.4
+    # via
+    #   fastapi
+    #   typer
+annotated-types==0.7.0
+    # via pydantic
+anyio==4.13.0
+    # via
+    #   google-genai
+    #   httpx
+    #   openai
+    #   sse-starlette
+    #   starlette
+appdirs==1.4.4
+    # via ragas
+arxiv==4.0.0
+    # via -r requirements.in
+asgi-lifespan==2.1.0
+    # via -r requirements-dev.in
+asyncpg==0.31.0
+    # via -r requirements.in
+attrs==26.1.0
+    # via aiohttp
+axe-playwright-python==0.1.7
+    # via -r requirements-dev.in
+babel==2.18.0
+    # via courlan
+backoff==2.2.1
+    # via
+    #   langfuse
+    #   posthog
+beautifulsoup4==4.15.0
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+blake3==1.0.8
+    # via -r requirements.in
+brotli==1.2.0
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+    #   yt-dlp
+cachetools==7.1.4
+    # via -r requirements.in
+certifi==2026.5.20
+    # via
+    #   httpcore
+    #   httpx
+    #   requests
+    #   sentry-sdk
+    #   trafilatura
+    #   yt-dlp
+cffi==2.0.0
+    # via cryptography
+charset-normalizer==3.4.7
+    # via
+    #   htmldate
+    #   requests
+    #   trafilatura
+chonkie==1.6.8
+    # via -r requirements.in
+chonkie-core==0.10.2
+    # via chonkie
+click==8.3.3
+    # via
+    #   deepeval
+    #   nltk
+    #   uvicorn
+courlan==1.4.0
+    # via trafilatura
+cryptography==49.0.0
+    # via
+    #   -r requirements.in
+    #   google-auth
+    #   pyjwt
+datasets==5.0.0
+    # via
+    #   -r requirements-dev.in
+    #   ragas
+dateparser==1.4.1
+    # via
+    #   -r requirements.in
+    #   htmldate
+deepeval==4.0.6
+    # via -r requirements-dev.in
+defusedxml==0.7.1
+    # via
+    #   -r requirements.in
+    #   youtube-transcript-api
+deprecation==2.1.0
+    # via
+    #   postgrest
+    #   storage3
+dill==0.4.1
+    # via
+    #   datasets
+    #   multiprocess
+diskcache==5.6.3
+    # via ragas
+distro==1.9.0
+    # via
+    #   google-genai
+    #   openai
+    #   posthog
+dnspython==2.8.0
+    # via email-validator
+docstring-parser==0.18.0
+    # via instructor
+email-validator==2.3.0
+    # via -r requirements.in
+execnet==2.1.2
+    # via pytest-xdist
+fastapi==0.138.0
+    # via -r requirements.in
+feedparser==6.0.12
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+filelock==3.29.4
+    # via
+    #   datasets
+    #   huggingface-hub
+    #   tldextract
+filetype==1.2.0
+    # via -r requirements.in
+flashrank==0.2.10
+    # via -r requirements.in
+flatbuffers==25.12.19
+    # via onnxruntime
+freezegun==1.5.5
+    # via -r requirements-dev.in
+frozenlist==1.8.0
+    # via
+    #   aiohttp
+    #   aiosignal
+fsspec[http]==2026.4.0
+    # via
+    #   datasets
+    #   huggingface-hub
+google-auth[requests]==2.54.0
+    # via google-genai
+google-genai==2.9.0
+    # via -r requirements.in
+googleapis-common-protos==1.75.0
+    # via opentelemetry-exporter-otlp-proto-http
+greenlet==3.5.1
+    # via
+    #   playwright
+    #   sqlalchemy
+grpcio==1.81.1
+    # via deepeval
+gunicorn==26.0.0
+    # via -r requirements.in
+h11==0.16.0
+    # via
+    #   httpcore
+    #   uvicorn
+h2==4.3.0
+    # via httpx
+hf-xet==1.5.1
+    # via huggingface-hub
+hpack==4.1.0
+    # via h2
+htmldate==1.10.0
+    # via trafilatura
+httpcore==1.0.9
+    # via httpx
+httpx[http2]==0.28.1
+    # via
+    #   -r requirements.in
+    #   chonkie
+    #   datasets
+    #   google-genai
+    #   huggingface-hub
+    #   langfuse
+    #   langgraph-sdk
+    #   langsmith
+    #   openai
+    #   postgrest
+    #   pytest-httpx
+    #   respx
+    #   storage3
+    #   supabase
+    #   supabase-auth
+    #   supabase-functions
+httpx-sse==0.4.3
+    # via langchain-community
+huggingface-hub==1.16.1
+    # via
+    #   -r requirements.in
+    #   datasets
+    #   tokenizers
+hyperframe==6.1.0
+    # via h2
+idna==3.18
+    # via
+    #   anyio
+    #   email-validator
+    #   httpx
+    #   requests
+    #   tldextract
+    #   yarl
+igraph==1.0.0
+    # via -r requirements.in
+iniconfig==2.3.0
+    # via pytest
+instructor==1.15.3
+    # via ragas
+jinja2==3.1.6
+    # via
+    #   deepeval
+    #   instructor
+jiter==0.14.0
+    # via
+    #   instructor
+    #   openai
+joblib==1.5.3
+    # via nltk
+jsonpatch==1.33
+    # via langchain-core
+jsonpointer==3.1.1
+    # via jsonpatch
+justext==3.0.2
+    # via trafilatura
+langchain==1.3.9
+    # via ragas
+langchain-classic==1.0.8
+    # via langchain-community
+langchain-community==0.4.2
+    # via ragas
+langchain-core==1.4.7
+    # via
+    #   langchain
+    #   langchain-classic
+    #   langchain-community
+    #   langchain-openai
+    #   langchain-text-splitters
+    #   langgraph
+    #   langgraph-checkpoint
+    #   langgraph-prebuilt
+    #   langgraph-sdk
+    #   ragas
+langchain-openai==1.3.2
+    # via ragas
+langchain-protocol==0.0.17
+    # via
+    #   langchain-core
+    #   langgraph-sdk
+langchain-text-splitters==1.1.2
+    # via langchain-classic
+langfuse==4.9.1
+    # via -r requirements.in
+langgraph==1.2.5
+    # via langchain
+langgraph-checkpoint==4.1.1
+    # via
+    #   langgraph
+    #   langgraph-prebuilt
+langgraph-prebuilt==1.1.0
+    # via langgraph
+langgraph-sdk==0.4.2
+    # via langgraph
+langsmith==0.8.15
+    # via
+    #   langchain-classic
+    #   langchain-community
+    #   langchain-core
+lxml[html-clean]==6.1.1
+    # via
+    #   arxiv
+    #   htmldate
+    #   justext
+    #   lxml-html-clean
+    #   newspaper4k
+    #   trafilatura
+lxml-html-clean==0.4.5
+    # via lxml
+markdown-it-py==4.2.0
+    # via rich
+markupsafe==3.0.3
+    # via jinja2
+mdurl==0.1.2
+    # via markdown-it-py
+multidict==6.7.1
+    # via
+    #   aiohttp
+    #   yarl
+multiprocess==0.70.19
+    # via datasets
+mutagen==1.47.0
+    # via yt-dlp
+nest-asyncio==1.6.0
+    # via
+    #   deepeval
+    #   ragas
+networkx==3.6.1
+    # via
+    #   -r requirements.in
+    #   ragas
+newspaper4k==0.9.4.1
+    # via -r requirements.in
+nltk==3.9.4
+    # via newspaper4k
+numpy==2.5.0
+    # via
+    #   -r requirements.in
+    #   chonkie
+    #   datasets
+    #   flashrank
+    #   langchain-community
+    #   onnxruntime
+    #   pandas
+    #   ragas
+    #   scikit-network
+    #   scipy
+onnxruntime==1.27.0
+    # via
+    #   -r requirements.in
+    #   flashrank
+openai==2.41.1
+    # via
+    #   deepeval
+    #   instructor
+    #   langchain-openai
+    #   ragas
+opentelemetry-api==1.42.1
+    # via
+    #   deepeval
+    #   langfuse
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-exporter-otlp-proto-common==1.42.1
+    # via opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-http==1.42.1
+    # via langfuse
+opentelemetry-proto==1.42.1
+    # via
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.42.1
+    # via
+    #   deepeval
+    #   langfuse
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-semantic-conventions==0.63b1
+    # via opentelemetry-sdk
+orjson==3.11.9
+    # via
+    #   langgraph-sdk
+    #   langsmith
+ormsgpack==1.12.2
+    # via langgraph-checkpoint
+packaging==25.0
+    # via
+    #   datasets
+    #   deprecation
+    #   gunicorn
+    #   huggingface-hub
+    #   langchain-core
+    #   langfuse
+    #   langsmith
+    #   onnxruntime
+    #   pytest
+    #   pytest-rerunfailures
+    #   wheel
+pandas==3.0.3
+    # via datasets
+piexif==1.1.3
+    # via -r requirements-dev.in
+pillow==12.2.0
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+    #   ragas
+playwright==1.60.0
+    # via
+    #   axe-playwright-python
+    #   pytest-playwright
+pluggy==1.6.0
+    # via pytest
+portalocker==3.2.0
+    # via deepeval
+postgrest==2.31.0
+    # via supabase
+posthog==7.19.1
+    # via deepeval
+prometheus-client==0.25.0
+    # via -r requirements.in
+propcache==0.5.2
+    # via
+    #   aiohttp
+    #   yarl
+protobuf==6.33.6
+    # via
+    #   googleapis-common-protos
+    #   onnxruntime
+    #   opentelemetry-proto
+psycopg[binary]==3.3.4
+    # via -r requirements.in
+psycopg-binary==3.3.4
+    # via psycopg
+pyarrow==24.0.0
+    # via datasets
+pyasn1==0.6.3
+    # via pyasn1-modules
+pyasn1-modules==0.4.2
+    # via google-auth
+pycparser==3.0
+    # via cffi
+pycryptodomex==3.23.0
+    # via yt-dlp
+pydantic==2.13.4
+    # via
+    #   deepeval
+    #   fastapi
+    #   google-genai
+    #   instructor
+    #   langchain
+    #   langchain-classic
+    #   langchain-core
+    #   langfuse
+    #   langgraph
+    #   langsmith
+    #   openai
+    #   postgrest
+    #   pydantic-settings
+    #   ragas
+    #   realtime
+    #   storage3
+    #   supabase-auth
+pydantic-core==2.46.4
+    # via
+    #   instructor
+    #   pydantic
+pydantic-settings[yaml]==2.14.2
+    # via
+    #   -r requirements.in
+    #   deepeval
+    #   langchain-community
+pyee==13.0.1
+    # via playwright
+pyfiglet==1.0.4
+    # via deepeval
+pygments==2.20.0
+    # via
+    #   pytest
+    #   rich
+pyjwt[crypto]==2.13.0
+    # via
+    #   -r requirements.in
+    #   supabase-auth
+pymupdf==1.27.2.3
+    # via -r requirements.in
+pytest==9.1.1
+    # via
+    #   -r requirements-dev.in
+    #   deepeval
+    #   pytest-asyncio
+    #   pytest-base-url
+    #   pytest-httpx
+    #   pytest-playwright
+    #   pytest-repeat
+    #   pytest-rerunfailures
+    #   pytest-xdist
+pytest-asyncio==1.4.0
+    # via
+    #   -r requirements-dev.in
+    #   deepeval
+pytest-base-url==2.1.0
+    # via pytest-playwright
+pytest-httpx==0.36.2
+    # via
+    #   -r requirements-dev.in
+    #   -r requirements.in
+pytest-playwright==0.8.0
+    # via -r requirements-dev.in
+pytest-repeat==0.9.4
+    # via deepeval
+pytest-rerunfailures==16.3
+    # via deepeval
+pytest-xdist==3.8.0
+    # via deepeval
+python-dateutil==2.9.0.post0
+    # via
+    #   dateparser
+    #   freezegun
+    #   htmldate
+    #   newspaper4k
+    #   pandas
+python-dotenv==1.2.2
+    # via
+    #   deepeval
+    #   pydantic-settings
+python-magic==0.4.27
+    # via -r requirements.in
+python-multipart==0.0.32
+    # via -r requirements.in
+python-podcastindex==1.15.0
+    # via -r requirements.in
+python-slugify==8.0.4
+    # via pytest-playwright
+pytz==2026.2
+    # via dateparser
+pyyaml==6.0.3
+    # via
+    #   datasets
+    #   huggingface-hub
+    #   langchain-classic
+    #   langchain-community
+    #   langchain-core
+    #   newspaper4k
+    #   pydantic-settings
+ragas==0.4.3
+    # via -r requirements-dev.in
+razorpay==2.0.1
+    # via -r requirements.in
+realtime==2.31.0
+    # via supabase
+regex==2026.5.9
+    # via
+    #   dateparser
+    #   nltk
+    #   tiktoken
+requests==2.33.1
+    # via
+    #   arxiv
+    #   datasets
+    #   deepeval
+    #   flashrank
+    #   google-auth
+    #   google-genai
+    #   instructor
+    #   langchain-classic
+    #   langchain-community
+    #   langsmith
+    #   newspaper4k
+    #   opentelemetry-exporter-otlp-proto-http
+    #   posthog
+    #   pytest-base-url
+    #   python-podcastindex
+    #   razorpay
+    #   requests-file
+    #   requests-toolbelt
+    #   tiktoken
+    #   tldextract
+    #   youtube-transcript-api
+    #   yt-dlp
+requests-file==3.0.1
+    # via tldextract
+requests-toolbelt==1.0.0
+    # via langsmith
+respx==0.23.1
+    # via -r requirements-dev.in
+rich==14.3.4
+    # via
+    #   deepeval
+    #   instructor
+    #   ragas
+    #   typer
+scikit-network==0.33.5
+    # via ragas
+scipy==1.18.0
+    # via
+    #   -r requirements.in
+    #   scikit-network
+sentry-sdk==2.62.0
+    # via deepeval
+sgmllib3k==1.0.0
+    # via feedparser
+shellingham==1.5.4
+    # via typer
+six==1.17.0
+    # via python-dateutil
+slack-sdk==3.42.0
+    # via -r requirements.in
+sniffio==1.3.1
+    # via
+    #   asgi-lifespan
+    #   google-genai
+    #   openai
+soupsieve==2.8.4
+    # via beautifulsoup4
+sqlalchemy==2.0.51
+    # via
+    #   langchain-classic
+    #   langchain-community
+sse-starlette==3.4.5
+    # via -r requirements.in
+stamina==26.1.0
+    # via -r requirements.in
+starlette==1.3.1
+    # via
+    #   fastapi
+    #   sse-starlette
+storage3==2.31.0
+    # via supabase
+strenum==0.4.15
+    # via supabase-functions
+supabase==2.31.0
+    # via -r requirements.in
+supabase-auth==2.31.0
+    # via supabase
+supabase-functions==2.31.0
+    # via supabase
+tabulate==0.9.0
+    # via deepeval
+tenacity==9.1.4
+    # via
+    #   chonkie
+    #   deepeval
+    #   google-genai
+    #   instructor
+    #   langchain-community
+    #   langchain-core
+    #   stamina
+text-unidecode==1.3
+    # via python-slugify
+texttable==1.7.0
+    # via igraph
+tiktoken==0.13.0
+    # via
+    #   langchain-openai
+    #   ragas
+tld==0.13.2
+    # via courlan
+tldextract==5.3.1
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+tokenizers==0.23.1
+    # via flashrank
+tokie==0.0.10
+    # via chonkie
+tqdm==4.68.2
+    # via
+    #   chonkie
+    #   datasets
+    #   deepeval
+    #   flashrank
+    #   huggingface-hub
+    #   nltk
+    #   openai
+    #   ragas
+trafilatura==2.1.0
+    # via -r requirements.in
+typer==0.26.7
+    # via
+    #   deepeval
+    #   huggingface-hub
+    #   instructor
+    #   ragas
+typing-extensions==4.15.0
+    # via
+    #   beautifulsoup4
+    #   fastapi
+    #   google-genai
+    #   grpcio
+    #   huggingface-hub
+    #   langchain-core
+    #   langchain-protocol
+    #   newspaper4k
+    #   openai
+    #   opentelemetry-api
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+    #   posthog
+    #   pydantic
+    #   pydantic-core
+    #   pyee
+    #   realtime
+    #   sqlalchemy
+    #   typing-inspection
+typing-inspection==0.4.2
+    # via
+    #   fastapi
+    #   pydantic
+    #   pydantic-settings
+tzlocal==5.4
+    # via dateparser
+urllib3==2.7.0
+    # via
+    #   courlan
+    #   htmldate
+    #   requests
+    #   sentry-sdk
+    #   trafilatura
+    #   yt-dlp
+uuid-utils==0.16.0
+    # via
+    #   langchain-core
+    #   langsmith
+uvicorn==0.49.0
+    # via -r requirements.in
+websockets==15.0.1
+    # via
+    #   google-genai
+    #   langgraph-sdk
+    #   langsmith
+    #   realtime
+    #   yt-dlp
+wheel==0.47.0
+    # via deepeval
+wrapt==1.17.3
+    # via langfuse
+xxhash==3.7.0
+    # via
+    #   datasets
+    #   langgraph
+    #   langsmith
+yarl==1.24.2
+    # via
+    #   aiohttp
+    #   postgrest
+    #   storage3
+    #   supabase
+    #   supabase-functions
+youtube-transcript-api==1.2.4
+    # via -r requirements.in
+yt-dlp[default]==2026.6.9
+    # via -r requirements.in
+yt-dlp-ejs==0.8.0
+    # via yt-dlp
+zstandard==0.25.0
+    # via langsmith
