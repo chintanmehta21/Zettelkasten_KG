@@ -1,144 +1,449 @@
-aiohappyeyeballs==2.6.2   # via aiohttp, -c ops/requirements-dev.txt
-aiohttp==3.14.1           # via -c ops/requirements-dev.txt, -r ops/requirements.in
-aiosignal==1.4.0          # via aiohttp, -c ops/requirements-dev.txt
-annotated-doc==0.0.4      # via fastapi, typer, -c ops/requirements-dev.txt
-annotated-types==0.7.0    # via pydantic, -c ops/requirements-dev.txt
-anyio==4.13.0             # via google-genai, httpx, openai, sse-starlette, starlette, -c ops/requirements-dev.txt
-arxiv==4.0.0              # via -c ops/requirements-dev.txt, -r ops/requirements.in
-asyncpg==0.31.0           # via -c ops/requirements-dev.txt, -r ops/requirements.in
-attrs==26.1.0             # via aiohttp, -c ops/requirements-dev.txt
-babel==2.18.0             # via courlan, -c ops/requirements-dev.txt
-backoff==2.2.1            # via langfuse, -c ops/requirements-dev.txt
-beautifulsoup4==4.15.0    # via newspaper4k, -c ops/requirements-dev.txt, -r ops/requirements.in
-blake3==1.0.8             # via -c ops/requirements-dev.txt, -r ops/requirements.in
-brotli==1.2.0             # via newspaper4k, yt-dlp, -c ops/requirements-dev.txt, -r ops/requirements.in
-cachetools==7.1.4         # via -c ops/requirements-dev.txt, -r ops/requirements.in
-certifi==2026.5.20        # via httpcore, httpx, requests, trafilatura, yt-dlp, -c ops/requirements-dev.txt
-cffi==2.0.0               # via cryptography, -c ops/requirements-dev.txt
-charset-normalizer==3.4.7  # via htmldate, requests, trafilatura, -c ops/requirements-dev.txt
-chonkie==1.6.8            # via -c ops/requirements-dev.txt, -r ops/requirements.in
-chonkie-core==0.10.2      # via chonkie, -c ops/requirements-dev.txt
-click==8.3.3              # via nltk, uvicorn, -c ops/requirements-dev.txt
-courlan==1.4.0            # via trafilatura, -c ops/requirements-dev.txt
-cryptography==49.0.0      # via google-auth, pyjwt, -c ops/requirements-dev.txt, -r ops/requirements.in
-dateparser==1.4.1         # via htmldate, -c ops/requirements-dev.txt, -r ops/requirements.in
-defusedxml==0.7.1         # via youtube-transcript-api, -c ops/requirements-dev.txt, -r ops/requirements.in
-deprecation==2.1.0        # via postgrest, storage3, -c ops/requirements-dev.txt
-distro==1.9.0             # via google-genai, openai, -c ops/requirements-dev.txt
-dnspython==2.8.0          # via email-validator, -c ops/requirements-dev.txt
-email-validator==2.3.0    # via -c ops/requirements-dev.txt, -r ops/requirements.in
-fastapi==0.137.1          # via -c ops/requirements-dev.txt, -r ops/requirements.in
-feedparser==6.0.12        # via newspaper4k, -c ops/requirements-dev.txt, -r ops/requirements.in
-filelock==3.29.4          # via huggingface-hub, tldextract, -c ops/requirements-dev.txt
-filetype==1.2.0           # via -c ops/requirements-dev.txt, -r ops/requirements.in
-flashrank==0.2.10         # via -c ops/requirements-dev.txt, -r ops/requirements.in
-flatbuffers==25.12.19     # via onnxruntime, -c ops/requirements-dev.txt
-frozenlist==1.8.0         # via aiohttp, aiosignal, -c ops/requirements-dev.txt
-fsspec==2026.4.0          # via huggingface-hub, -c ops/requirements-dev.txt
-google-auth==2.54.0       # via google-genai, -c ops/requirements-dev.txt
-google-genai==1.75.0      # via -c ops/requirements-dev.txt, -r ops/requirements.in
-googleapis-common-protos==1.75.0  # via opentelemetry-exporter-otlp-proto-http, -c ops/requirements-dev.txt
-gunicorn==26.0.0          # via -c ops/requirements-dev.txt, -r ops/requirements.in
-h11==0.16.0               # via httpcore, uvicorn, -c ops/requirements-dev.txt
-h2==4.3.0                 # via httpx, -c ops/requirements-dev.txt
-hf-xet==1.5.1             # via huggingface-hub, -c ops/requirements-dev.txt
-hpack==4.1.0              # via h2, -c ops/requirements-dev.txt
-htmldate==1.10.0          # via trafilatura, -c ops/requirements-dev.txt
-httpcore==1.0.9           # via httpx, -c ops/requirements-dev.txt
-httpx==0.28.1             # via chonkie, google-genai, huggingface-hub, langfuse, openai, postgrest, pytest-httpx, storage3, supabase, supabase-auth, supabase-functions, -c ops/requirements-dev.txt, -r ops/requirements.in
-huggingface-hub==1.16.1   # via tokenizers, -c ops/requirements-dev.txt, -r ops/requirements.in
-hyperframe==6.1.0         # via h2, -c ops/requirements-dev.txt
-idna==3.18                # via anyio, email-validator, httpx, requests, tldextract, yarl, -c ops/requirements-dev.txt
-igraph==1.0.0             # via -c ops/requirements-dev.txt, -r ops/requirements.in
-iniconfig==2.3.0          # via pytest, -c ops/requirements-dev.txt
-jiter==0.14.0             # via openai, -c ops/requirements-dev.txt
-joblib==1.5.3             # via nltk, -c ops/requirements-dev.txt
-justext==3.0.2            # via trafilatura, -c ops/requirements-dev.txt
-langfuse==3.15.0          # via -c ops/requirements-dev.txt, -r ops/requirements.in
-lxml==6.1.1               # via arxiv, htmldate, justext, lxml-html-clean, newspaper4k, trafilatura, -c ops/requirements-dev.txt
-lxml-html-clean==0.4.5    # via lxml, -c ops/requirements-dev.txt
-markdown-it-py==4.2.0     # via rich, -c ops/requirements-dev.txt
-mdurl==0.1.2              # via markdown-it-py, -c ops/requirements-dev.txt
-multidict==6.7.1          # via aiohttp, yarl, -c ops/requirements-dev.txt
-mutagen==1.47.0           # via yt-dlp, -c ops/requirements-dev.txt
-networkx==3.6.1           # via -c ops/requirements-dev.txt, -r ops/requirements.in
-newspaper4k==0.9.4.1      # via -c ops/requirements-dev.txt, -r ops/requirements.in
-nltk==3.9.4               # via newspaper4k, -c ops/requirements-dev.txt
-numpy==2.4.6              # via chonkie, flashrank, onnxruntime, scipy, -c ops/requirements-dev.txt, -r ops/requirements.in
-onnxruntime==1.26.0       # via flashrank, -c ops/requirements-dev.txt, -r ops/requirements.in
-openai==2.41.1            # via langfuse, -c ops/requirements-dev.txt
-opentelemetry-api==1.42.1  # via langfuse, opentelemetry-exporter-otlp-proto-http, opentelemetry-sdk, opentelemetry-semantic-conventions, -c ops/requirements-dev.txt
-opentelemetry-exporter-otlp-proto-common==1.42.1  # via opentelemetry-exporter-otlp-proto-http, -c ops/requirements-dev.txt
-opentelemetry-exporter-otlp-proto-http==1.42.1  # via langfuse, -c ops/requirements-dev.txt
-opentelemetry-proto==1.42.1  # via opentelemetry-exporter-otlp-proto-common, opentelemetry-exporter-otlp-proto-http, -c ops/requirements-dev.txt
-opentelemetry-sdk==1.42.1  # via langfuse, opentelemetry-exporter-otlp-proto-http, -c ops/requirements-dev.txt
-opentelemetry-semantic-conventions==0.63b1  # via opentelemetry-sdk, -c ops/requirements-dev.txt
-packaging==25.0           # via deprecation, gunicorn, huggingface-hub, langfuse, onnxruntime, pytest, -c ops/requirements-dev.txt
-pillow==12.2.0            # via newspaper4k, -c ops/requirements-dev.txt, -r ops/requirements.in
-pluggy==1.6.0             # via pytest, -c ops/requirements-dev.txt
-postgrest==2.31.0         # via supabase, -c ops/requirements-dev.txt
-prometheus-client==0.25.0  # via -c ops/requirements-dev.txt, -r ops/requirements.in
-propcache==0.5.2          # via aiohttp, yarl, -c ops/requirements-dev.txt
-protobuf==6.33.6          # via googleapis-common-protos, onnxruntime, opentelemetry-proto, -c ops/requirements-dev.txt
-psycopg==3.3.4            # via -c ops/requirements-dev.txt, -r ops/requirements.in
-psycopg-binary==3.3.4     # via psycopg, -c ops/requirements-dev.txt
-pyasn1==0.6.3             # via pyasn1-modules, -c ops/requirements-dev.txt
-pyasn1-modules==0.4.2     # via google-auth, -c ops/requirements-dev.txt
-pycparser==3.0            # via cffi, -c ops/requirements-dev.txt
-pycryptodomex==3.23.0     # via yt-dlp, -c ops/requirements-dev.txt
-pydantic==2.13.4          # via fastapi, google-genai, langfuse, openai, postgrest, pydantic-settings, realtime, storage3, supabase-auth, -c ops/requirements-dev.txt
-pydantic-core==2.46.4     # via pydantic, -c ops/requirements-dev.txt
-pydantic-settings==2.14.1  # via -c ops/requirements-dev.txt, -r ops/requirements.in
-pygments==2.20.0          # via pytest, rich, -c ops/requirements-dev.txt
-pyjwt==2.13.0             # via supabase-auth, -c ops/requirements-dev.txt, -r ops/requirements.in
-pymupdf==1.27.2.3         # via -c ops/requirements-dev.txt, -r ops/requirements.in
-pytest==9.1.0             # via pytest-httpx, -c ops/requirements-dev.txt
-pytest-httpx==0.36.2      # via -c ops/requirements-dev.txt, -r ops/requirements.in
-python-dateutil==2.9.0.post0  # via dateparser, htmldate, newspaper4k, -c ops/requirements-dev.txt
-python-dotenv==1.2.2      # via pydantic-settings, -c ops/requirements-dev.txt
-python-magic==0.4.27      # via -c ops/requirements-dev.txt, -r ops/requirements.in
-python-multipart==0.0.32  # via -c ops/requirements-dev.txt, -r ops/requirements.in
-python-podcastindex==1.15.0  # via -c ops/requirements-dev.txt, -r ops/requirements.in
-pytz==2026.2              # via dateparser, -c ops/requirements-dev.txt
-pyyaml==6.0.3             # via huggingface-hub, newspaper4k, pydantic-settings, -c ops/requirements-dev.txt
-razorpay==2.0.1           # via -c ops/requirements-dev.txt, -r ops/requirements.in
-realtime==2.31.0          # via supabase, -c ops/requirements-dev.txt
-regex==2026.5.9           # via dateparser, nltk, -c ops/requirements-dev.txt
-requests==2.33.1          # via arxiv, flashrank, google-auth, google-genai, newspaper4k, opentelemetry-exporter-otlp-proto-http, python-podcastindex, razorpay, requests-file, tldextract, youtube-transcript-api, yt-dlp, -c ops/requirements-dev.txt
-requests-file==3.0.1      # via tldextract, -c ops/requirements-dev.txt
-rich==14.3.4              # via typer, -c ops/requirements-dev.txt
-scipy==1.17.1             # via -c ops/requirements-dev.txt, -r ops/requirements.in
-sgmllib3k==1.0.0          # via feedparser, -c ops/requirements-dev.txt
-shellingham==1.5.4        # via typer, -c ops/requirements-dev.txt
-six==1.17.0               # via python-dateutil, -c ops/requirements-dev.txt
-slack-sdk==3.42.0         # via -c ops/requirements-dev.txt, -r ops/requirements.in
-sniffio==1.3.1            # via google-genai, openai, -c ops/requirements-dev.txt
-soupsieve==2.8.4          # via beautifulsoup4, -c ops/requirements-dev.txt
-sse-starlette==3.4.4      # via -c ops/requirements-dev.txt, -r ops/requirements.in
-stamina==26.1.0           # via -c ops/requirements-dev.txt, -r ops/requirements.in
-starlette==1.3.1          # via fastapi, sse-starlette, -c ops/requirements-dev.txt
-storage3==2.31.0          # via supabase, -c ops/requirements-dev.txt
-strenum==0.4.15           # via supabase-functions, -c ops/requirements-dev.txt
-supabase==2.31.0          # via -c ops/requirements-dev.txt, -r ops/requirements.in
-supabase-auth==2.31.0     # via supabase, -c ops/requirements-dev.txt
-supabase-functions==2.31.0  # via supabase, -c ops/requirements-dev.txt
-tenacity==9.1.4           # via chonkie, google-genai, stamina, -c ops/requirements-dev.txt
-texttable==1.7.0          # via igraph, -c ops/requirements-dev.txt
-tld==0.13.2               # via courlan, -c ops/requirements-dev.txt
-tldextract==5.3.1         # via newspaper4k, -c ops/requirements-dev.txt, -r ops/requirements.in
-tokenizers==0.23.1        # via flashrank, -c ops/requirements-dev.txt
-tokie==0.0.10             # via chonkie, -c ops/requirements-dev.txt
-tqdm==4.68.2              # via chonkie, flashrank, huggingface-hub, nltk, openai, -c ops/requirements-dev.txt
-trafilatura==2.1.0        # via -c ops/requirements-dev.txt, -r ops/requirements.in
-typer==0.26.7             # via huggingface-hub, -c ops/requirements-dev.txt
-typing-extensions==4.15.0  # via aiohttp, aiosignal, anyio, beautifulsoup4, fastapi, google-genai, huggingface-hub, newspaper4k, openai, opentelemetry-api, opentelemetry-exporter-otlp-proto-http, opentelemetry-sdk, opentelemetry-semantic-conventions, psycopg, pydantic, pydantic-core, realtime, starlette, typing-inspection, -c ops/requirements-dev.txt
-typing-inspection==0.4.2  # via fastapi, pydantic, pydantic-settings, -c ops/requirements-dev.txt
-tzlocal==5.4              # via dateparser, -c ops/requirements-dev.txt
-urllib3==2.7.0            # via courlan, htmldate, requests, trafilatura, yt-dlp, -c ops/requirements-dev.txt
-uvicorn==0.49.0           # via -c ops/requirements-dev.txt, -r ops/requirements.in
-websockets==15.0.1        # via google-genai, realtime, yt-dlp, -c ops/requirements-dev.txt
-wrapt==1.17.3             # via langfuse, -c ops/requirements-dev.txt
-yarl==1.24.2              # via aiohttp, postgrest, storage3, supabase, supabase-functions, -c ops/requirements-dev.txt
-youtube-transcript-api==1.2.4  # via -c ops/requirements-dev.txt, -r ops/requirements.in
-yt-dlp==2026.6.9          # via -c ops/requirements-dev.txt, -r ops/requirements.in
-yt-dlp-ejs==0.8.0         # via yt-dlp, -c ops/requirements-dev.txt
+aiohappyeyeballs==2.6.2
+    # via aiohttp
+aiohttp==3.14.1
+    # via -r requirements.in
+aiosignal==1.4.0
+    # via aiohttp
+annotated-doc==0.0.4
+    # via
+    #   fastapi
+    #   typer
+annotated-types==0.7.0
+    # via pydantic
+anyio==4.13.0
+    # via
+    #   google-genai
+    #   httpx
+    #   sse-starlette
+    #   starlette
+arxiv==4.0.0
+    # via -r requirements.in
+asyncpg==0.31.0
+    # via -r requirements.in
+attrs==26.1.0
+    # via aiohttp
+babel==2.18.0
+    # via courlan
+backoff==2.2.1
+    # via langfuse
+beautifulsoup4==4.15.0
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+blake3==1.0.9
+    # via -r requirements.in
+brotli==1.2.0
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+    #   yt-dlp
+cachetools==7.1.4
+    # via -r requirements.in
+certifi==2026.5.20
+    # via
+    #   httpcore
+    #   httpx
+    #   requests
+    #   trafilatura
+    #   yt-dlp
+cffi==2.0.0
+    # via cryptography
+charset-normalizer==3.4.7
+    # via
+    #   htmldate
+    #   requests
+    #   trafilatura
+chonkie==1.6.8
+    # via -r requirements.in
+chonkie-core==0.10.2
+    # via chonkie
+click==8.3.3
+    # via
+    #   nltk
+    #   uvicorn
+courlan==1.4.0
+    # via trafilatura
+cryptography==49.0.0
+    # via
+    #   -r requirements.in
+    #   google-auth
+    #   pyjwt
+dateparser==1.4.1
+    # via
+    #   -r requirements.in
+    #   htmldate
+defusedxml==0.7.1
+    # via
+    #   -r requirements.in
+    #   youtube-transcript-api
+deprecation==2.1.0
+    # via
+    #   postgrest
+    #   storage3
+distro==1.9.0
+    # via google-genai
+dnspython==2.8.0
+    # via email-validator
+email-validator==2.3.0
+    # via -r requirements.in
+fastapi==0.138.1
+    # via -r requirements.in
+feedparser==6.0.12
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+filelock==3.29.4
+    # via
+    #   huggingface-hub
+    #   tldextract
+filetype==1.2.0
+    # via -r requirements.in
+flashrank==0.2.10
+    # via -r requirements.in
+flatbuffers==25.12.19
+    # via onnxruntime
+frozenlist==1.8.0
+    # via
+    #   aiohttp
+    #   aiosignal
+fsspec==2026.4.0
+    # via huggingface-hub
+google-auth[requests]==2.54.0
+    # via google-genai
+google-genai==2.10.0
+    # via -r requirements.in
+googleapis-common-protos==1.75.0
+    # via opentelemetry-exporter-otlp-proto-http
+gunicorn==26.0.0
+    # via -r requirements.in
+h11==0.16.0
+    # via
+    #   httpcore
+    #   uvicorn
+h2==4.3.0
+    # via httpx
+hf-xet==1.5.1
+    # via huggingface-hub
+hpack==4.1.0
+    # via h2
+htmldate==1.10.0
+    # via trafilatura
+httpcore==1.0.9
+    # via httpx
+httpx[http2]==0.28.1
+    # via
+    #   -r requirements.in
+    #   chonkie
+    #   google-genai
+    #   huggingface-hub
+    #   langfuse
+    #   postgrest
+    #   pytest-httpx
+    #   storage3
+    #   supabase
+    #   supabase-auth
+    #   supabase-functions
+huggingface-hub==1.16.1
+    # via
+    #   -r requirements.in
+    #   tokenizers
+hyperframe==6.1.0
+    # via h2
+idna==3.18
+    # via
+    #   anyio
+    #   email-validator
+    #   httpx
+    #   requests
+    #   tldextract
+    #   yarl
+igraph==1.0.0
+    # via -r requirements.in
+iniconfig==2.3.0
+    # via pytest
+joblib==1.5.3
+    # via nltk
+justext==3.0.2
+    # via trafilatura
+langfuse==4.12.0
+    # via -r requirements.in
+lxml[html-clean]==6.1.1
+    # via
+    #   arxiv
+    #   htmldate
+    #   justext
+    #   lxml-html-clean
+    #   newspaper4k
+    #   trafilatura
+lxml-html-clean==0.4.5
+    # via lxml
+markdown-it-py==4.2.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
+multidict==6.7.1
+    # via
+    #   aiohttp
+    #   yarl
+mutagen==1.47.0
+    # via yt-dlp
+networkx==3.6.1
+    # via -r requirements.in
+newspaper4k==0.9.4.1
+    # via -r requirements.in
+nltk==3.9.4
+    # via newspaper4k
+numpy==2.5.0
+    # via
+    #   -r requirements.in
+    #   chonkie
+    #   flashrank
+    #   onnxruntime
+    #   scipy
+onnxruntime==1.27.0
+    # via
+    #   -r requirements.in
+    #   flashrank
+opentelemetry-api==1.42.1
+    # via
+    #   langfuse
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-exporter-otlp-proto-common==1.42.1
+    # via opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-http==1.42.1
+    # via langfuse
+opentelemetry-proto==1.42.1
+    # via
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.42.1
+    # via
+    #   langfuse
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-semantic-conventions==0.63b1
+    # via opentelemetry-sdk
+packaging==25.0
+    # via
+    #   deprecation
+    #   gunicorn
+    #   huggingface-hub
+    #   langfuse
+    #   onnxruntime
+    #   pytest
+pillow==12.2.0
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+pluggy==1.6.0
+    # via pytest
+postgrest==2.31.0
+    # via supabase
+prometheus-client==0.25.0
+    # via -r requirements.in
+propcache==0.5.2
+    # via
+    #   aiohttp
+    #   yarl
+protobuf==6.33.6
+    # via
+    #   googleapis-common-protos
+    #   onnxruntime
+    #   opentelemetry-proto
+psycopg[binary]==3.3.4
+    # via -r requirements.in
+psycopg-binary==3.3.4
+    # via psycopg
+pyasn1==0.6.3
+    # via pyasn1-modules
+pyasn1-modules==0.4.2
+    # via google-auth
+pycparser==3.0
+    # via cffi
+pycryptodomex==3.23.0
+    # via yt-dlp
+pydantic==2.13.4
+    # via
+    #   fastapi
+    #   google-genai
+    #   langfuse
+    #   postgrest
+    #   pydantic-settings
+    #   realtime
+    #   storage3
+    #   supabase-auth
+pydantic-core==2.46.4
+    # via pydantic
+pydantic-settings[yaml]==2.14.2
+    # via -r requirements.in
+pygments==2.20.0
+    # via
+    #   pytest
+    #   rich
+pyjwt[crypto]==2.13.0
+    # via
+    #   -r requirements.in
+    #   supabase-auth
+pymupdf==1.27.2.3
+    # via -r requirements.in
+pytest==9.1.1
+    # via pytest-httpx
+pytest-httpx==0.36.2
+    # via -r requirements.in
+python-dateutil==2.9.0.post0
+    # via
+    #   dateparser
+    #   htmldate
+    #   newspaper4k
+python-dotenv==1.2.2
+    # via pydantic-settings
+python-magic==0.4.27
+    # via -r requirements.in
+python-multipart==0.0.32
+    # via -r requirements.in
+python-podcastindex==1.15.0
+    # via -r requirements.in
+pytz==2026.2
+    # via dateparser
+pyyaml==6.0.3
+    # via
+    #   huggingface-hub
+    #   newspaper4k
+    #   pydantic-settings
+razorpay==2.0.1
+    # via -r requirements.in
+realtime==2.31.0
+    # via supabase
+regex==2026.5.9
+    # via
+    #   dateparser
+    #   nltk
+requests==2.33.1
+    # via
+    #   arxiv
+    #   flashrank
+    #   google-auth
+    #   google-genai
+    #   newspaper4k
+    #   opentelemetry-exporter-otlp-proto-http
+    #   python-podcastindex
+    #   razorpay
+    #   requests-file
+    #   tldextract
+    #   youtube-transcript-api
+    #   yt-dlp
+requests-file==3.0.1
+    # via tldextract
+rich==14.3.4
+    # via typer
+scipy==1.18.0
+    # via -r requirements.in
+sgmllib3k==1.0.0
+    # via feedparser
+shellingham==1.5.4
+    # via typer
+six==1.17.0
+    # via python-dateutil
+slack-sdk==3.42.0
+    # via -r requirements.in
+sniffio==1.3.1
+    # via google-genai
+soupsieve==2.8.4
+    # via beautifulsoup4
+sse-starlette==3.4.5
+    # via -r requirements.in
+stamina==26.1.0
+    # via -r requirements.in
+starlette==1.3.1
+    # via
+    #   fastapi
+    #   sse-starlette
+storage3==2.31.0
+    # via supabase
+strenum==0.4.15
+    # via supabase-functions
+supabase==2.31.0
+    # via -r requirements.in
+supabase-auth==2.31.0
+    # via supabase
+supabase-functions==2.31.0
+    # via supabase
+tenacity==9.1.4
+    # via
+    #   chonkie
+    #   google-genai
+    #   stamina
+texttable==1.7.0
+    # via igraph
+tld==0.13.2
+    # via courlan
+tldextract==5.3.1
+    # via
+    #   -r requirements.in
+    #   newspaper4k
+tokenizers==0.23.1
+    # via flashrank
+tokie==0.0.10
+    # via chonkie
+tqdm==4.68.2
+    # via
+    #   chonkie
+    #   flashrank
+    #   huggingface-hub
+    #   nltk
+trafilatura==2.1.0
+    # via -r requirements.in
+typer==0.26.7
+    # via huggingface-hub
+typing-extensions==4.15.0
+    # via
+    #   beautifulsoup4
+    #   fastapi
+    #   google-genai
+    #   huggingface-hub
+    #   newspaper4k
+    #   opentelemetry-api
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+    #   pydantic
+    #   pydantic-core
+    #   realtime
+    #   typing-inspection
+typing-inspection==0.4.2
+    # via
+    #   fastapi
+    #   pydantic
+    #   pydantic-settings
+tzlocal==5.4
+    # via dateparser
+urllib3==2.7.0
+    # via
+    #   courlan
+    #   htmldate
+    #   requests
+    #   trafilatura
+    #   yt-dlp
+uvicorn==0.49.0
+    # via -r requirements.in
+websockets==15.0.1
+    # via
+    #   google-genai
+    #   realtime
+    #   yt-dlp
+wrapt==1.17.3
+    # via langfuse
+yarl==1.24.2
+    # via
+    #   aiohttp
+    #   postgrest
+    #   storage3
+    #   supabase
+    #   supabase-functions
+youtube-transcript-api==1.2.4
+    # via -r requirements.in
+yt-dlp[default]==2026.6.9
+    # via -r requirements.in
+yt-dlp-ejs==0.8.0
+    # via yt-dlp
