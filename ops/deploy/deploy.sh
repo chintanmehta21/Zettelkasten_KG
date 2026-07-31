@@ -293,15 +293,27 @@ log "[stage2-assert] ${IDLE} stage2 session OK"
 RAG_SMOKE_KASTEN_ID="${RAG_SMOKE_KASTEN_ID:-227e0fb2-ff81-4d08-8702-76d9235564f4}"
 RAG_SMOKE_QUERY="Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?"
 
+# 2026-06-17: fail-CLOSED by default (was warn-and-skip, which caused a 38-day
+# silent outage — see docs/claude_audits/rag_smoke_gate_disabled_2026-06-17.md).
+# Set RAG_SMOKE_REQUIRED=0 only for an emergency credless manual deploy.
+SMOKE_REQUIRED="${RAG_SMOKE_REQUIRED:-1}"
+
 if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_ANON_KEY_LEGACY_JWT:-}" || -z "${NARUTO_SMOKE_PASSWORD:-}" ]]; then
-    log "[rag-smoke] WARN: smoke creds (SUPABASE_URL / ANON_KEY_LEGACY / NARUTO_PASSWORD) not all set -- skipping (degraded confidence)"
+    if [[ "$SMOKE_REQUIRED" == "1" ]]; then
+        log "[rag-smoke] FATAL: smoke creds not all set in a CI deploy -- ABORTING (set NARUTO_SMOKE_PASSWORD / SUPABASE_ANON_KEY_LEGACY_JWT / SUPABASE_URL as GH secrets)."
+        log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
+        exit 91
+    fi
+    log "[rag-smoke] WARN: smoke creds not all set -- skipping (manual deploy, degraded confidence)"
 else
     log "[rag-smoke] minting fresh Naruto JWT via Supabase password grant..."
-    AUTH_RESP=$(curl -sS --max-time 15 -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
+    AUTH_TMP=$(mktemp)
+    AUTH_HTTP=$(curl -sS --max-time 15 -o "$AUTH_TMP" -w "%{http_code}" -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
         -H "apikey: ${SUPABASE_ANON_KEY_LEGACY_JWT}" \
         -H "Content-Type: application/json" \
         -d "$(printf '{"email":"naruto@zettelkasten.local","password":%s}' "$(printf '%s' "$NARUTO_SMOKE_PASSWORD" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")" \
-        2>/dev/null || echo "AUTH_CURL_FAILED")
+        2>/dev/null || echo "000")
+    AUTH_RESP=$(cat "$AUTH_TMP"); rm -f "$AUTH_TMP"
     SMOKE_TOKEN=$(echo "$AUTH_RESP" | python3 -c "import json,sys
 try:
     d = json.loads(sys.stdin.read())
@@ -309,7 +321,23 @@ try:
 except Exception:
     print('')" 2>/dev/null)
     if [[ -z "$SMOKE_TOKEN" ]]; then
-        log "[rag-smoke] WARN: JWT mint failed -- skipping smoke probe (degraded confidence)"
+        # 2026-06-17: surface the auth HTTP status + GoTrue error_code (never the
+        # token/password) — the old path discarded it, making the 38-day outage
+        # undiagnosable from deploy logs. error_code/msg carry no secret.
+        AUTH_REASON=$(echo "$AUTH_RESP" | python3 -c "import json,sys
+try:
+    d = json.loads(sys.stdin.read())
+    print(d.get('error_code') or d.get('error') or d.get('msg') or d.get('error_description') or 'unknown')
+except Exception:
+    print('unparseable')" 2>/dev/null)
+        log "[rag-smoke] JWT mint failed: HTTP=${AUTH_HTTP} reason=${AUTH_REASON}"
+        if [[ "$SMOKE_REQUIRED" == "1" ]]; then
+            log "[rag-smoke] FATAL: smoke creds present but mint REJECTED -- ABORTING DEPLOY (no traffic flip)."
+            log "[rag-smoke] Likely: NARUTO_SMOKE_PASSWORD stale vs Supabase, anon key revoked, or naruto account drift."
+            log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
+            exit 91
+        fi
+        log "[rag-smoke] WARN: skipping smoke probe (manual deploy, degraded confidence)"
     else
         log "[rag-smoke] JWT minted (len ${#SMOKE_TOKEN}); pre-warming and probing..."
         SMOKE_BODY=$(printf '{"sandbox_id":"%s","content":%s,"quality":"fast","stream":false,"scope_filter":{}}' \
