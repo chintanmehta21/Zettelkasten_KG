@@ -41,11 +41,11 @@ ENV_FILE="${ENV_FILE:-/opt/zettelkasten/compose/.env}"
 if [[ -r "$ENV_FILE" ]]; then
     while IFS='=' read -r _key _val; do
         case "$_key" in
-            DEPLOY_GIT_SHA|DEPLOY_ID|DEPLOY_ACTOR|RAG_SMOKE_KASTEN_ID|NARUTO_SMOKE_PASSWORD|SUPABASE_ANON_KEY_LEGACY_JWT|SUPABASE_URL)
+            DEPLOY_GIT_SHA|DEPLOY_ID|DEPLOY_ACTOR|RAG_SMOKE_KASTEN_ID|RAG_SMOKE_EXPECT_TITLE|NARUTO_SMOKE_PASSWORD|SUPABASE_ANON_KEY_LEGACY_JWT|SUPABASE_URL)
                 export "$_key=$_val"
                 ;;
         esac
-    done < <(grep -E '^(DEPLOY_(GIT_SHA|ID|ACTOR)|RAG_SMOKE_KASTEN_ID|NARUTO_SMOKE_PASSWORD|SUPABASE_ANON_KEY_LEGACY_JWT|SUPABASE_URL)=' "$ENV_FILE" || true)
+    done < <(grep -E '^(DEPLOY_(GIT_SHA|ID|ACTOR)|RAG_SMOKE_KASTEN_ID|RAG_SMOKE_EXPECT_TITLE|NARUTO_SMOKE_PASSWORD|SUPABASE_ANON_KEY_LEGACY_JWT|SUPABASE_URL)=' "$ENV_FILE" || true)
     unset _key _val
 fi
 
@@ -284,14 +284,31 @@ fi
 log "[stage2-assert] ${IDLE} stage2 session OK"
 
 # iter-03 §8: pre-flip canonical RAG smoke probe. Fires the iter-03 q1 zk-org/zk
-# two-fact lookup against the new color; asserts HTTP 200 + primary_citation
-# == "gh-zk-org-zk". Fail-loud, no auto-rollback.
+# two-fact lookup against the new color; asserts HTTP 200 + primary citation
+# title == RAG_SMOKE_EXPECT_TITLE. Fail-loud, restores previous color on abort.
 #
 # JWT minted inline every deploy via Supabase password grant (NARUTO_SMOKE_PASSWORD
 # + SUPABASE_ANON_KEY_LEGACY_JWT). Replaces the previous static RAG_SMOKE_TOKEN
 # secret which expired after 1 hour and silently blocked all subsequent deploys.
-RAG_SMOKE_KASTEN_ID="${RAG_SMOKE_KASTEN_ID:-227e0fb2-ff81-4d08-8702-76d9235564f4}"
-RAG_SMOKE_QUERY="Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?"
+# 2026-07-31: retargeted from the zk-org/zk fixture (kasten 227e0fb2 + canonical
+# zettel were deleted by QA cleanup + 30-day canonical shred → FK 23503 → 500).
+# New target: Naruto's curated "Economics & Markets" kasten, big-mac-data zettel.
+RAG_SMOKE_KASTEN_ID="${RAG_SMOKE_KASTEN_ID:-087184be-3a87-4eb0-9b74-8313077b85ea}"
+RAG_SMOKE_QUERY="Which GitHub repository contains the data and code for The Economist's Big Mac index, and in what language is the data generator written?"
+# v2 citations carry canonical_chunk_id UUIDs in node_id (brittle across
+# re-chunking), so the gate asserts on the stable citation TITLE instead.
+RAG_SMOKE_EXPECT_TITLE="${RAG_SMOKE_EXPECT_TITLE:-TheEconomist/big-mac-data}"
+
+# 2026-07-31 fail-safe: a smoke abort used to strand the site dark (ACTIVE
+# stopped+rm'd, caddy still pointed at it). Restore the previous color via
+# rollback.sh before exiting. Idle is stopped first — 2 GB droplet cannot
+# hold both containers (see seq-deploy comment above).
+restore_previous_color() {
+    log "[fail-safe] smoke gate aborted post-stop -- restoring previous color via rollback.sh"
+    docker stop --time 20 "zettelkasten-${IDLE}" 2>/dev/null || true
+    docker rm "zettelkasten-${IDLE}" 2>/dev/null || true
+    "$ROOT/deploy/rollback.sh" || log "[fail-safe] WARN: rollback.sh failed -- site may need manual restore"
+}
 
 # 2026-06-17: fail-CLOSED by default (was warn-and-skip, which caused a 38-day
 # silent outage — see docs/claude_audits/rag_smoke_gate_disabled_2026-06-17.md).
@@ -301,7 +318,7 @@ SMOKE_REQUIRED="${RAG_SMOKE_REQUIRED:-1}"
 if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_ANON_KEY_LEGACY_JWT:-}" || -z "${NARUTO_SMOKE_PASSWORD:-}" ]]; then
     if [[ "$SMOKE_REQUIRED" == "1" ]]; then
         log "[rag-smoke] FATAL: smoke creds not all set in a CI deploy -- ABORTING (set NARUTO_SMOKE_PASSWORD / SUPABASE_ANON_KEY_LEGACY_JWT / SUPABASE_URL as GH secrets)."
-        log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
+        restore_previous_color
         exit 91
     fi
     log "[rag-smoke] WARN: smoke creds not all set -- skipping (manual deploy, degraded confidence)"
@@ -334,7 +351,7 @@ except Exception:
         if [[ "$SMOKE_REQUIRED" == "1" ]]; then
             log "[rag-smoke] FATAL: smoke creds present but mint REJECTED -- ABORTING DEPLOY (no traffic flip)."
             log "[rag-smoke] Likely: NARUTO_SMOKE_PASSWORD stale vs Supabase, anon key revoked, or naruto account drift."
-            log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
+            restore_previous_color
             exit 91
         fi
         log "[rag-smoke] WARN: skipping smoke probe (manual deploy, degraded confidence)"
@@ -373,11 +390,12 @@ try:
         print('NO_TURN:'+str(d.get('error','unknown')))
     else:
         cits = d.get('turn',{}).get('citations',[])
-        print(cits[0].get('node_id') if cits else 'NO_CITATIONS')
+        # v2 node_id is a chunk UUID; TITLE is the stable assert key.
+        print(cits[0].get('title') if cits else 'NO_CITATIONS')
 except Exception as e:
     print('PARSE_FAIL:'+str(e))" 2>/dev/null || echo "PARSE_FAIL")
-            log "[rag-smoke] attempt ${smoke_attempt}/3 ${IDLE} HTTP=${SMOKE_HTTP} primary=${SMOKE_PRIMARY}"
-            if [[ "$SMOKE_HTTP" == "200" && "$SMOKE_PRIMARY" == "gh-zk-org-zk" ]]; then
+            log "[rag-smoke] attempt ${smoke_attempt}/3 ${IDLE} HTTP=${SMOKE_HTTP} primary_title=${SMOKE_PRIMARY} (expect ${RAG_SMOKE_EXPECT_TITLE})"
+            if [[ "$SMOKE_HTTP" == "200" && "$SMOKE_PRIMARY" == "$RAG_SMOKE_EXPECT_TITLE" ]]; then
                 log "[rag-smoke] ${IDLE} smoke probe OK on attempt ${smoke_attempt}"
                 break
             fi
@@ -387,12 +405,12 @@ except Exception as e:
             fi
         done
 
-        if [[ "$SMOKE_HTTP" != "200" || "$SMOKE_PRIMARY" != "gh-zk-org-zk" ]]; then
-            log "[rag-smoke] FATAL: smoke probe failed after 3 attempts. Final HTTP=${SMOKE_HTTP} primary=${SMOKE_PRIMARY}"
+        if [[ "$SMOKE_HTTP" != "200" || "$SMOKE_PRIMARY" != "$RAG_SMOKE_EXPECT_TITLE" ]]; then
+            log "[rag-smoke] FATAL: smoke probe failed after 3 attempts. Final HTTP=${SMOKE_HTTP} primary_title=${SMOKE_PRIMARY}"
             log "[rag-smoke] response body (first 600 chars):"
             log "$(printf '%s' "$SMOKE_RESPONSE" | head -c 600)"
-            log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
-            log "[rag-smoke] Possible causes: worker OOM-killed mid-pipeline; persistent backpressure (503); degraded retrieval; reranker scoring wrong; corpus drift."
+            log "[rag-smoke] Possible causes: smoke fixture deleted from DB (check rag.kastens); worker OOM-killed mid-pipeline; persistent backpressure (503); degraded retrieval; corpus drift."
+            restore_previous_color
             exit 89
         fi
     fi
