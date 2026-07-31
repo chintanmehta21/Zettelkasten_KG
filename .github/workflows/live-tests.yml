@@ -36,4 +36,8 @@ jobs:
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # 2026-07-31: v2 integration fixtures (asyncpg_pool) require the direct
+          # DSN; missing since the suite grew v2 coverage — every weekly run
+          # errored at setup from 2026-05-31 onward.
+          SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_V2_DATABASE_URL }}
         run: pytest --live -q
