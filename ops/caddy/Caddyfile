@@ -127,7 +127,9 @@ zettelkasten.in {
         output file /var/log/caddy/access.log {
             roll_size 10MiB
             roll_keep 5
-            roll_keep_for 168h
+            # 2026-07-31: 168h deleted rolls after 7 days — 30-day audits had
+            # ~1 day of request history. 720h ≈ 30 days; 5×10MiB caps disk.
+            roll_keep_for 720h
         }
         format json
     }

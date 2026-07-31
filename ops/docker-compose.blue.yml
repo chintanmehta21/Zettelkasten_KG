@@ -64,7 +64,7 @@ services:
       driver: json-file
       options:
         max-size: "10m"
-        max-file: "3"
+        max-file: "10"
     healthcheck:
       test: ["CMD", "curl", "--silent", "--fail", "--max-time", "2", "http://127.0.0.1:10000/api/health"]
       interval: 15s
