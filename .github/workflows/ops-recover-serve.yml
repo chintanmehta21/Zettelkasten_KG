@@ -1,0 +1,74 @@
+name: Ops recover serving (manual)
+
+# 2026-08-01 incident tool: point Caddy at whichever app color is actually
+# running and healthy on loopback, then verify end-to-end through Caddy.
+# Exists because a smoke-gate abort mid blue/green cutover can leave Caddy
+# proxying a stopped color (raw 502s) while a healthy container idles
+# unflipped. Read-mostly: writes only the caddy upstream snippet (via
+# reload_caddy.sh semantics) and removes a stale maintenance flag.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    name: SSH flip caddy to healthy color
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Flip caddy upstream to the running healthy color
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          command_timeout: 4m
+          script: |
+            set -euo pipefail
+            ROOT=/opt/zettelkasten
+            log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [recover] $*"; }
+
+            # 1. Find a running app color that answers 200 on loopback.
+            TARGET=""
+            for pair in "blue 10000" "green 10001"; do
+              set -- $pair
+              color=$1; port=$2
+              if [ -n "$(docker ps -q -f name=zettelkasten-${color})" ]; then
+                code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:${port}/api/health" 2>/dev/null || echo 000)
+                log "candidate ${color}: container running, /api/health=${code}"
+                if [ "$code" = "200" ]; then TARGET="$color"; break; fi
+              else
+                log "candidate ${color}: not running"
+              fi
+            done
+            if [ -z "$TARGET" ]; then
+              log "FATAL: no running healthy app container found; nothing to flip to."
+              exit 1
+            fi
+
+            # 2. Current upstream — no-op if already pointing at the target.
+            CURRENT=$(grep -oE 'zettelkasten-(blue|green)' "$ROOT/caddy/upstream.snippet" | head -1 || echo none)
+            log "current upstream=${CURRENT} target=zettelkasten-${TARGET}"
+
+            if [ "$CURRENT" != "zettelkasten-${TARGET}" ]; then
+              cat > "$ROOT/caddy/upstream.snippet" <<EOF
+            # Updated by ops-recover-serve at $(date -u +%Y-%m-%dT%H:%M:%SZ)
+            reverse_proxy zettelkasten-${TARGET}:10000
+            EOF
+              log "snippet rewritten -> zettelkasten-${TARGET}"
+            fi
+
+            # 3. Clear any stale maintenance flag, reload caddy, verify e2e.
+            rm -f "$ROOT/caddy/data/maintenance.flag" 2>/dev/null || true
+            LOG_PREFIX="[recover] " "$ROOT/deploy/reload_caddy.sh"
+
+            PUB=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+              --resolve "zettelkasten.in:443:127.0.0.1" \
+              https://zettelkasten.in/api/health 2>/dev/null || echo 000)
+            log "public-through-caddy /api/health=${PUB}"
+            [ "$PUB" = "200" ] || { log "FATAL: still not serving 200"; exit 1; }
+            log "RECOVERED: serving via zettelkasten-${TARGET}"
