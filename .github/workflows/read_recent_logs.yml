@@ -45,13 +45,12 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          # capture_stdout=true makes the appleboy action surface the script's
-          # stdout into the workflow log (and in the action's outputs). We
-          # inline-cat the logs rather than tarring them back via scp because
-          # the scp pull-from-host pattern is not how appleboy/scp-action
-          # works (it uploads, not downloads).
-          capture_stdout: true
+          # 2026-07-31: capture_stdout must stay FALSE. The remote stdout always
+          # streams into the job log; true additionally stores it as a step
+          # output, and on large dumps (>~8MB) evaluating that output blows the
+          # GH expression memory limit — the run is marked "failure" after the
+          # SSH script fully succeeded (appleboy action.yml outputs.stdout).
+          capture_stdout: false
           script: |
             set -euo pipefail
             COLOR="${{ inputs.color }}"
@@ -176,6 +175,15 @@ jobs:
             # /opt/zettelkasten/logs/caddy is owned by deploy:deploy per
             # deploy.sh — readable directly without sudo.
             tail -n ${LINES} /opt/zettelkasten/logs/caddy/access.log 2>/dev/null || true
+            # 2026-07-31: also surface Caddy's self-rolled access logs (live file
+            # covers ~1 day only). Per-file tail keeps output bounded.
+            echo "===== caddy access rolled files (dir listing + per-file tail $LINES) ====="
+            ls -lt /opt/zettelkasten/logs/caddy/ 2>/dev/null || true
+            for f in /opt/zettelkasten/logs/caddy/access-*.log*; do
+              [ -e "$f" ] || continue
+              echo "--- $f ---"
+              zcat -f "$f" 2>/dev/null | tail -n ${LINES} || true
+            done
             # Read-only caddy upstream/admin diagnostics — surfaces the
             # deploy-cutover failure mode (first `caddy reload` per deploy
             # fails verify -> restart -> broken health wait -> rollback).
@@ -194,6 +202,12 @@ jobs:
             echo "--- caddy admin reachability (exactly the Docker healthcheck cmd) ---"
             docker exec caddy wget --quiet --tries=1 --spider http://localhost:2019/config/ 2>&1 && DIAG_RC=0 || DIAG_RC=$?
             echo "healthcheck_wget_exit=${DIAG_RC}"
+            # 2026-07-31 P3 probe: busybox wget resolves localhost -> ::1 first
+            # with no IPv4 fallback; admin binds 127.0.0.1 only. If the explicit
+            # IPv4 probe passes while the localhost one fails, the healthcheck
+            # URL (not the admin endpoint) is the bug.
+            docker exec caddy wget --quiet --tries=1 --spider http://127.0.0.1:2019/config/ 2>&1 && DIAG4_RC=0 || DIAG4_RC=$?
+            echo "healthcheck_wget_ipv4_exit=${DIAG4_RC}"
             echo "--- live admin config upstream (what caddy actually serves NOW) ---"
             docker exec caddy sh -c 'wget -qO- http://localhost:2019/config/ 2>/dev/null' 2>/dev/null | grep -oE 'zettelkasten-(blue|green):10000' | sort -u || echo "(admin GET failed/empty)"
             echo "--- caddy version ---"

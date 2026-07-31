@@ -50,7 +50,6 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
           envs: MODE,WS_ID
           command_timeout: 25m
           script_stop: true

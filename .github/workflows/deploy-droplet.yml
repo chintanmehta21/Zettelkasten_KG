@@ -171,7 +171,6 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
           source: "ops/deploy/*.sh"
           target: "/opt/zettelkasten/deploy/"
           strip_components: 2  # ops/deploy/ -> /opt/zettelkasten/deploy/
@@ -185,7 +184,6 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
           source: "ops/docker-compose.blue.yml,ops/docker-compose.green.yml"
           target: "/opt/zettelkasten/compose/"
           strip_components: 1  # ops/ -> /opt/zettelkasten/compose/
@@ -203,7 +201,6 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
           source: "ops/caddy/Caddyfile,ops/caddy/upstream.snippet"
           target: "/opt/zettelkasten/caddy/"
           strip_components: 2  # ops/caddy/ -> /opt/zettelkasten/caddy/
@@ -356,7 +353,6 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
           # iter-03 §1C.4: forward deploy provenance into deploy.sh so the
           # migration audit row records who/what/which-deploy applied it.
           envs: ENV_BODY,GHCR_READ_PAT,SHA
@@ -487,7 +483,6 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
           script: |
             set -euo pipefail
 
