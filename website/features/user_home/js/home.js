@@ -213,7 +213,8 @@ function publicNoticeText() {
   async function init() {
     resolveDOM();
 
-    // Public-content notice (opt-out consent surface). Shows once; teal; no purple.
+    // Public-content notice (opt-out consent surface). Shows once; teal accent
+    // only, per the project UI colour rules.
     try {
       var _noticeEl = document.getElementById('home-public-notice');
       if (_noticeEl) {

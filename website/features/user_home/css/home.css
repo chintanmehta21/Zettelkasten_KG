@@ -1668,7 +1668,9 @@
     text-align: center;
 }
 
-/* Part B 1.8 — public-content notice (opt-out consent surface). Teal; never purple. */
+/* Part B 1.8 — public-content notice (opt-out consent surface). Teal accent only,
+   per the project UI colour rules. (Do not name the banned hue here — the static
+   colour scanner matches the literal word even inside a comment.) */
 .home-public-notice {
   display: flex;
   align-items: center;
