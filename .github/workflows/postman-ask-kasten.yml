@@ -67,6 +67,34 @@ jobs:
           echo "date_dir=${DATE_DIR}" >> "${GITHUB_OUTPUT}"
           echo "time_dir=${TIME_DIR}" >> "${GITHUB_OUTPUT}"
 
+      - name: Preflight — auth tokens must exist when live requests are on
+        # 2026-08-01. These four suites were GREEN for months while executing
+        # nothing: POSTMAN_AUTH_TOKEN_USER_A/B are not registered as secrets, so
+        # the collection's pre-request hook skipped every authenticated request
+        # via `pm.test('SKIPPED: ...', () => pm.expect(true).to.equal(true))` —
+        # a PASSING assertion — then called pm.execution.skipRequest(). Newman
+        # exited 0 and the job reported success, including for every cross-tenant
+        # BOLA denial test. That is the same "a gate that cannot run must not
+        # report success" defect that hid the deploy smoke-fixture rot.
+        if: inputs.live_requests == 'true'
+        shell: bash
+        env:
+          AUTH_TOKEN_USER_A: ${{ secrets.POSTMAN_AUTH_TOKEN_USER_A }}
+          AUTH_TOKEN_USER_B: ${{ secrets.POSTMAN_AUTH_TOKEN_USER_B }}
+        run: |
+          set -euo pipefail
+          missing=0
+          [ -n "${AUTH_TOKEN_USER_A:-}" ] || { echo "::error::POSTMAN_AUTH_TOKEN_USER_A is not set"; missing=1; }
+          [ -n "${AUTH_TOKEN_USER_B:-}" ] || { echo "::error::POSTMAN_AUTH_TOKEN_USER_B is not set"; missing=1; }
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Refusing to run with live_requests=true: every authenticated"
+            echo "::error::request would be SKIPPED and the suite would still report success."
+            echo "::error::Note these are short-lived JWTs; a static secret expires in ~1h."
+            echo "::error::See docs/claude_audits/hardening_plan_2026-08-01.md item 4.1."
+            exit 1
+          fi
+          echo "auth tokens present"
+
       - name: Install Newman
         run: npm install --no-save newman
 
