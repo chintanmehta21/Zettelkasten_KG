@@ -1291,6 +1291,7 @@ class RAGOrchestrator:
                 verdict=verdict,
                 refused=_refused_flag,
                 answer_text=answer_text,  # iter-08 Phase 5
+                details=details if isinstance(details, dict) else None,
             ),
             query_class=prepared.query_class,
             critic_verdict=verdict,
@@ -1408,16 +1409,37 @@ class RAGOrchestrator:
         verdict: str | None = None,
         refused: bool = False,
         answer_text: str | None = None,
+        details: dict | None = None,
     ) -> list[Citation]:
         # iter-08 Fix B: suppress citations on refused answers. The
         # ``unsupported_no_retry`` verdict (or an explicit refusal flag from
         # the caller) signals the user is being shown a refusal — a stray
         # citation chip there is misleading. Gated behind
         # RAG_SUPPRESS_CITATIONS_ON_REFUSAL (default on).
+        #
+        # 2026-08-01: distinguish a critic JUDGEMENT from a critic OUTAGE.
+        # AnswerCritic.verify fails closed — it catches every exception and
+        # returns ("unsupported", {"critic_error": ...}) — so a transient
+        # Gemini failure on the last of ~6 generative calls arrives here
+        # wearing the same verdict as a genuine refusal, and strips the
+        # citations off a perfectly good answer. That is the leading
+        # explanation for the 2026-08-01T04:08Z deploy smoke failure
+        # (HTTP 200, answer present, zero citations, self-healing next boot).
+        # An explicit ``refused`` flag still wins: that means the synthesiser
+        # itself emitted the refusal phrase, so there is no answer to cite.
+        critic_outage = bool(
+            isinstance(details, dict) and details.get("critic_error")
+        )
         if _SUPPRESS_CITATIONS_ON_REFUSAL and (
-            refused or verdict == "unsupported_no_retry"
+            refused or (verdict == "unsupported_no_retry" and not critic_outage)
         ):
             return []
+        if critic_outage and verdict == "unsupported_no_retry" and not refused:
+            logger.warning(
+                "critic outage (%s) produced an unsupported verdict; keeping "
+                "citations rather than presenting the answer as unsourced",
+                str(details.get("critic_error"))[:200],
+            )
         by_node = {}
         for candidate in candidates:
             current = by_node.get(candidate.node_id)

@@ -73,29 +73,52 @@ def test_deploy_sh_fails_loudly_on_cgroup_mismatch():
     assert "exit 87" in text
 
 
-def test_deploy_sh_does_NOT_auto_rollback_on_cgroup_mismatch():
-    """Conservative on cgroup mismatch: fail loudly, leave state untouched,
-    operator triages. Auto-rollback was REMOVED 2026-04-28 because (a) the
-    assert fires BEFORE the Caddy flip so the failed container isn't serving
-    traffic — there's nothing live to roll back from, and (b) rollback.sh
-    rewrites caddy/upstream.snippet WITHOUT the iter-03 §1B transport block,
-    which would silently regress Strong-mode RAG to default 30s timeouts.
+def test_deploy_sh_restores_service_on_cgroup_mismatch():
+    """SUPERSEDES ``test_deploy_sh_does_NOT_auto_rollback_on_cgroup_mismatch``.
 
-    DO NOT re-add rollback.sh invocation here without first fixing rollback.sh
-    to preserve the iter-03 transport block (separate iteration).
+    That guard (2026-04-28) required the cgroup assert to exit WITHOUT
+    restoring service. It gave two reasons, and by 2026-08-01 both had ceased
+    to hold — the original author anticipated this and wrote the precondition
+    into the docstring: "DO NOT re-add rollback.sh invocation here without
+    first fixing rollback.sh to preserve the iter-03 transport block".
+
+    Reason (a) — "the assert fires BEFORE the Caddy flip so the failed
+    container isn't serving traffic; there's nothing live to roll back from."
+    FALSIFIED by the sequential-deploy rewrite. deploy.sh now stops AND
+    ``docker rm``s the previously-active container before starting the idle
+    one (the 2 GB droplet cannot hold both). By the time this assert runs, the
+    thing that was serving is gone, so a bare exit leaves Caddy pointed at a
+    dead upstream — raw 502s until a human intervenes. That is precisely the
+    shape of the 2026-07-31 outage (~10h dark).
+
+    Reason (b) — "rollback.sh rewrites upstream.snippet WITHOUT the iter-03
+    transport block, silently regressing Strong-mode RAG to 30s timeouts."
+    FIXED on 2026-08-01: rollback.sh now swaps only the colour token in place,
+    preserving the transport block (and the inode, which the Caddy single-file
+    bind mount tracks). See test_deploy_sh_faildark_guards.py.
+
+    Failing loudly is preserved — the deploy still exits 87 and still logs
+    FATAL. What changed is that it no longer fails *dark*.
     """
     text = DEPLOY_SH.read_text(encoding="utf-8")
-    # Locate the cgroup-assert block specifically — anchor on EXPECTED_MEM_MAX
     cgroup_block_start = text.index("EXPECTED_MEM_MAX=")
     cgroup_block_end = text.index('log "[cgroup-assert] ${IDLE} cgroup limits OK"')
     cgroup_block = text[cgroup_block_start:cgroup_block_end]
-    # The cgroup-assert block must NOT call rollback.sh
-    assert "rollback.sh" not in cgroup_block, (
-        "deploy.sh cgroup-assert block must NOT auto-invoke rollback.sh. "
-        "On mismatch: log + exit 87, operator triages. See test docstring."
+
+    assert 'restore_previous_color "cgroup-assert"' in cgroup_block, (
+        "cgroup-assert runs after the serving container was removed, so it "
+        "must restore the previous colour before exiting."
     )
-    # And it must include the explicit operator-triage hint
-    assert "operator must triage" in cgroup_block
+    # Still fails loudly — restoring service must not become silent success.
+    assert "exit 87" in cgroup_block
+    assert "FATAL" in cgroup_block
+    # The precondition from the original guard: rollback must preserve the
+    # protected Caddy transport block rather than flattening the snippet.
+    rollback = (DEPLOY_SH.parent / "rollback.sh").read_text(encoding="utf-8")
+    assert "transport http" in rollback, (
+        "rollback.sh must guard the protected transport block before deploy.sh "
+        "is allowed to call it automatically."
+    )
 
 
 def test_deploy_sh_runs_assert_after_healthcheck_before_caddy_flip():
