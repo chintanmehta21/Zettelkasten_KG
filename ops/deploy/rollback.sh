@@ -26,10 +26,39 @@ fi
 
 log "Restoring known-good color: $ACTIVE"
 
-log "Ensuring $ACTIVE is running..."
-docker compose \
+# 2026-08-01: resolve the image tag EXPLICITLY. Previously this ran with
+# IMAGE_TAG unset, so compose fell through to ${IMAGE_TAG:-latest} — and since
+# CI pushes :latest alongside :<sha> on every build, "rollback" would start the
+# old colour running the NEW, suspect image. deploy.sh `docker rm`s the previous
+# container before the flip, so compose could not even no-op: it had to create a
+# fresh container and pull. Resolution order, most to least trustworthy:
+#   1. $ROOT/LAST_GOOD_SHA  — written by deploy.sh only after every gate passed
+#   2. the tag the container is actually running (covers a pre-LAST_GOOD_SHA droplet)
+#   3. :latest, with a loud warning (first deploy after this change ships)
+ROLLBACK_TAG=""
+if [[ -r "$ROOT/LAST_GOOD_SHA" ]]; then
+    ROLLBACK_TAG="$(tr -d '[:space:]' < "$ROOT/LAST_GOOD_SHA")"
+    [[ -n "$ROLLBACK_TAG" ]] && log "Using last-known-good SHA: $ROLLBACK_TAG"
+fi
+if [[ -z "$ROLLBACK_TAG" ]]; then
+    RUNNING_IMAGE="$(docker inspect --format '{{.Config.Image}}' "zettelkasten-${ACTIVE}" 2>/dev/null || true)"
+    if [[ "$RUNNING_IMAGE" == *:* ]]; then
+        ROLLBACK_TAG="${RUNNING_IMAGE##*:}"
+        log "LAST_GOOD_SHA absent; reusing running image tag: $ROLLBACK_TAG"
+    fi
+fi
+if [[ -z "$ROLLBACK_TAG" ]]; then
+    ROLLBACK_TAG="latest"
+    log "WARNING: no last-known-good SHA and no running container to read a tag from."
+    log "WARNING: falling back to :latest — this may be the SAME build you are rolling back from."
+fi
+
+log "Ensuring $ACTIVE is running (image tag: $ROLLBACK_TAG)..."
+# No `|| true` here: a failed pull/create must surface at this line rather than
+# being discovered later as an opaque healthcheck timeout.
+IMAGE_TAG="$ROLLBACK_TAG" docker compose \
     -f "$ROOT/compose/docker-compose.${ACTIVE}.yml" \
-    up -d --no-deps || true
+    up -d --no-deps
 
 "$ROOT/deploy/healthcheck.sh" "$ACTIVE_PORT" || {
     log "FATAL: $ACTIVE is not healthy on rollback. Manual intervention required."

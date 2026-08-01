@@ -171,6 +171,15 @@ jobs:
               # container stdout when deploy is not in systemd-journal group.
               docker compose -f docker-compose.${COLOR}.yml logs --since "$DOCKER_SINCE" 2>&1 | head -2000 || true
             fi
+            # 2026-08-01: deploy.sh::restore_previous_color dumps the logs of a
+            # container that failed the smoke gate here before removing it.
+            # These are the only record of WHY a cutover was refused.
+            echo "===== failed-container captures (smoke-gate aborts) ====="
+            ls -lt /opt/zettelkasten/logs/failed-*.log 2>/dev/null | head -10 || echo "  (none)"
+            for f in $(ls -t /opt/zettelkasten/logs/failed-*.log 2>/dev/null | head -2); do
+              echo "--- $f (last 200) ---"
+              tail -n 200 "$f" 2>/dev/null || true
+            done
             echo "===== caddy access (last $LINES) ====="
             # /opt/zettelkasten/logs/caddy is owned by deploy:deploy per
             # deploy.sh — readable directly without sudo.

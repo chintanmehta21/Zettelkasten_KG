@@ -110,6 +110,44 @@ fi
 
 log "Starting deploy: SHA=$SHA, ACTIVE=$ACTIVE, IDLE=$IDLE"
 
+# ── PREFLIGHT (2026-08-01) ──────────────────────────────────────────────────
+# Assert everything the LATER gates need, HERE — before anything is stopped.
+#
+# The 2026-07-31 outage had two halves. The famous one was a rotted fixture.
+# The quieter one: the smoke gate had been SKIPPING for weeks because its
+# credentials were absent, and a gate that cannot run had been treated as a
+# gate that passed. That is the failure mode Kubernetes admission webhooks
+# default against (`failurePolicy: Fail`) and that Nagios encodes as a distinct
+# UNKNOWN exit state — "could not check" is not "checked and fine".
+#
+# Running these checks at the top is the whole point: a missing credential now
+# costs a failed deploy with the old colour still serving, instead of an abort
+# after the point of no return with nothing serving at all.
+preflight_fail() {
+    log "[preflight] FATAL: $1"
+    log "[preflight] Nothing has been stopped; ${ACTIVE} is still serving."
+    exit 3   # Nagios convention: 3 = UNKNOWN (could not run), never 0
+}
+
+if [[ "${RAG_SMOKE_REQUIRED:-1}" == "1" ]]; then
+    [[ -n "${SUPABASE_URL:-}" ]] \
+        || preflight_fail "SUPABASE_URL unset — the rag-smoke gate could not run."
+    [[ -n "${SUPABASE_ANON_KEY_LEGACY_JWT:-}" ]] \
+        || preflight_fail "SUPABASE_ANON_KEY_LEGACY_JWT unset — the rag-smoke gate could not run."
+    [[ -n "${NARUTO_SMOKE_PASSWORD:-}" ]] \
+        || preflight_fail "NARUTO_SMOKE_PASSWORD unset — the rag-smoke gate could not run."
+fi
+for _bin in curl docker python3; do
+    command -v "$_bin" >/dev/null 2>&1 \
+        || preflight_fail "required binary '${_bin}' not on PATH."
+done
+unset _bin
+[[ -x "$ROOT/deploy/rollback.sh" ]] \
+    || preflight_fail "rollback.sh missing or not executable — the fail-safe path is unavailable."
+[[ -x "$ROOT/deploy/healthcheck.sh" ]] \
+    || preflight_fail "healthcheck.sh missing or not executable."
+log "[preflight] OK — creds, binaries and recovery scripts all present."
+
 log "Pulling $IMAGE..."
 IMAGE_TAG="$SHA" docker compose \
     -f "$ROOT/compose/docker-compose.${IDLE}.yml" \
@@ -231,6 +269,35 @@ fi
 # 502s while Caddy points at the now-stopped ACTIVE color until the post-
 # assert flip below. Acceptable for a single-droplet 2 GB target; iter-04
 # can revisit (larger droplet, smaller stage1_k, or batched encoding).
+# 2026-07-31 fail-safe, widened 2026-08-01. Everything between the ACTIVE
+# stop below and the Caddy flip runs with NOTHING serving. Any gate that
+# aborts in that window leaves Caddy pointed at a container that no longer
+# exists -> raw 502s until an operator intervenes (this is exactly how the
+# 2026-07-31 outage lasted ~10h). Every fatal exit in that window must call
+# this first. Defined here, above the point of no return, so it is in scope
+# for the cgroup/stage2 asserts as well as the smoke gate.
+#
+# This is NOT auto-rollback-on-failure-masking: callers still exit non-zero
+# and still log FATAL, so the deploy fails loudly. It only restores serving.
+restore_previous_color() {
+    log "[fail-safe] ${1:-gate} aborted post-stop -- restoring previous color via rollback.sh"
+    # 2026-08-01: capture the failed container's logs BEFORE docker rm. The
+    # first version of this function removed the container immediately, which
+    # destroyed the only record of why the gate failed — the 04:08Z smoke
+    # failure could not be root-caused because its logs went with it.
+    FAILED_LOG="$ROOT/logs/failed-${IDLE}-$(date -u +%Y%m%dT%H%M%SZ).log"
+    mkdir -p "$ROOT/logs"
+    if docker logs --tail 5000 "zettelkasten-${IDLE}" > "$FAILED_LOG" 2>&1; then
+        chown deploy:deploy "$FAILED_LOG" 2>/dev/null || true
+        log "[fail-safe] failed-container logs saved: $FAILED_LOG"
+    else
+        log "[fail-safe] WARN: could not capture logs for zettelkasten-${IDLE}"
+    fi
+    docker stop --time 20 "zettelkasten-${IDLE}" 2>/dev/null || true
+    docker rm "zettelkasten-${IDLE}" 2>/dev/null || true
+    "$ROOT/deploy/rollback.sh" || log "[fail-safe] WARN: rollback.sh failed -- site may need manual restore"
+}
+
 maint_window open
 log "[seq-deploy] Stopping ACTIVE color ${ACTIVE} to free memory for ${IDLE}..."
 ACTIVE_CONTAINER_NAME_PRE="zettelkasten-${ACTIVE}"
@@ -260,9 +327,13 @@ log "[cgroup-assert] ${IDLE} memory.max=${ACTUAL_MEM_MAX} (expect ${EXPECTED_MEM
 log "[cgroup-assert] ${IDLE} memory.swap.max=${ACTUAL_SWAP_MAX} (expect ${EXPECTED_SWAP_MAX})"
 if [[ "$ACTUAL_MEM_MAX" != "$EXPECTED_MEM_MAX" ]] || [[ "$ACTUAL_SWAP_MAX" != "$EXPECTED_SWAP_MAX" ]]; then
     log "[cgroup-assert] FATAL: cgroup limits don't match compose."
-    log "[cgroup-assert] FATAL: NOT auto-rolling back — operator must triage."
-    log "[cgroup-assert] Bad container left at zettelkasten-${IDLE}; Caddy still on previous color."
-    log "[cgroup-assert] Next deploy's --force-recreate will replace it; or 'docker stop zettelkasten-${IDLE}' manually."
+    log "[cgroup-assert] Compose ceiling edits likely did not reach the droplet."
+    # 2026-08-01: previously exited bare here, which was fail-DARK — the two
+    # comments this replaces were both false after the sequential-deploy
+    # rewrite: the previous color's container was already `docker rm`d ~25
+    # lines above (so Caddy resolves a dead name and 502s), and the next
+    # deploy uses `up -d --no-deps` with no --force-recreate.
+    restore_previous_color "cgroup-assert"
     exit 87
 fi
 log "[cgroup-assert] ${IDLE} cgroup limits OK"
@@ -276,9 +347,9 @@ ACTUAL_STAGE2=$(docker exec "zettelkasten-${IDLE}" python -c "from website.featu
 log "[stage2-assert] ${IDLE} _STAGE2_SESSION_loaded=${ACTUAL_STAGE2} (expect True)"
 if [[ "$ACTUAL_STAGE2" != "True" ]]; then
     log "[stage2-assert] FATAL: int8 BGE session not loaded in ${IDLE}."
-    log "[stage2-assert] FATAL: NOT auto-rolling back -- operator must triage."
-    log "[stage2-assert] Likely causes: LFS pull failed in CI; image missing models/bge-reranker-base-int8.onnx; import error."
-    log "[stage2-assert] Bad container left at zettelkasten-${IDLE}; Caddy still on previous color."
+    log "[stage2-assert] Likely causes: HF fetch failed in CI; image missing models/bge-reranker-base-int8.onnx; import error."
+    # 2026-08-01: was fail-DARK (see cgroup-assert note above).
+    restore_previous_color "stage2-assert"
     exit 88
 fi
 log "[stage2-assert] ${IDLE} stage2 session OK"
@@ -299,16 +370,6 @@ RAG_SMOKE_QUERY="Which GitHub repository contains the data and code for The Econ
 # re-chunking), so the gate asserts on the stable citation TITLE instead.
 RAG_SMOKE_EXPECT_TITLE="${RAG_SMOKE_EXPECT_TITLE:-TheEconomist/big-mac-data}"
 
-# 2026-07-31 fail-safe: a smoke abort used to strand the site dark (ACTIVE
-# stopped+rm'd, caddy still pointed at it). Restore the previous color via
-# rollback.sh before exiting. Idle is stopped first — 2 GB droplet cannot
-# hold both containers (see seq-deploy comment above).
-restore_previous_color() {
-    log "[fail-safe] smoke gate aborted post-stop -- restoring previous color via rollback.sh"
-    docker stop --time 20 "zettelkasten-${IDLE}" 2>/dev/null || true
-    docker rm "zettelkasten-${IDLE}" 2>/dev/null || true
-    "$ROOT/deploy/rollback.sh" || log "[fail-safe] WARN: rollback.sh failed -- site may need manual restore"
-}
 
 # 2026-06-17: fail-CLOSED by default (was warn-and-skip, which caused a 38-day
 # silent outage — see docs/claude_audits/rag_smoke_gate_disabled_2026-06-17.md).
@@ -365,7 +426,18 @@ except Exception:
         # pgvector index pages, and cold Gemini key-pool selectors. Without
         # warming, retrieval can return 0 candidates → empty citations → smoke
         # mis-classifies a healthy worker as broken. Best-effort, non-fatal.
-        curl -fsS --max-time 30 "http://127.0.0.1:${IDLE_PORT}/api/health/warm" >/dev/null 2>&1 || true
+        #
+        # 2026-08-01: fire it repeatedly, not once. GUNICORN_WORKERS=2 and
+        # gunicorn round-robins accept across workers, so a single request warms
+        # exactly ONE worker and the smoke probe may then land on the cold one.
+        # (Separately: /api/health/warm only warms the stage-2 ONNX session — it
+        # does NOT touch embeddings, the Supabase pool, PostgREST, or the Gemini
+        # key pool, despite what the comment above implies. Widening it is
+        # tracked as item 2.5 in docs/claude_audits/hardening_plan_2026-08-01.md.)
+        for _warm in 1 2 3 4 5 6; do
+            curl -fsS --max-time 30 "http://127.0.0.1:${IDLE_PORT}/api/health/warm" >/dev/null 2>&1 || true
+        done
+        unset _warm
 
         # iter-03 §B (2026-04-29): retry the smoke probe up to 3 times with
         # 15s backoff. Cold-start retrieval and intra-request memory ceiling
@@ -409,8 +481,35 @@ except Exception as e:
             log "[rag-smoke] FATAL: smoke probe failed after 3 attempts. Final HTTP=${SMOKE_HTTP} primary_title=${SMOKE_PRIMARY}"
             log "[rag-smoke] response body (first 600 chars):"
             log "$(printf '%s' "$SMOKE_RESPONSE" | head -c 600)"
-            log "[rag-smoke] Possible causes: smoke fixture deleted from DB (check rag.kastens); worker OOM-killed mid-pipeline; persistent backpressure (503); degraded retrieval; corpus drift."
-            restore_previous_color
+
+            # 2026-08-01 diagnostic triage. The 04:08Z failure returned
+            # HTTP 200 with ZERO citations and could not be root-caused,
+            # because the container was removed before its logs were read.
+            # These two fields discriminate the leading hypotheses directly
+            # from the response we already have in hand:
+            #   critic_notes non-null  -> the answer critic FAILED (it catches
+            #       every exception and returns "unsupported", which becomes
+            #       unsupported_no_retry and makes _SUPPRESS_CITATIONS_ON_REFUSAL
+            #       strip the citations). Retrieval was fine; a transient Gemini
+            #       error on the last of ~6 generative calls stripped the evidence.
+            #   critic_notes null + 0 citations -> genuine retrieval failure
+            #       (scope resolved empty, embedding failed, RPC error).
+            SMOKE_DIAG=$(printf '%s' "$SMOKE_RESPONSE" | python3 -c "
+import json,sys
+try:
+    t = (json.loads(sys.stdin.read()) or {}).get('turn') or {}
+    print('critic_verdict=%r critic_notes=%r citations=%d answer_chars=%d' % (
+        t.get('critic_verdict'), (t.get('critic_notes') or '')[:200],
+        len(t.get('citations') or []), len(t.get('content') or '')))
+except Exception as e:
+    print('diag_parse_failed: %s' % e)
+" 2>/dev/null || echo "diag unavailable")
+            log "[rag-smoke] diag: ${SMOKE_DIAG}"
+            log "[rag-smoke] -> critic_notes set = critic outage stripped citations (retrieval likely OK)"
+            log "[rag-smoke] -> critic_notes empty + 0 citations = genuine retrieval failure"
+            log "[rag-smoke] Possible causes: smoke fixture deleted from DB (check rag.kastens); critic/Gemini transient failure; worker OOM-killed mid-pipeline; persistent backpressure (503); corpus drift."
+            log "[rag-smoke] Container logs are captured below before teardown."
+            restore_previous_color "rag-smoke"
             exit 89
         fi
     fi
@@ -528,8 +627,16 @@ for attempt in 1 2; do
 done
 if (( PUBLIC_SMOKE_OK == 0 )); then
     log "[caddy-smoke] FATAL: public probe via Caddy did not return 200 after flip."
-    log "[caddy-smoke] FATAL: NOT auto-rolling back -- operator must triage Caddy/upstream binding."
     log "[caddy-smoke] Likely causes: caddy reload no-op (check autosave.json upstream), TLS cert issue, dns drift, container stopped."
+    # 2026-08-01: deliberately does NOT call restore_previous_color, unlike the
+    # gates above. By this point ${IDLE} has passed health, cgroup, stage2 and
+    # the RAG smoke, and Caddy has already been flipped to it — so the backend
+    # is good and the fault is in Caddy itself. reload_caddy.sh has already
+    # tried a graceful reload AND a full restart. Tearing down a healthy
+    # container to boot the old one would remove the only working backend and
+    # make recovery harder, not easier.
+    log "[caddy-smoke] ${IDLE} is healthy; fault is Caddy-side. Recover with:"
+    log "[caddy-smoke]   gh workflow run ops-recover-serve.yml"
     exit 90
 fi
 log "[caddy-smoke] public probe via Caddy OK (HTTP 200)"
@@ -539,6 +646,18 @@ ACTIVE_CONTAINER_NAME="zettelkasten-${ACTIVE}"
 ACTIVE_CONTAINER_ID="$(docker inspect --format '{{.Id}}' "$ACTIVE_CONTAINER_NAME" 2>/dev/null || true)"
 
 echo "$IDLE" > "$ACTIVE_FILE"
+
+# 2026-08-01: record the SHA that just passed every gate, so rollback.sh can
+# restore THIS image rather than resolving ${IMAGE_TAG:-latest}. CI pushes both
+# :<sha> and :latest on every build, and deploy.sh `docker rm`s the previous
+# container before the flip — so a rollback could not no-op, it had to create a
+# fresh container, pulling :latest = the NEW, suspect image. The operator would
+# see "ROLLBACK COMPLETE" while running exactly the build they meant to escape.
+# Written only on the success path, after caddy-smoke, so it always names a
+# genuinely-good build.
+echo "$SHA" > "$ROOT/LAST_GOOD_SHA"
+chown deploy:deploy "$ROOT/LAST_GOOD_SHA" 2>/dev/null || true
+log "[last-good] recorded $SHA for rollback"
 
 log "Running metadata backfill against $IDLE (idempotent, non-fatal)..."
 # T13: enrich pre-existing chunks that lack metadata_enriched_at. The

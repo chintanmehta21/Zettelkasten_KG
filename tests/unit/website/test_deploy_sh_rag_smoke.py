@@ -78,9 +78,14 @@ def test_deploy_sh_rag_smoke_restores_service_on_abort():
     for exit_code in ("exit 91", "exit 89"):
         assert exit_code in block
     # Every fatal exit inside the smoke block is immediately preceded by the
-    # service restore — no abort path may leave the site dark.
+    # service restore — no abort path may leave the site dark. The helper takes
+    # an optional gate-name label (added 2026-08-01 so the fail-safe log says
+    # which gate tripped), so allow a quoted argument before the exit.
     for chunk in block.split("restore_previous_color")[1:]:
-        assert chunk.lstrip().startswith("exit "), (
+        rest = chunk.lstrip()
+        if rest.startswith('"'):  # optional label argument
+            rest = rest[rest.index('"', 1) + 1:].lstrip()
+        assert rest.startswith("exit "), (
             "restore_previous_color must be followed directly by the fatal exit"
         )
     assert block.count("restore_previous_color") == block.count("exit 91") + block.count(
