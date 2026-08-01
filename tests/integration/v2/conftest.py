@@ -531,10 +531,12 @@ def seed_kg_graph(asyncpg_pool):
 
     Used by Task 3.7 (graph section) tests. Creates N nodes ('n0'..'n{N-1}')
     and a chain of edges (n0-n1, n1-n2, ...) with relation_type='shared_tag'.
-    CASCADE-cleaned via mint_user teardown (workspace drop). Note:
-    kg.kg_edges has no ``workspace_strength`` column per 03_kg_schema.sql —
-    schema is (workspace_id, src_node_id, dst_node_id, relation_type,
-    shared_tag_label, weight, evidence_canonical_zettel_id, metadata).
+    CASCADE-cleaned via mint_user teardown (workspace drop).
+
+    2026-08-01: the note that once lived here — "kg.kg_edges has no
+    workspace_strength column" — is no longer true; the live table has
+    connection_strength / workspace_strength / global_strength. Verified
+    against production. We simply don't set them, which is fine (nullable).
     """
     async def _seed(workspace_id, nodes: int = 10, edges: int = 15):
         async with asyncpg_pool.acquire() as conn:
@@ -547,7 +549,11 @@ def seed_kg_graph(asyncpg_pool):
                     VALUES ($1, 'zettel', 'n' || $2::text, 'n' || $2::text)
                     RETURNING id
                     """,
-                    workspace_id, i,
+                    # str(i), not i: the ``$2::text`` cast makes asyncpg infer a
+                    # TEXT parameter, so passing an int raised
+                    # "TypeError: expected str, got int" — 9 live-test failures
+                    # from this single line.
+                    workspace_id, str(i),
                 )
                 node_ids.append(nid)
             for i in range(min(edges, len(node_ids) - 1)):
