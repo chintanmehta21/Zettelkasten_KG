@@ -30,18 +30,53 @@ def test_deploy_sh_has_rag_smoke_block():
     assert "exit 89" in text
 
 
-def test_deploy_sh_rag_smoke_asserts_expected_citation_title():
-    """The gate must compare the primary citation against a configurable
-    expected TITLE, never a hardcoded v1 node_id (v2 node_ids are chunk UUIDs
-    that change on every re-chunk)."""
+def test_deploy_sh_rag_smoke_is_contract_shaped():
+    """2026-08-01: the gate asserts SHAPE, with identity only as an optional extra.
+
+    Asserting "row X is the top citation" wired mutable business data into the
+    deploy's availability path — deleting that row made the gate unpassable and
+    aborted the cutover after the point of no return. Fowler's ContractTest:
+    "the format of the data matters rather than the actual data".
+    """
+    block = _smoke_block(DEPLOY_SH.read_text(encoding="utf-8"))
+    # Shape checks must exist...
+    for marker in (
+        "BAD_SHAPE:citations_not_a_list",
+        "BAD_SHAPE:citation_missing_title",
+        "BAD_SHAPE:empty_answer",
+        "NO_CITATIONS",
+    ):
+        assert marker in block, f"missing shape assertion: {marker}"
+    # ...and the pass condition must be the shape-OK sentinel, NOT a raw
+    # equality against the expected title.
+    assert '"$SMOKE_PRIMARY" == OK:*' in block
+    assert '"$SMOKE_PRIMARY" != OK:*' in block
+    assert '"$SMOKE_PRIMARY" == "$RAG_SMOKE_EXPECT_TITLE"' not in block, (
+        "identity comparison must not gate the deploy directly"
+    )
+
+
+def test_deploy_sh_rag_smoke_identity_check_is_optional():
+    """An empty RAG_SMOKE_EXPECT_TITLE must degrade to shape-only, not fail."""
+    block = _smoke_block(DEPLOY_SH.read_text(encoding="utf-8"))
+    assert "if expect and title != expect:" in block, (
+        "the title assertion must be skipped when EXPECT is empty"
+    )
+
+
+def test_deploy_sh_rag_smoke_reads_title_not_node_id():
+    """v2 node_ids are canonical_chunk_id UUIDs that change on every re-chunk.
+
+    The original gate asserted ``citations[0].node_id == "gh-zk-org-zk"`` — a
+    v1-era identifier that could never match again after the DB v2 migration,
+    independently of whether the fixture data existed.
+    """
     text = DEPLOY_SH.read_text(encoding="utf-8")
     block = _smoke_block(text)
     assert "RAG_SMOKE_EXPECT_TITLE" in text
-    assert 'cits[0].get(\'title\')' in block or "cits[0].get('title')" in block, (
-        "smoke must read the citation title, not node_id"
-    )
-    assert '"$SMOKE_PRIMARY" != "$RAG_SMOKE_EXPECT_TITLE"' in block, (
-        "smoke must fail the deploy when the primary citation title differs"
+    assert "get('title')" in block, "smoke must read the citation title"
+    assert "node_id" not in block, (
+        "the gate must not assert on node_id — it is a chunk UUID under v2"
     )
     assert "gh-zk-org-zk" not in text, (
         "the retired zk-org/zk v1 gold must not come back — its Kasten and "

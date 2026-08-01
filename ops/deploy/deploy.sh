@@ -454,20 +454,58 @@ except Exception:
                 -d "$SMOKE_BODY" "http://127.0.0.1:${IDLE_PORT}/api/rag/adhoc" 2>/dev/null || echo "000")
             SMOKE_RESPONSE=$(cat "$SMOKE_TMP")
             rm -f "$SMOKE_TMP"
-            SMOKE_PRIMARY=$(echo "$SMOKE_RESPONSE" | python3 -c "import json,sys
+            # 2026-08-01: CONTRACT-shaped, not identity-shaped.
+            #
+            # The gate used to assert that one specific row was the top
+            # citation. That wired a mutable business row into the deploy's
+            # availability path: when QA cleanup + the 30-day canonical shred
+            # deleted the fixture, the gate could not pass and the deploy
+            # aborted after the point of no return. Fowler's ContractTest
+            # states the principle - "the format of the data matters rather
+            # than the actual data" - and Pact says it operationally: be as
+            # loose as possible on the response so the check is not brittle.
+            #
+            # We now assert the SHAPE: a well-formed turn, a non-empty citation
+            # list, and correctly-typed fields. Deleting ANY single zettel can
+            # no longer break a deploy; an empty corpus or a broken pipeline
+            # still does, which is the signal we actually want.
+            #
+            # RAG_SMOKE_EXPECT_TITLE is retained as an OPTIONAL extra assertion
+            # so a deliberately-seeded fixture can still be checked; set it to
+            # the empty string to run shape-only.
+            SMOKE_PRIMARY=$(echo "$SMOKE_RESPONSE" | EXPECT="$RAG_SMOKE_EXPECT_TITLE" python3 -c "import json,os,sys
+expect = os.environ.get('EXPECT','').strip()
 try:
     d = json.loads(sys.stdin.read())
+    if not isinstance(d, dict):
+        print('BAD_SHAPE:not_an_object'); raise SystemExit
     if 'turn' not in d:
         # 503 backpressure body has 'error', not 'turn'.
-        print('NO_TURN:'+str(d.get('error','unknown')))
-    else:
-        cits = d.get('turn',{}).get('citations',[])
-        # v2 node_id is a chunk UUID; TITLE is the stable assert key.
-        print(cits[0].get('title') if cits else 'NO_CITATIONS')
+        print('NO_TURN:'+str(d.get('error','unknown'))); raise SystemExit
+    turn = d.get('turn') or {}
+    cits = turn.get('citations') or []
+    if not isinstance(cits, list):
+        print('BAD_SHAPE:citations_not_a_list'); raise SystemExit
+    if not cits:
+        print('NO_CITATIONS'); raise SystemExit
+    first = cits[0]
+    if not isinstance(first, dict):
+        print('BAD_SHAPE:citation_not_an_object'); raise SystemExit
+    title = first.get('title')
+    if not isinstance(title, str) or not title:
+        print('BAD_SHAPE:citation_missing_title'); raise SystemExit
+    if not isinstance(turn.get('content') or '', str) or not (turn.get('content') or '').strip():
+        print('BAD_SHAPE:empty_answer'); raise SystemExit
+    # Shape is good. Only now consider the optional identity assertion.
+    if expect and title != expect:
+        print('TITLE_MISMATCH:'+title); raise SystemExit
+    print('OK:'+title)
+except SystemExit:
+    pass
 except Exception as e:
     print('PARSE_FAIL:'+str(e))" 2>/dev/null || echo "PARSE_FAIL")
             log "[rag-smoke] attempt ${smoke_attempt}/3 ${IDLE} HTTP=${SMOKE_HTTP} primary_title=${SMOKE_PRIMARY} (expect ${RAG_SMOKE_EXPECT_TITLE})"
-            if [[ "$SMOKE_HTTP" == "200" && "$SMOKE_PRIMARY" == "$RAG_SMOKE_EXPECT_TITLE" ]]; then
+            if [[ "$SMOKE_HTTP" == "200" && "$SMOKE_PRIMARY" == OK:* ]]; then
                 log "[rag-smoke] ${IDLE} smoke probe OK on attempt ${smoke_attempt}"
                 break
             fi
@@ -477,7 +515,7 @@ except Exception as e:
             fi
         done
 
-        if [[ "$SMOKE_HTTP" != "200" || "$SMOKE_PRIMARY" != "$RAG_SMOKE_EXPECT_TITLE" ]]; then
+        if [[ "$SMOKE_HTTP" != "200" || "$SMOKE_PRIMARY" != OK:* ]]; then
             log "[rag-smoke] FATAL: smoke probe failed after 3 attempts. Final HTTP=${SMOKE_HTTP} primary_title=${SMOKE_PRIMARY}"
             log "[rag-smoke] response body (first 600 chars):"
             log "$(printf '%s' "$SMOKE_RESPONSE" | head -c 600)"
