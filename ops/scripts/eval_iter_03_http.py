@@ -5,7 +5,6 @@ Output: docs/rag_eval/common/knowledge-management/iter-03/http_results.json
 """
 import json
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -18,9 +17,21 @@ OUT = ROOT / "docs/rag_eval/common/knowledge-management/iter-03/http_results.jso
 
 BASE = os.environ.get("ZK_BASE_URL", "https://zettelkasten.in")
 TOKEN = os.environ["ZK_BEARER_TOKEN"]
-KASTEN_ID = os.environ.get(
-    "RAG_SMOKE_KASTEN_ID", "227e0fb2-ff81-4d08-8702-76d9235564f4"
-)
+# 2026-08-01: the old default Kasten 227e0fb2 (the zk-org/zk iter-03 fixture)
+# no longer exists — it was deleted by QA cleanup + the 30-day canonical shred,
+# which is what broke the deploy smoke gate and caused the 2026-07-31 outage.
+# Defaulting to a dead id made every run emit gold_at_1_count: 0, which is
+# indistinguishable from total RAG collapse. Require it explicitly instead.
+try:
+    KASTEN_ID = os.environ["RAG_SMOKE_KASTEN_ID"]
+except KeyError:  # pragma: no cover - operator-facing guard
+    raise SystemExit(
+        "RAG_SMOKE_KASTEN_ID must be set explicitly.\n"
+        "The former default (227e0fb2-...) was deleted from rag.kastens; "
+        "running against it silently reports 0/N gold hits.\n"
+        "Current deploy fixture: see RAG_SMOKE_KASTEN_ID in "
+        ".github/workflows/deploy-droplet.yml"
+    ) from None
 
 
 def post_query(text: str, quality: str = "fast", timeout_s: int = 120) -> tuple[int, dict | None, float]:

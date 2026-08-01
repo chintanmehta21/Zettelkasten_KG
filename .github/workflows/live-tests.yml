@@ -49,4 +49,18 @@ jobs:
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
           SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          # 2026-08-01 ROOT CAUSE of 228/248 failures since 2026-05-31.
+          # Seven unit-test modules run os.environ.setdefault("SUPABASE_V2_URL",
+          # "https://ci-stub.supabase.co") at MODULE level. pytest imports every
+          # module during collection, so the stub lands process-wide before any
+          # test runs, and setdefault (unlike monkeypatch) is never reverted.
+          # client.py::_v2_env reads SUPABASE_V2_* FIRST and only falls back to
+          # the canonical names, so the stub outranked the real secrets above;
+          # get_v2_client is lru_cached with no cache_clear anywhere, so one
+          # poisoned client served the whole session -> NXDOMAIN on
+          # ci-stub.supabase.co -> "[Errno -2] Name or service not known".
+          # Setting the V2 names explicitly makes those setdefault calls no-ops.
+          SUPABASE_V2_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_V2_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_V2_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pytest --live -q

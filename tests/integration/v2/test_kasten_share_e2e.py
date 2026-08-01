@@ -56,9 +56,11 @@ def v2_app(monkeypatch):
     async def _noop(*_args, **_kwargs):  # noqa: D401
         return None
 
+    # 2026-08-01: Phase 9 folded consumption into require_entitlement, so
+    # patching the removed ``consume_entitlement`` raised AttributeError at
+    # fixture setup. Patch only what the module imports.
     from website.api import sandbox_routes as sandbox_routes_mod
     monkeypatch.setattr(sandbox_routes_mod, "require_entitlement", _noop)
-    monkeypatch.setattr(sandbox_routes_mod, "consume_entitlement", _noop)
 
     from website.app import create_app
 

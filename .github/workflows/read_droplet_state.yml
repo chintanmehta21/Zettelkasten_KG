@@ -26,7 +26,7 @@ jobs:
           YT_URL_SET: ${{ secrets.YT_TRANSCRIPT_PROXY_URL != '' }}
           YT_USER_SET: ${{ secrets.YT_TRANSCRIPT_PROXY_USER != '' }}
           YT_PASS_SET: ${{ secrets.YT_TRANSCRIPT_PROXY_PASS != '' }}
-          WEBSHARE_API_TOKEN_SET: ${{ secrets.WEBSHARE_API_TOKEN != '' }}
+          WEBSHARE_API_KEY_SET: ${{ secrets.WEBSHARE_API_KEY != '' }}
         run: |
           echo "═══════════════════════════════════════════════════════════"
           echo "0. GitHub Actions secret registration (boolean — value not echoed)"
@@ -34,7 +34,7 @@ jobs:
           echo "  YT_TRANSCRIPT_PROXY_URL  registered: $YT_URL_SET"
           echo "  YT_TRANSCRIPT_PROXY_USER registered: $YT_USER_SET"
           echo "  YT_TRANSCRIPT_PROXY_PASS registered: $YT_PASS_SET"
-          echo "  WEBSHARE_API_TOKEN       registered: $WEBSHARE_API_TOKEN_SET"
+          echo "  WEBSHARE_API_KEY       registered: $WEBSHARE_API_KEY_SET"
 
       - name: SSH to droplet, dump tier-state, probe proxy
         uses: appleboy/ssh-action@v1

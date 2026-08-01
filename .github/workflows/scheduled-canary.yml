@@ -1,0 +1,81 @@
+name: Scheduled-job canary
+
+# 2026-08-01. Failure-alerting (scheduled-failure-alert.yml) only fires when a
+# run FAILS. It is blind to the worse case: the run never happening at all.
+#
+# That is not hypothetical for this repo:
+#   * GitHub disables scheduled workflows in PUBLIC repos after 60 days with no
+#     repository activity — and this repo is public.
+#   * Scheduled runs are attributed to whoever last edited the cron block; if
+#     that account is deprovisioned or inactive, schedules can stop firing.
+#   * GitHub documents that `schedule` runs "may be dropped" under high load.
+#
+# A dropped run is indistinguishable from a passing run. This canary closes
+# that gap by asserting on RECENCY: each watched workflow must have COMPLETED
+# within its allowed staleness window, or we fail loudly (which in turn opens
+# an issue via scheduled-failure-alert.yml).
+
+on:
+  schedule:
+    # Deliberately off the hour: GitHub's own docs note that scheduled runs are
+    # most likely to be dropped at the start of every hour.
+    - cron: "37 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  canary:
+    name: Assert scheduled workflows are still running
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check last completion age
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # workflow-file : max allowed days since last COMPLETED run
+          # (cadence + generous slack; live-tests is weekly, cleanup nightly)
+          WATCH="live-tests.yml:9 cleanup-test-fixtures.yml:3 v2_drift_check.yml:3"
+
+          FAILED=0
+          for entry in $WATCH; do
+            wf="${entry%%:*}"
+            max_days="${entry##*:}"
+
+            last=$(gh run list --repo "$REPO" --workflow "$wf" --limit 1 \
+                    --json updatedAt,conclusion \
+                    --jq '.[0].updatedAt // empty' 2>/dev/null || true)
+
+            if [ -z "$last" ]; then
+              echo "::error::${wf} has NO runs on record — schedule may be disabled."
+              FAILED=1
+              continue
+            fi
+
+            last_epoch=$(date -u -d "$last" +%s)
+            age_days=$(( ( $(date -u +%s) - last_epoch ) / 86400 ))
+
+            if [ "$age_days" -gt "$max_days" ]; then
+              echo "::error::${wf} last ran ${age_days}d ago (max ${max_days}d). Schedule likely disabled or dropped."
+              FAILED=1
+            else
+              echo "ok: ${wf} last ran ${age_days}d ago (max ${max_days}d)"
+            fi
+          done
+
+          # Repository activity recency — the 60-day public-repo auto-disable clock.
+          pushed=$(gh api "repos/${REPO}" --jq .pushed_at)
+          pushed_age=$(( ( $(date -u +%s) - $(date -u -d "$pushed" +%s) ) / 86400 ))
+          echo "repo last push: ${pushed_age}d ago (schedules auto-disable at 60d on public repos)"
+          if [ "$pushed_age" -gt 45 ]; then
+            echo "::error::No repo activity for ${pushed_age}d — scheduled workflows will be auto-disabled at 60d."
+            FAILED=1
+          fi
+
+          exit "$FAILED"

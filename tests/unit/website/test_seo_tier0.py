@@ -9,20 +9,14 @@ stubbed before app import so settings validation doesn't SystemExit.
 from __future__ import annotations
 
 import json
-import os
 import re
 import xml.etree.ElementTree as ET
 
 import pytest
 
-os.environ.setdefault("GEMINI_API_KEY", "ci-stub")
-os.environ.setdefault("SUPABASE_V2_URL", "https://ci-stub.supabase.co")
-os.environ.setdefault("SUPABASE_V2_ANON_KEY", "ci-stub-anon")
-os.environ.setdefault("SUPABASE_V2_SERVICE_ROLE_KEY", "ci-stub-service")
-os.environ.setdefault(
-    "NEXUS_TOKEN_ENCRYPTION_KEY",
-    "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4=",
-)
+from tests.env_stub import stub_app_env_if_unconfigured
+
+stub_app_env_if_unconfigured()
 
 ORIGIN = "https://zettelkasten.in"
 OG_IMAGE = "https://zettelkasten.in/artifacts/og-cover.png"

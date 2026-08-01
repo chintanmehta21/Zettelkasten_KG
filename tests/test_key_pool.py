@@ -8,6 +8,26 @@ import pytest
 from google.genai.errors import ClientError
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_gemini_keys(monkeypatch):
+    """SECURITY: strip real Gemini keys from the environment for every test here.
+
+    ``init_key_pool`` reads ``GEMINI_API_KEYS`` straight from ``os.environ``
+    (api_key_switching/__init__.py). The init tests below patch
+    ``_API_ENV_PATHS`` and ``get_settings`` but historically not the env var, so
+    under CI the REAL keys loaded and pytest rendered them in the assertion
+    diff. GitHub masks the whole ``GEMINI_API_KEYS`` secret string but NOT its
+    comma-split components, so three live keys were printed in clear text into
+    public workflow logs on every run from 2026-05-31 to 2026-08-01.
+
+    No test in this module intends to consume ambient credentials — every one
+    supplies its own keys — so clearing them unconditionally is both safe and
+    the durable fix.
+    """
+    monkeypatch.delenv("GEMINI_API_KEYS", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+
 # ── Key loading tests ───────────────────────────────────────────────────────
 
 

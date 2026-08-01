@@ -70,7 +70,13 @@ supabase/.env
 website/experimental_features/nexus/nexus_env.txt
 
 # Local plaintext secret sources (never publish)
+# 2026-08-01: the bare filename left backups/variants (new_envs.txt.bak,
+# new_envs.txt.old, …) untracked-but-stageable. One was accidentally staged and
+# GitHub push protection caught live Supabase / GitHub / Google OAuth tokens in
+# it. Glob every variant so the mistake is structurally impossible.
 new_envs.txt
+new_envs.txt.*
+new_envs*.txt
 
 # claude-mem cross-LLM observation queue (drained by Claude Code at session start)
 .claude-mem-queue/

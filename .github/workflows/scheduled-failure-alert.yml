@@ -1,0 +1,82 @@
+name: Scheduled CI failure alert
+
+# 2026-08-01. Root enabler of the 2026-07-31 outage: `live-tests.yml` was red
+# every Sunday from 2026-05-31 and nobody was told. A scheduled workflow's
+# failure produces only a transient email attributed to whoever last edited the
+# cron — miss it once and it is gone. Two rotted deploy fixtures hid behind
+# that silence for two months.
+#
+# Fix (industry practice for solo maintainers): turn a failure into PERSISTENT
+# STATE — one deduped GitHub Issue that stays open until someone closes it.
+#
+# Dedupe is the difference between an alert and 60 alerts: we search for an
+# existing open issue with the marker title and COMMENT on it rather than
+# opening another.
+
+on:
+  workflow_run:
+    # Names must match each workflow's `name:` field EXACTLY or the trigger
+    # silently never fires — which would reproduce the very failure this
+    # workflow exists to catch. Verified against the files on 2026-08-01.
+    workflows:
+      - "Live integration tests"
+      - "Cleanup test fixtures (nightly)"
+      - "Calibration drift check"
+      - "V2 schema drift (prod introspect)"
+      - "yt-dlp freshness"
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  alert:
+    # Only fire on genuine failure. Note: a run that is SKIPPED reports success
+    # to workflow_run, which is exactly why the Postman suites looked green for
+    # months — skip-detection is a separate problem, tracked in the hardening plan.
+    if: >
+      github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'timed_out'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          WF_URL: ${{ github.event.workflow_run.html_url }}
+          WF_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WF_SHA: ${{ github.event.workflow_run.head_sha }}
+          WF_STARTED: ${{ github.event.workflow_run.run_started_at }}
+        run: |
+          set -euo pipefail
+
+          TITLE="[scheduled-ci] ${WF_NAME} is failing"
+
+          BODY=$(printf '%s\n' \
+            "Scheduled workflow **${WF_NAME}** finished with \`${WF_CONCLUSION}\`." \
+            "" \
+            "- run: ${WF_URL}" \
+            "- commit: \`${WF_SHA}\`" \
+            "- started: ${WF_STARTED}" \
+            "" \
+            "This issue is updated on every subsequent failure. Close it once the" \
+            "workflow is green again — it will reopen automatically on the next failure.")
+
+          # Find an existing open issue with this exact title (dedupe).
+          EXISTING=$(gh issue list --repo "$REPO" --state open \
+            --search "in:title \"${TITLE}\"" --json number,title \
+            --jq "[.[] | select(.title == \"${TITLE}\")][0].number // empty")
+
+          if [ -n "$EXISTING" ]; then
+            echo "Commenting on existing issue #${EXISTING}"
+            printf '%s\n' "$BODY" | gh issue comment "$EXISTING" --repo "$REPO" --body-file -
+          else
+            echo "Opening new issue"
+            printf '%s\n' "$BODY" | gh issue create --repo "$REPO" \
+              --title "$TITLE" --body-file - --label "ci-failure" \
+              || printf '%s\n' "$BODY" | gh issue create --repo "$REPO" \
+                   --title "$TITLE" --body-file -
+          fi

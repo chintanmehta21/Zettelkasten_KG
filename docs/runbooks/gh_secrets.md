@@ -24,7 +24,7 @@ workflow with a clear error.
 |-------------------------|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `DROPLET_HOST`          | `deploy-droplet.yml`, `read_recent_logs.yml`  | DigitalOcean Reserved IP (or DNS) of the production droplet.                                                                                                                |
 | `DROPLET_SSH_USER`      | `deploy-droplet.yml`, `read_recent_logs.yml`  | SSH login user (typically `deploy`).                                                                                                                                        |
-| `DROPLET_SSH_PORT`      | `deploy-droplet.yml`, `read_recent_logs.yml`  | SSH port (default `22`; pin to whatever the droplet listens on).                                                                                                            |
+| ~~`DROPLET_SSH_PORT`~~  | **DELETED 2026-07-31 — do not recreate**      | **REMOVED.** Its value was the literal string `22`, so GitHub masked every occurrence of "22" in all workflow logs — corrupting dates (`2026-07-22` rendered as `2026-07-***`), IPs, and PIDs, which actively obstructed outage triage. `appleboy/ssh-action` already defaults `port` to `22`, so the secret bought no secrecy. All workflows now omit the `port:` input. |
 | `DROPLET_SSH_KEY`       | `deploy-droplet.yml`, `read_recent_logs.yml`  | Private key (PEM) authorised on the droplet for `DROPLET_SSH_USER`. Generate a per-environment keypair; never reuse a personal SSH key.                                     |
 | `GHCR_READ_PAT`         | `deploy-droplet.yml`                          | Classic personal access token with `read:packages` scope so the droplet can `docker pull` from `ghcr.io`. Owned by the `chintanmehta21` GitHub account.                     |
 | `SUPABASE_DB_URL`       | `deploy-droplet.yml` (via container env-file) | Postgres connection string for the prod Supabase project. **Must** be the IPv4 pooler endpoint (`postgres.<ref>:<DB_PASSWORD>@aws-0-<region>.pooler.supabase.com:6543/postgres`). The script `apply_migrations.py` hard-fails without it. |
@@ -62,7 +62,7 @@ To audit a specific secret without revealing its value (only existence
 
 ```bash
 gh secret list --repo chintanmehta21/Zettelkasten_KG \
-  | grep -E '^(SUPABASE_DB_URL|DROPLET_HOST|DROPLET_SSH_USER|DROPLET_SSH_PORT|DROPLET_SSH_KEY|GHCR_READ_PAT)\b'
+  | grep -E '^(SUPABASE_DB_URL|DROPLET_HOST|DROPLET_SSH_USER|DROPLET_SSH_KEY|GHCR_READ_PAT)\b'
 ```
 
 ## 4. Set or rotate a secret (write — requires human approval)
@@ -91,10 +91,10 @@ gh secret set DROPLET_SSH_USER \
   --repo chintanmehta21/Zettelkasten_KG \
   --body-file -
 
-# DROPLET_SSH_PORT — typically "22"
-gh secret set DROPLET_SSH_PORT \
-  --repo chintanmehta21/Zettelkasten_KG \
-  --body-file -
+# DROPLET_SSH_PORT — DO NOT RECREATE (deleted 2026-07-31).
+# A secret whose value is "22" makes GitHub redact every "22" in every
+# workflow log — dates, IPs and PIDs all get mangled, which obstructed
+# outage triage. appleboy/ssh-action already defaults port to 22.
 
 # DROPLET_SSH_KEY — full PEM; pipe from a local file then shred it.
 gh secret set DROPLET_SSH_KEY \

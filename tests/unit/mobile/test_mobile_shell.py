@@ -1,22 +1,16 @@
 """Tests for mobile shell injection + escape cookie (iter mobile-1a Phase 1)."""
 from __future__ import annotations
 
-import os
 
 # Stub env BEFORE importing the FastAPI app — settings validation would
 # otherwise SystemExit on missing keys.
-os.environ.setdefault("GEMINI_API_KEY", "ci-stub")
-os.environ.setdefault("SUPABASE_V2_URL", "https://ci-stub.supabase.co")
-os.environ.setdefault("SUPABASE_V2_ANON_KEY", "ci-stub-anon")
-os.environ.setdefault("SUPABASE_V2_SERVICE_ROLE_KEY", "ci-stub-service")
-os.environ.setdefault(
-    "NEXUS_TOKEN_ENCRYPTION_KEY",
-    "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4=",
-)
+from tests.env_stub import stub_app_env_if_unconfigured
 
-from fastapi.testclient import TestClient
+stub_app_env_if_unconfigured()
 
-from website.app import _DESKTOP_COOKIE, create_app
+from fastapi.testclient import TestClient  # noqa: E402
+
+from website.app import _DESKTOP_COOKIE, create_app  # noqa: E402
 
 
 def _client() -> TestClient:

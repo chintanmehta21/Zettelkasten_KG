@@ -203,9 +203,20 @@ def mint_kasten(
     async def _noop(*_args, **_kwargs):  # noqa: D401 — entitlement bypass
         return None
 
+    # 2026-08-01: ``consume_entitlement`` no longer exists on this module —
+    # Phase 9 folded consumption into ``require_entitlement`` (see the comment
+    # at sandbox_routes.py:770, "gate consumed atomically in
+    # require_entitlement above"). monkeypatch.setattr on a missing attribute
+    # raises AttributeError, which is what produced the 35 collection ERRORs in
+    # the live suite. Patch only the symbol the module actually imports, and
+    # assert it is there so a future rename fails loudly instead of silently
+    # un-bypassing the gate.
     from website.api import sandbox_routes as sandbox_routes_mod
+    assert hasattr(sandbox_routes_mod, "require_entitlement"), (
+        "sandbox_routes.require_entitlement missing — the entitlement bypass "
+        "below is stale; re-point it at whatever now owns consumption."
+    )
     monkeypatch.setattr(sandbox_routes_mod, "require_entitlement", _noop)
-    monkeypatch.setattr(sandbox_routes_mod, "consume_entitlement", _noop)
 
     from website.app import create_app
 

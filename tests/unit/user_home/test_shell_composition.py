@@ -17,19 +17,13 @@ Two cases:
 """
 from __future__ import annotations
 
-import os
 
 import pytest
 
 # Settings validation stubs — must precede the website.app import.
-os.environ.setdefault("GEMINI_API_KEY", "ci-stub")
-os.environ.setdefault("SUPABASE_V2_URL", "https://ci-stub.supabase.co")
-os.environ.setdefault("SUPABASE_V2_ANON_KEY", "ci-stub-anon")
-os.environ.setdefault("SUPABASE_V2_SERVICE_ROLE_KEY", "ci-stub-service")
-os.environ.setdefault(
-    "NEXUS_TOKEN_ENCRYPTION_KEY",
-    "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4=",
-)
+from tests.env_stub import stub_app_env_if_unconfigured
+
+stub_app_env_if_unconfigured()
 
 
 DESKTOP_UA = (
