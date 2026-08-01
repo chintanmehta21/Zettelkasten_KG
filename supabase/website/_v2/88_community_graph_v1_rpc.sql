@@ -36,13 +36,19 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
+-- Per-call safety net (independent of role-level settings on community_reader).
+-- These MUST be function-level SET clauses, NOT `SET LOCAL` in the body.
+-- Postgres rejects SET inside a non-VOLATILE function ("SET is not allowed in a
+-- non-volatile function"), so the original STABLE + `SET LOCAL` form threw on
+-- EVERY call. That is the same defect migration 83 had to hot-fix for the stats
+-- RPCs after it surfaced as production 500s — this file copied 81's pre-83 form.
+-- Function-level SET has identical semantics (applied on entry, restored on
+-- exit) and is legal in a STABLE function. Verified against postgres:15.
 SET search_path = public
+SET statement_timeout = '30s'
+SET work_mem = '32MB'
 AS $$
 BEGIN
-  -- Per-call safety net (independent of role-level settings on community_reader).
-  SET LOCAL statement_timeout = '30s';
-  SET LOCAL work_mem = '32MB';
-
   RETURN QUERY
   WITH public_rows AS (
     SELECT

@@ -142,6 +142,25 @@ def _empty_personal_graph(user_sub: str | None) -> dict[str, Any]:
     }
 
 
+def _empty_community_graph() -> dict[str, Any]:
+    """Explicit empty community graph when the v2 client is unavailable.
+
+    Constructing the community repository raises when Supabase is unconfigured
+    (CI, local dev without .env.v2). Serving an empty graph keeps ``view=global``
+    a 200 instead of a 500. We deliberately do NOT fall back to the retired
+    file-store seed (Rev 3) — an empty community surfaces the "No community
+    zettels yet" overlay client-side. A genuine RPC/DB error is NOT swallowed
+    here: it still propagates, so an outage stays visible rather than being
+    cached as a plausible-looking empty graph.
+    """
+    return {
+        "nodes": [],
+        "links": [],
+        "total_nodes": 0,
+        "meta": {"view": "global", "source": "community"},
+    }
+
+
 def _resolve_view(user: dict | None, view: ViewKind | None) -> ViewKind:
     """Infer the view kind for back-compat callers that don't pass it."""
     if view in ("my", "kasten", "global"):
@@ -280,6 +299,12 @@ async def run_view_graph(
     # to anonymous viewers (D1 verdict unchanged; the community RPC strips
     # user_id at the DB layer so no BOLA breach is possible).
     if resolved_view == "global":
+        # The community surface is v2-only. Without a configured v2 client the
+        # repository constructor raises, which would turn the PUBLIC graph into
+        # a 500; degrade to an explicit empty community graph instead.
+        if not _use_supabase_v2():
+            return _empty_community_graph()
+
         async def _load_global() -> dict[str, Any]:
             community = await asyncio.to_thread(
                 _community_repository().get_community_graph,

@@ -6,6 +6,95 @@
 
 ---
 
+# ▶ REV 4 — the community graph gets EDGES: cross-user TAG BACKBONE (2026-06-22)
+
+> **Supersedes the Rev-2/Rev-3 assumption that edges are a Phase-3 concern (D12 "edge top-K" deferred).** Rev 3 shipped a community graph that was **node-only** — 125+ nodes, **zero edges**. That is not a knowledge graph, it is a point cloud. Rev 4 adds the missing cross-user edge builder as **Phase 1.5**. Operator decision (2026-06-22): **build the tag backbone now, defer the semantic/embedding tier.** Full cited research: `community_graph_edges_research_2026-06-20.md` (108 agents, 26 sources, 25 claims adversarially verified → 19 confirmed / 6 killed).
+
+## R4.0 Root cause — why Global had no edges (verified, each issue)
+
+| # | Issue | Evidence |
+|---|---|---|
+| 1 | Live Global was the 29-node **file-store demo**, never the real corpus | live Global read `29 nodes · 52 connections`; DB held 136 (now 190) workspace_zettels |
+| 2 | `community_graph_v1` (88) is **node-only** | its `RETURNS TABLE` has no edge columns |
+| 3 | The wrapper **hardcoded** `links: []` | `community_repository.py` |
+| 4 | Per-workspace `kg.kg_edges` **cannot cross users** | edges are keyed to per-workspace `kg_node` ids (Naruto alone: 79 nodes / 340 edges, all intra-workspace) |
+| 5 | **No cross-workspace edge computation existed anywhere** | absent from the RPC, the wrapper, and `_enrich_graph_with_analytics` (which only *annotates* an existing graph — PageRank/clustering — it never creates edges) |
+| 6 | The data richly supports edges | 114 (now 129) `user_tags` shared across ≥2 distinct canonicals |
+
+**Conclusion:** the pipeline was discarding connectivity it already had. Personal was connected (`70 · 325`) precisely because it *does* read `kg_edges`.
+
+## R4.1 Method (industry standard, researched)
+
+Build a **sparse top-K "related items" graph**, NOT "all pairs above a threshold" — the mechanism Neo4j GDS (`topK` / `topN` / `similarityCutoff`) and Pinterest PinSage (fixed-size importance-sampled neighbourhoods) run at web scale. Score = **IDF-weighted cosine** over each canonical's public tag vector:
+
+```
+idf(t) = ln(N / df(t))          N = public canonicals, df = canonicals carrying t
+score(a,b) = Σ_shared idf² / (‖a‖ · ‖b‖)
+```
+
+**Hub control is the load-bearing part** — raw tag co-occurrence is provably biased toward globally popular tags, while cosine over co-occurrence distributions is *not* rank-dominated (Cattuto et al. 2008). Four independent brakes:
+1. **IDF down-weighting** (primary) — a tag on many canonicals is worth ~0; `ln(N/N)=0`.
+2. **`p_max_df_ratio`** — a tag on >50% of the corpus cannot pair at all.
+3. **`p_top_k`** — each node keeps only its K strongest neighbours.
+4. **`p_min_shared`** — retained as a tunable; **defaults to 1** (see calibration).
+
+Plus `p_min_strength` (noise floor) and `p_limit` (global cap).
+
+**`user_tags` ONLY, never `derived_tags`.** Migration 72 split system tags (`source_domain:youtube.com`, `modality:video`) out precisely because they aren't user semantics — and they are pure hubs. Measured: pairing on `derived_tags` connects only 61 nodes at **max degree 23** (dense YouTube-vs-everything clumps). Correctly excluded.
+
+## R4.2 Calibration — MEASURED, not borrowed (this changed the design)
+
+The research explicitly refused to supply a K/cutoff constant ("calibrate on your own corpus; don't borrow the music-domain k=5"). Measured read-only against the live corpus (190 canonicals, 174 tagged, **163 with ≥1 shared tag = the connectivity ceiling**, 129 shared vs **715 singleton** tags):
+
+| config | edges | nodes connected | max degree | avg strength |
+|---|---|---|---|---|
+| `min_shared=2`, floor 0.15 *(a-priori design)* | 46 | 53 (33% of ceiling) | 4 | 0.397 |
+| `min_shared=1`, floor 0.10 | 290 | 132 (81%) | 14 | 0.744 |
+| **`min_shared=1`, floor 0.05 — CHOSEN** | **451** | **154 (94%)** | **14** | 0.505 |
+
+**Finding that overturned the a-priori design:** requiring 2 shared tags costs **~54% of connectable nodes for zero hub-safety gain** — because this corpus's tags are overwhelmingly idiosyncratic (715 singletons). Max degree stayed **14 in every `min_shared=1` run**, i.e. **no hub explosion**: the IDF cosine contains hubs by itself, exactly as the research predicted. `top_k` never binds at this size — it is a growth safety valve.
+
+The DB floor (0.05) is a **noise floor, not a taste filter**; presentation-level culling stays with the caller's `min_strength` param via `_apply_min_strength_filter`, layering the user's slider on top.
+
+## R4.3 Decisions (Rev 4)
+
+- **D14 — Separate edge RPC, not an extension of 88.** `content.community_graph_edges_v1` (migration 90) is additive; 88's node contract is untouched. Same SECURITY DEFINER + `community_reader` owner ⇒ identical fail-closed privacy.
+- **D15 — Live computation; NO materialized view, NO pg_cron.** At N=190 the self-join is sub-second and the existing SWR cache + version counter (89) already absorbs it. Documented escalation at ~5–10k canonicals: promote to a MATVIEW refreshed `CONCURRENTLY` by pg_cron, and/or move the semantic tier to pgvector ANN. **Minimal infra is the point** — no new service, no protected knob touched.
+- **D16 — UNION top-K symmetrisation** (keep an edge if it is in *either* endpoint's top-K). Mutual-KNN / Mutual Proximity — the stricter variant, worth −99% hubs and 65%→92% reachability *on audio embeddings* — is the documented upgrade for the **semantic** tier, where hubness is severe. For the tag tier it would over-sparsify a 190-node corpus.
+- **D17 — Semantic (BGE/pgvector) tier DEFERRED** to a follow-on, per operator. Hybrid fusion weight remains an open question; when built, start with union-of-top-K-per-signal.
+- **D18 — Edge invariant enforced in the wrapper**: every link endpoint must exist in the node set, else the link is dropped (the node RPC orders by canonical id, the edge RPC by strength, so a truncating limit could otherwise orphan an edge and break the viz).
+- **D19 — `view=global` degrades to an EMPTY community graph when the v2 client is unconfigured** (CI/local), never a 500 and never the retired file-store. A genuine RPC/DB error still propagates, so an outage stays visible instead of being cached as a plausible-looking empty graph.
+
+## R4.4 Privacy (the research's unanswered angle — our determination)
+
+No source addressed leakage via co-occurrence, so we determined it: the edge RPC runs under the **same** `community_reader` role and the **same** RLS predicate (`is_private = false AND deleted_at IS NULL`) as the node RPC. Private rows therefore cannot enter the tag vocabulary, the IDF statistics, or any pair — safe **by construction**, not by convention. A dedicated `@live` gate asserts a private zettel never becomes an edge endpoint even when it shares tags with two public ones.
+
+## R4.5 Defect found and fixed while building (would have been fatal)
+
+`community_graph_v1` (88) declared the function **`STABLE`** while its body used **`SET LOCAL`**. Postgres rejects `SET` inside a non-VOLATILE function, so the RPC threw **`SET is not allowed in a non-volatile function` on every call** — the Rev-3 community graph was **dead on arrival**. This is the *same* defect migration 83 had to hot-fix for the stats RPCs after it surfaced as production 500s; 88 copied 81's pre-83 form. Fixed in both 88 and 90 by moving the timeouts to **function-level `SET` clauses** (identical semantics, legal in a `STABLE` function). Verified end-to-end against `postgres:15`.
+
+## R4.6 Verification performed
+
+- Migrations 88 + 90 applied to a throwaway `postgres:15` with the real `community_reader` role + RLS policy; both RPCs execute.
+- Fixture (10 public canonicals + 1 private + 1 deleted): edges match hand-computed IDF-cosine (0.432 for a 2-tag pair, 0.183 for 1-tag); **0 private/deleted endpoints**; **0 edges among hub-only (`commentary`) nodes** (df=6 > 50% ceiling ⇒ excluded).
+- Node ids from 88 join 1:1 to edge ids from 90.
+- 23 mocked tests green (7 new wrapper tests + the previously-failing render-correctness and payload suites, both repaired to the community path); 5 new `@live` edge tests collect for the gated apply.
+
+## R4.7 Sources (Rev 4)
+
+- Neo4j GDS — KNN + Node Similarity (`topK`/`topN`/`similarityCutoff`; Jaccard/Overlap/Cosine; O(n²) space, O(n³) time): https://neo4j.com/docs/graph-data-science/current/algorithms/knn/ · https://neo4j.com/docs/graph-data-science/current/algorithms/node-similarity/
+- Pinterest PinSage, KDD 2018 (importance-sampled fixed-size neighbourhoods): https://medium.com/pinterest-engineering/pinsage-a-new-graph-convolutional-neural-network-for-web-scale-recommender-systems-88795a107f48
+- Cattuto et al., tag-relatedness measures, ISWC/ECAI 2008 (co-occurrence is hub-biased; cosine is not rank-dominated; cosine best for synonyms/siblings): https://arxiv.org/pdf/0805.2045
+- Mutual Proximity / hubness in k-NN graphs (hubs −99%, reachability 65%→92% at equal edge count): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5750815/
+- Hubness degrades NN-graph construction: https://arxiv.org/pdf/2112.02234
+- Overlap (Szymkiewicz–Simpson) vs Jaccard: https://developer.nvidia.com/blog/similarity-in-graphs-jaccard-versus-the-overlap-coefficient-2/
+- Disparity-filter / network backbone (downstream densification fix): https://cran.r-project.org/web/packages/backbone/vignettes/backbone.html
+- Escalation path — pgvector HNSW: https://supabase.com/blog/increase-performance-pgvector-hnsw · pg_cron: https://supabase.com/docs/guides/database/extensions/pg_cron · `REFRESH MATERIALIZED VIEW`: https://www.postgresql.org/docs/current/sql-refreshmaterializedview.html
+
+**Refuted — do NOT rely on** (killed in verification): pgvector HNSW as the "recommended default" KNN initializer (0-3); Obsidian Smart Connections establishing embeddings as the dominant related-note approach (0-3); `topK` alone capping edge count / reducing *exact* runtime (1-2 — it bounds memory only).
+
+---
+
 # ▶ REV 3 — privacy MODEL FLIP: all-public + per-zettel opt-OUT (operator decision 2026-06-16)
 
 > **This supersedes Rev 2's opt-in model.** Operator chose, with the privacy implication stated explicitly: the community (Global) graph shows **ALL users' zettels by default**, auto-updating as users add more; each user can **mark any zettel private** to hide it from Global; a clear **signup/first-use notice** tells users their captures are public and shown with their name. This is **opt-OUT**, not opt-in. Rationale (operator-accepted): it's a knowledge-sharing app over **summaries of public URLs**, a populated community graph is the product goal, the user base is tiny/early, and GDPR applicability is uncertain (India/non-EU per the research). The notice + per-zettel opt-out + erasure are the privacy mitigations *in lieu of* privacy-by-default.

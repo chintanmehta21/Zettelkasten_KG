@@ -29,13 +29,80 @@ class CommunityGraphRepository:
     def __init__(self, client: Client | None = None) -> None:
         self._client = client or get_v2_client()
 
+    # Tag-backbone edge defaults. Calibrated read-only against the live corpus
+    # on 2026-06-22 (190 canonicals): min_shared=1 + a permissive IDF-cosine
+    # floor connects 154/163 connectable nodes with max degree 14 (no hub
+    # explosion), where the a-priori min_shared=2 reached only 53. See
+    # supabase/website/_v2/90_community_graph_edges_v1.sql for the full table.
+    EDGE_TOP_K = 10
+    EDGE_MIN_SHARED = 1
+    EDGE_MIN_STRENGTH = 0.05
+    EDGE_LIMIT = 4000
+
+    def get_community_edges(self, *, limit: int | None = None) -> list[dict[str, Any]]:
+        """Return cross-user tag-backbone links for the community graph.
+
+        Calls ``content.community_graph_edges_v1`` (migration 90) — SECURITY
+        DEFINER, owned by the same non-BYPASSRLS ``community_reader`` role as the
+        node RPC, so private/deleted rows cannot enter the tag vocabulary, the
+        IDF statistics, or any edge. Scoring is an IDF-weighted cosine over each
+        canonical's public tag set; hub tags are contained by the IDF weighting
+        plus a corpus-share ceiling and a per-node top-K.
+
+        Degrades to ``[]`` (never raises) when the RPC is absent — the code may
+        deploy before migration 90 is applied, and an edgeless community graph
+        is the correct fallback, not a 500.
+        """
+        try:
+            resp = (
+                self._client.schema("content")
+                .rpc(
+                    "community_graph_edges_v1",
+                    {
+                        "p_limit": int(limit if limit is not None else self.EDGE_LIMIT),
+                        "p_top_k": int(self.EDGE_TOP_K),
+                        "p_min_shared": int(self.EDGE_MIN_SHARED),
+                        "p_min_strength": float(self.EDGE_MIN_STRENGTH),
+                    },
+                )
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001 — missing RPC must not break serving
+            logger.warning(
+                "community_graph_edges_v1 unavailable; serving node-only "
+                "community graph: %r",
+                exc,
+            )
+            return []
+
+        links: list[dict[str, Any]] = []
+        for r in resp.data or []:
+            shared = int(r.get("shared_tags") or 0)
+            links.append(
+                {
+                    "source": r["source_node_id"],
+                    "target": r["target_node_id"],
+                    "relation": "shared_tags",
+                    "weight": None,
+                    "link_type": "tag",
+                    "description": (
+                        f"{shared} shared tag{'s' if shared != 1 else ''}"
+                    ),
+                    "connection_strength": float(r.get("strength") or 0.0),
+                }
+            )
+        return links
+
     def get_community_graph(
         self, *, limit: int = 5000, min_strength: float = 0.0
     ) -> dict[str, Any]:
         """Return ``{"nodes": [...], "links": [...], "total_nodes": int}``.
 
-        Nodes carry NO user_id. Links are empty in Phase 1 (edge computation is
-        Phase 3); the shape stays graph-compatible so the frontend renders.
+        Nodes carry NO user_id. Links are the cross-user TAG BACKBONE from
+        ``community_graph_edges_v1`` (migration 90) — the per-workspace
+        ``kg.kg_edges`` are keyed to per-workspace node ids and can never cross
+        users, which is why the community surface needs its own edge builder.
+        The semantic (BGE/pgvector) tier is a deliberate follow-on.
 
         Calls ``content.community_graph_v1`` — the ONLY read path for the
         community surface. The predicate ``is_private = false`` lives in the RPC
@@ -63,7 +130,20 @@ class CommunityGraphRepository:
                     "contributor_count": int(r.get("contributor_count") or 1),
                 }
             )
-        return {"nodes": nodes, "links": [], "total_nodes": len(nodes)}
+        if not nodes:
+            return {"nodes": [], "links": [], "total_nodes": 0}
+
+        # Edge invariant: every link endpoint MUST be a node in this payload.
+        # The node RPC orders by canonical id and the edge RPC by strength, so
+        # a truncating p_limit on either side could otherwise orphan an edge —
+        # which makes 3d-force-graph drop frames or throw on an unknown id.
+        node_ids = {n["id"] for n in nodes}
+        links = [
+            link
+            for link in self.get_community_edges()
+            if link["source"] in node_ids and link["target"] in node_ids
+        ]
+        return {"nodes": nodes, "links": links, "total_nodes": len(nodes)}
 
     def set_private(
         self, *, workspace_zettel_id: UUID, private: bool, actor_user_id: UUID | str | None

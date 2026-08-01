@@ -102,6 +102,14 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "82_stats_route_helpers.sql",
         "83_stats_rpc_volatility.sql",
         "84_anon_zettel_claim.sql",
+        # Community Graph Part B — privacy floor (Phase 0) …
+        "85_workspace_zettels_privacy.sql",
+        "86_zettel_privacy_events.sql",
+        "87_community_reader_role.sql",
+        "88_community_graph_v1_rpc.sql",
+        "89_community_cache_version.sql",
+        # … and the cross-user tag-backbone edge builder (Phase 1.5).
+        "90_community_graph_edges_v1.sql",
     ]
 
 
