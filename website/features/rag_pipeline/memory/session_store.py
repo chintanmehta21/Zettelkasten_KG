@@ -22,11 +22,26 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from postgrest.exceptions import APIError
+
 from website.core.supabase_v2.repositories.core_repository import CoreRepository
 from website.core.supabase_v2.repositories.rag_repository import RAGRepository
+from website.features.rag_pipeline.errors import UnknownKastenError
 from website.features.rag_pipeline.types import AnswerTurn, ChatTurn
 
 _REWRITER_WINDOW = 5
+
+# PostgreSQL foreign_key_violation.
+_FK_VIOLATION = "23503"
+_KASTEN_FK = "chat_sessions_kasten_id_fkey"
+
+
+def _is_missing_kasten_error(exc: APIError) -> bool:
+    """True only for the chat_sessions -> kastens FK violation."""
+    if str(getattr(exc, "code", "") or "") != _FK_VIOLATION:
+        return False
+    blob = f"{getattr(exc, 'message', '') or ''} {getattr(exc, 'details', '') or ''}"
+    return _KASTEN_FK in blob or "kasten_id" in blob
 
 
 class _UnknownWorkspaceError(RuntimeError):
@@ -83,12 +98,23 @@ class ChatSessionStore:
         del initial_scope_filter, quality_mode
         workspace_id = self._resolve_workspace_id(user_id)
         kasten_id = UUID(str(sandbox_id)) if sandbox_id else None
-        session_id = self._repo.create_chat_session(
-            workspace_id=workspace_id,
-            profile_id=UUID(str(user_id)),
-            kasten_id=kasten_id,
-            title=title,
-        )
+        try:
+            session_id = self._repo.create_chat_session(
+                workspace_id=workspace_id,
+                profile_id=UUID(str(user_id)),
+                kasten_id=kasten_id,
+                title=title,
+            )
+        except APIError as exc:
+            # 2026-08-01: this insert runs BEFORE the BOLA gate, so a deleted
+            # or foreign Kasten used to escape as a raw 23503 -> HTTP 500.
+            # Narrow to the kasten FK only; every other integrity error stays
+            # loud. See tests/unit/website/test_chat_session_unknown_kasten.py
+            if _is_missing_kasten_error(exc):
+                raise UnknownKastenError(
+                    f"kasten {kasten_id} does not exist"
+                ) from exc
+            raise
         return session_id
 
     async def get_session(self, session_id, user_id):

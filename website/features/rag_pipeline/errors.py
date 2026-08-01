@@ -27,6 +27,11 @@ class SessionGoneError(RAGError):
     """Raised when a requested chat session no longer exists."""
 
 
+class UnknownKastenError(RAGError):
+    """Raised when a referenced Kasten does not exist (deleted, or a
+    cross-tenant id guess). Surfaces as 403 — never leak existence."""
+
+
 class EmbeddingGenerationError(RAGError):
     """Raised when an embedding request returns no usable vectors."""
 

@@ -49,6 +49,23 @@ from website.config.page_menus import PAGE_MENUS, MenuItem
 
 logger = logging.getLogger("website.app")
 
+
+def _register_unknown_kasten_handler(app: FastAPI) -> None:
+    """Map a referenced-but-missing Kasten to 403, app-wide.
+
+    2026-08-01: chat-session creation inserts kasten_id ahead of the BOLA
+    gate, so a deleted/foreign Kasten escaped as a raw FK error -> 500 +
+    #app-errors page. 403 (not 404) matches the existing BOLA convention:
+    never leak whether the Kasten exists.
+    """
+    from website.features.rag_pipeline.errors import UnknownKastenError
+
+    @app.exception_handler(UnknownKastenError)
+    async def _on_unknown_kasten(request: Request, exc: UnknownKastenError):
+        logger.warning("unknown kasten on %s: %s", request.url.path, exc)
+        return JSONResponse({"detail": "Forbidden"}, status_code=403)
+
+
 STATIC_DIR = Path(__file__).parent / "static"
 KG_DIR = Path(__file__).parent / "features" / "knowledge_graph"
 MOBILE_DIR = Path(__file__).parent / "mobile"
@@ -527,6 +544,8 @@ def create_app(lifespan=None) -> FastAPI:
     # raises MemoryPressureError; we convert here so eval/clients get the
     # same Retry-After=5 contract as the dispatch-time guard.
     from website.features.rag_pipeline.rerank.cascade import MemoryPressureError
+
+    _register_unknown_kasten_handler(app)
 
     @app.exception_handler(MemoryPressureError)
     async def _on_memory_pressure(request: Request, exc: MemoryPressureError):
