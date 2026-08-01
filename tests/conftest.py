@@ -26,6 +26,46 @@ from typing import Callable, Iterable
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _restore_app_singletons():
+    """Undo cross-test leakage of app module-level singletons.
+
+    31 test modules reset ``website.api.auth._jwks_client`` and the
+    ``website.core.persist`` v2 repo singletons by RAW ASSIGNMENT, which is
+    never undone. After the first such test, the rest of the session runs with
+    ``_jwks_client = None``, so every later auth-touching test re-fetches JWKS
+    over the network; with no network that surfaces as ConnectError -> 500 on
+    ``/api/graph``. The symptom is ~12 unrelated tests failing in the full suite
+    while passing in isolation — i.e. pure test-order dependence, not a product
+    bug. Snapshot-and-restore here fixes all 31 call sites without touching them.
+
+    Import failures are ignored so this stays inert for tests that never load
+    the website package.
+    """
+    saved: list[tuple[object, str, object]] = []
+    try:  # pragma: no cover - import guard
+        from website.api import auth as auth_mod
+
+        saved.append((auth_mod, "_jwks_client", getattr(auth_mod, "_jwks_client", None)))
+    except Exception:  # noqa: BLE001
+        pass
+    try:  # pragma: no cover - import guard
+        from website.core import persist as persist_mod
+
+        for attr in ("_v2_core_repo", "_v2_content_repo"):
+            saved.append((persist_mod, attr, getattr(persist_mod, attr, None)))
+    except Exception:  # noqa: BLE001
+        pass
+
+    yield
+
+    for module, attr, original in saved:
+        try:
+            setattr(module, attr, original)
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def pytest_addoption(parser):
     try:
         parser.addoption(
