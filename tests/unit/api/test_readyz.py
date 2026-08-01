@@ -111,3 +111,53 @@ def test_health_stays_shallow():
             f"/api/health must stay shallow — found {banned!r}. A liveness probe "
             "that checks dependencies can restart-loop the whole service."
         )
+
+
+async def test_startup_prewarm_marks_worker_ready():
+    """Readiness must be self-established, not dependent on an external call.
+
+    Shipped 2026-08-01 after observing /api/readyz return 503 on a healthy
+    production site: the flag was only set by /api/health/warm, which the
+    deploy fires once at cutover. gunicorn recycles workers
+    (GUNICORN_MAX_REQUESTS=100 + jitter 50), and a recycled worker never gets
+    another warm call — so it reported not-ready forever while serving fine.
+    """
+    from unittest.mock import MagicMock
+
+    from website.app import _data_path_prewarm
+
+    routes_mod._WARMED.clear()
+    with patch("website.core.supabase_v2.client.is_v2_configured", return_value=True), \
+         patch("website.core.supabase_v2.client.get_v2_client", return_value=MagicMock()):
+        await _data_path_prewarm()
+    assert routes_mod._WARMED.get("db") is True
+
+
+async def test_startup_prewarm_never_blocks_boot():
+    """A soft dependency being down must not stop a worker from starting."""
+    from website.app import _data_path_prewarm
+
+    routes_mod._WARMED.clear()
+    with patch("website.core.supabase_v2.client.is_v2_configured", return_value=True), \
+         patch(
+             "website.core.supabase_v2.client.get_v2_client",
+             side_effect=RuntimeError("supabase down"),
+         ):
+        await _data_path_prewarm()  # must not raise
+    assert routes_mod._WARMED.get("db") is not True
+
+
+def test_both_lifespans_prewarm_the_data_path():
+    """Wired into the default AND the production lifespan, or workers drift."""
+    import inspect
+    from pathlib import Path
+
+    import website.app as app_mod
+
+    assert "_data_path_prewarm()" in inspect.getsource(app_mod.create_app)
+    main_src = (
+        Path(__file__).resolve().parents[3] / "website" / "main.py"
+    ).read_text(encoding="utf-8")
+    assert "_data_path_prewarm()" in main_src, (
+        "production lifespan (website/main.py) must also self-warm"
+    )

@@ -117,9 +117,13 @@ async def _lifespan(
     # get_optional_user's silent-drop-to-anon path during Supabase JWKS edge
     # cache misses). Soft-fails inside the helper; 5s ceiling protects
     # blue/green flips during a Supabase JWKS outage.
-    from website.app import _jwks_prewarm
+    from website.app import _data_path_prewarm, _jwks_prewarm
 
     await _jwks_prewarm()
+
+    # 2026-08-01: warm the data path per worker so /api/readyz is truthful
+    # after gunicorn recycles a worker (MAX_REQUESTS=100 + jitter). Soft-fails.
+    await _data_path_prewarm()
 
     # iter-12 Class P: explicit executor sizing. Default min(32, cpu_count+4)=5
     # threads/process saturates under burst-12. PATH_F sizing per RESEARCH.md.

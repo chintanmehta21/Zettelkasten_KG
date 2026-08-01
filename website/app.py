@@ -465,6 +465,34 @@ async def _jwks_prewarm() -> None:
         logger.warning("JWKS pre-warm failed (non-fatal): %s", exc)
 
 
+async def _data_path_prewarm() -> None:
+    """Warm this worker's data path so ``/api/readyz`` reflects reality.
+
+    2026-08-01. Readiness was flipped only by an external ``/api/health/warm``
+    call, which the deploy fires at cutover. That is not enough: gunicorn
+    recycles workers (``GUNICORN_MAX_REQUESTS=100`` + jitter 50), and a
+    recycled worker never receives another warm call — so it would report
+    ``503 not ready`` forever while serving perfectly well. Observed live
+    immediately after shipping /api/readyz.
+
+    Warming at startup makes readiness a property the worker establishes for
+    itself. Soft-fails by design: this must never block a worker from booting,
+    and it deliberately does NOT touch Gemini (metered per-user quota, and it
+    would make a paid API a hard dependency of the readiness signal).
+    """
+    try:
+        from website.api.routes import _WARMED
+        from website.core.supabase_v2.client import get_v2_client, is_v2_configured
+
+        if not is_v2_configured():
+            return
+        get_v2_client().schema("core").table("profiles").select("id").limit(1).execute()
+        _WARMED["db"] = True
+        logger.info("data-path pre-warm complete")
+    except Exception as exc:  # noqa: BLE001 — pre-warm must never block startup
+        logger.warning("data-path pre-warm failed (non-fatal): %s", exc)
+
+
 def create_app(lifespan=None) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -480,6 +508,7 @@ def create_app(lifespan=None) -> FastAPI:
         @asynccontextmanager
         async def _default_lifespan(_app: FastAPI):
             await _jwks_prewarm()
+            await _data_path_prewarm()
             yield
 
         lifespan = _default_lifespan
