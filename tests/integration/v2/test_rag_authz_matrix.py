@@ -32,6 +32,7 @@ import uuid
 import asyncpg
 import pytest
 from fastapi.testclient import TestClient
+from tests.integration.v2.conftest import bypass_entitlements
 
 
 pytestmark = pytest.mark.live
@@ -53,9 +54,7 @@ def v2_app(monkeypatch):
     # entitlements). The route's admission gate + auth check still runs.
     async def _noop(*_a, **_kw):
         return None
-    from website.api import chat_routes as chat_routes_mod
-    monkeypatch.setattr(chat_routes_mod, "require_entitlement", _noop)
-    monkeypatch.setattr(chat_routes_mod, "consume_entitlement", _noop)
+    bypass_entitlements(monkeypatch)
 
     from website.app import create_app
     return create_app()

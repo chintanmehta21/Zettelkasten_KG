@@ -18,7 +18,6 @@ let the partial-unique personal-workspace row stay) before calling
 """
 from __future__ import annotations
 
-import uuid
 
 import pytest
 

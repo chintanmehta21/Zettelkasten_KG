@@ -23,6 +23,7 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
+from tests.integration.v2.conftest import bypass_entitlements
 
 pytestmark = pytest.mark.live
 
@@ -90,8 +91,7 @@ def v2_app_with_stub_summarizer(monkeypatch):
     async def _noop(*_a, **_kw):
         return None
 
-    from website.api import sandbox_routes as sandbox_routes_mod
-    monkeypatch.setattr(sandbox_routes_mod, "require_entitlement", _noop)
+    bypass_entitlements(monkeypatch)
 
     from website.api.module_runners import summarization as runner_mod
 
@@ -104,7 +104,7 @@ def v2_app_with_stub_summarizer(monkeypatch):
     async def _fake_resolve(url, *_a, **_kw):
         return url
 
-    monkeypatch.setattr(runner_mod, "require_entitlement", _fake_require_entitlement)
+    bypass_entitlements(monkeypatch)
     monkeypatch.setattr(runner_mod, "summarize_url_bundle", _fake_summarize)
     monkeypatch.setattr(runner_mod, "resolve_redirects", _fake_resolve)
     monkeypatch.setattr(runner_mod, "normalize_url", lambda u: u)

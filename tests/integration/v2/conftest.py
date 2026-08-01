@@ -827,3 +827,62 @@ def pytest_sessionfinish(session, exitstatus):
             f"\n[pytest_sessionfinish] canonical sweep error: "
             f"{type(exc).__name__}: {exc}"
         )
+
+
+# ── Entitlement bypass (2026-08-01) ─────────────────────────────────────────
+# One implementation, reused everywhere. Nine test modules each hand-rolled a
+# monkeypatch pair against module attributes that Phase 9 / the D2
+# strangler-fig had already moved, producing 52 of the live suite's remaining
+# failures as bare AttributeErrors at fixture setup:
+#
+#   website.api.sandbox_routes   require_entitlement ✓   consume_entitlement ✗
+#   website.api.chat_routes      require_entitlement ✗   consume_entitlement ✗
+#     (chat_routes delegates to the runner: ask_kasten._require_entitlement)
+#
+# monkeypatch.setattr raises when the target attribute does not exist, so every
+# rename silently converted a working bypass into a collection error. This
+# helper patches whatever each module actually owns today and fails loudly if
+# it can patch nothing at all — so the next rename surfaces as one clear error
+# here instead of scattering AttributeErrors across the suite.
+#
+# Scope note: this is a TEST-ONLY bypass of the quota gate. It must never seed
+# entitlements or touch billing.pricing_* — pricing semantics are operator-locked.
+_ENTITLEMENT_TARGETS = (
+    ("website.api.sandbox_routes", "require_entitlement"),
+    ("website.api.module_runners.ask_kasten", "_require_entitlement"),
+    ("website.api.module_runners.summarization", "require_entitlement"),
+    ("website.api.module_runners.summarization", "consume_entitlement"),
+)
+
+
+def bypass_entitlements(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """No-op every entitlement gate that currently exists. Returns what it patched."""
+    import importlib
+
+    async def _noop(*_args, **_kwargs):
+        return None
+
+    patched: list[str] = []
+    for module_path, attr in _ENTITLEMENT_TARGETS:
+        try:
+            mod = importlib.import_module(module_path)
+        except Exception:  # pragma: no cover - module genuinely gone
+            continue
+        if hasattr(mod, attr):
+            monkeypatch.setattr(mod, attr, _noop)
+            patched.append(f"{module_path}.{attr}")
+
+    if not patched:
+        raise AssertionError(
+            "bypass_entitlements patched nothing — every known entitlement "
+            "symbol has moved. Update _ENTITLEMENT_TARGETS in "
+            "tests/integration/v2/conftest.py rather than leaving tests to fail "
+            "with bare AttributeErrors."
+        )
+    return patched
+
+
+@pytest.fixture
+def entitlement_bypass(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Fixture form of :func:`bypass_entitlements`."""
+    return bypass_entitlements(monkeypatch)

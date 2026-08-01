@@ -14,7 +14,6 @@ header that PostgREST decodes into the request.jwt.claims GUC.
 """
 from __future__ import annotations
 
-import uuid
 
 import pytest
 from postgrest.exceptions import APIError

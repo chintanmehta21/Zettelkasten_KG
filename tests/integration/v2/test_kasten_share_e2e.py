@@ -29,6 +29,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from website.core.supabase_v2.client import get_v2_user_client
+from tests.integration.v2.conftest import bypass_entitlements
 
 
 pytestmark = pytest.mark.live
@@ -59,8 +60,7 @@ def v2_app(monkeypatch):
     # 2026-08-01: Phase 9 folded consumption into require_entitlement, so
     # patching the removed ``consume_entitlement`` raised AttributeError at
     # fixture setup. Patch only what the module imports.
-    from website.api import sandbox_routes as sandbox_routes_mod
-    monkeypatch.setattr(sandbox_routes_mod, "require_entitlement", _noop)
+    bypass_entitlements(monkeypatch)
 
     from website.app import create_app
 

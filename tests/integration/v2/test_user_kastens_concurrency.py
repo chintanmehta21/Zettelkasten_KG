@@ -34,6 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 import asyncpg
 import pytest
 from fastapi.testclient import TestClient
+from tests.integration.v2.conftest import bypass_entitlements
 
 
 pytestmark = pytest.mark.live
@@ -56,9 +57,7 @@ def v2_app(monkeypatch):
     async def _noop(*_args, **_kwargs):  # noqa: D401
         return None
 
-    from website.api import sandbox_routes as sandbox_routes_mod
-    monkeypatch.setattr(sandbox_routes_mod, "require_entitlement", _noop)
-    monkeypatch.setattr(sandbox_routes_mod, "consume_entitlement", _noop)
+    bypass_entitlements(monkeypatch)
 
     from website.app import create_app
 

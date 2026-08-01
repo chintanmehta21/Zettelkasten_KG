@@ -10,7 +10,6 @@ GET /api/operations/{id} surfaces the same body to the client.
 """
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -18,6 +17,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from tests.integration.v2.conftest import bypass_entitlements
 
 ZORO_AUTH_ID = UUID("a57e1f2f-7d89-4cd7-ae39-72c440ed4b4e")
 
@@ -184,8 +184,7 @@ def facade_client(monkeypatch):
     async def fake_consume(*_args, **_kwargs):
         return None
 
-    monkeypatch.setattr(runner, "require_entitlement", fake_require)
-    monkeypatch.setattr(runner, "consume_entitlement", fake_consume)
+    bypass_entitlements(monkeypatch)
     monkeypatch.setattr(zettels_routes, "_gemini_client", lambda: object())
 
     from website.app import create_app
