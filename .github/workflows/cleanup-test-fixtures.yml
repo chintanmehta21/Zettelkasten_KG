@@ -14,6 +14,12 @@ permissions:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    # 2026-08-01: SUPABASE_* / DROPLET_* / WEBSHARE_* are scoped to the
+    # `production` GitHub Environment. Without this declaration every
+    # `secrets.*` reference below resolves to an EMPTY STRING and the job
+    # runs green while doing nothing — the same silent-skip class that hid
+    # the deploy smoke-fixture rot for weeks.
+    environment: production
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
