@@ -50,6 +50,35 @@ from website.config.page_menus import PAGE_MENUS, MenuItem
 logger = logging.getLogger("website.app")
 
 
+_EMPTY_SCOPE_MESSAGE = "This sandbox has no Zettels in the selected scope."
+
+
+def _register_empty_scope_handler(app: FastAPI) -> None:
+    """Map an empty retrieval scope to a structured 422, app-wide.
+
+    2026-08-01: ``EmptyScopeError`` is raised by the retriever when a
+    Kasten-scoped query matches zero zettels — corpus drift, not a code fault.
+    ``answer_stream`` already emitted a clean ``empty_scope`` SSE event, but the
+    non-stream path behind ``POST /api/rag/adhoc`` had no catch, so it reached
+    the catch-all handler as ``500 internal_server_error`` and paged
+    #app-errors. That made "the corpus is empty" indistinguishable from "the
+    pipeline is broken", which materially slowed the 2026-07-31 triage.
+
+    422 (not 500, not 404): the request is well-formed and the Kasten exists —
+    it just has nothing in scope to answer from. Message is shared with the
+    streaming path so both transports read identically.
+    """
+    from website.features.rag_pipeline.errors import EmptyScopeError
+
+    @app.exception_handler(EmptyScopeError)
+    async def _on_empty_scope(request: Request, exc: EmptyScopeError):
+        logger.info("empty scope on %s: %s", request.url.path, exc)
+        return JSONResponse(
+            {"detail": {"code": "empty_scope", "message": _EMPTY_SCOPE_MESSAGE}},
+            status_code=422,
+        )
+
+
 def _register_unknown_kasten_handler(app: FastAPI) -> None:
     """Map a referenced-but-missing Kasten to 403, app-wide.
 
@@ -546,6 +575,7 @@ def create_app(lifespan=None) -> FastAPI:
     from website.features.rag_pipeline.rerank.cascade import MemoryPressureError
 
     _register_unknown_kasten_handler(app)
+    _register_empty_scope_handler(app)
 
     @app.exception_handler(MemoryPressureError)
     async def _on_memory_pressure(request: Request, exc: MemoryPressureError):
