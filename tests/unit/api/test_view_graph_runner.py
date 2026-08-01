@@ -132,7 +132,12 @@ async def test_anonymous_default_serves_global_community(_stub_routes_helpers, _
     mock_repo = MagicMock()
     mock_repo.get_community_graph.return_value = community_graph
     mock_repo.read_cache_version.return_value = 0
+    # The community branch is v2-only and degrades to an empty graph when the v2
+    # client is unconfigured, so state that precondition explicitly rather than
+    # inheriting an ambient DB_SCHEMA_VERSION from whatever ran earlier.
     with patch(
+        "website.api.module_runners.view_graph._use_supabase_v2", return_value=True
+    ), patch(
         "website.api.module_runners.view_graph._community_repository",
         return_value=mock_repo,
     ):
@@ -150,6 +155,8 @@ async def test_explicit_global_view_serves_community(_stub_routes_helpers, _pass
     mock_repo.get_community_graph.return_value = community_graph
     mock_repo.read_cache_version.return_value = 0
     with patch(
+        "website.api.module_runners.view_graph._use_supabase_v2", return_value=True
+    ), patch(
         "website.api.module_runners.view_graph._community_repository",
         return_value=mock_repo,
     ):
