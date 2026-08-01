@@ -42,6 +42,18 @@ def _restore_app_singletons():
     Import failures are ignored so this stays inert for tests that never load
     the website package.
     """
+    # DB_SCHEMA_VERSION leaks the same way, but via os.environ rather than a
+    # module attribute: docs/rag_eval_v2/scripts/run_eval_v2.py does a raw
+    # ``os.environ.setdefault("DB_SCHEMA_VERSION", "v2")`` at import, and
+    # tests/unit/rag_eval_v2/ imports it. That directory sorts BEFORE
+    # tests/unit/website/, so every later test then takes the v2 code path and
+    # /api/graph makes a real Supabase call (ConnectError -> 500). Snapshot and
+    # restore the variable so the leak cannot outlive the test that caused it.
+    import os as _os
+
+    _env_sentinel = object()
+    _prev_schema_version = _os.environ.get("DB_SCHEMA_VERSION", _env_sentinel)
+
     saved: list[tuple[object, str, object]] = []
     try:  # pragma: no cover - import guard
         from website.api import auth as auth_mod
@@ -64,6 +76,11 @@ def _restore_app_singletons():
             setattr(module, attr, original)
         except Exception:  # noqa: BLE001
             pass
+
+    if _prev_schema_version is _env_sentinel:
+        _os.environ.pop("DB_SCHEMA_VERSION", None)
+    else:
+        _os.environ["DB_SCHEMA_VERSION"] = _prev_schema_version
 
 
 def pytest_addoption(parser):
