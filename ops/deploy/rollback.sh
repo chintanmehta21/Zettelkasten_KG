@@ -36,11 +36,28 @@ docker compose \
     exit 1
 }
 
-log "Rewriting upstream snippet -> $ACTIVE..."
-cat > "$SNIPPET" <<EOF
+log "Rewriting upstream snippet -> $ACTIVE (color swap only)..."
+# 2026-08-01: this used to overwrite the snippet with a bare one-line
+# reverse_proxy, silently discarding the iter-03/04 transport block
+# (read_timeout 300s, max_conns_per_host 20, 502/504 -> 503 + Retry-After).
+# Those are protected knobs (CLAUDE.md) and a rollback must never revert
+# them. Swap only the color token, and write in place: a bind-mounted
+# single file tracks its inode, so truncate+rewrite (not mv) is required
+# for the caddy container to see the change.
+if grep -q 'transport http' "$SNIPPET"; then
+    SNIPPET_SWAPPED="$(sed -E "s/zettelkasten-(blue|green):10000/zettelkasten-${ACTIVE}:10000/g" "$SNIPPET")"
+    printf '%s\n' "$SNIPPET_SWAPPED" > "$SNIPPET"
+else
+    # Degraded path: the block is already missing, so there is nothing to
+    # preserve. Restore service, but say so loudly — the next deploy
+    # rewrites the canonical snippet from deploy.sh's heredoc.
+    log "WARNING: upstream.snippet has no transport block (protected timeouts absent)."
+    log "WARNING: writing minimal snippet to restore service; redeploy to restore timeouts."
+    cat > "$SNIPPET" <<EOF
 # Updated by rollback.sh at $(date -u +%Y-%m-%dT%H:%M:%SZ)
 reverse_proxy zettelkasten-${ACTIVE}:10000
 EOF
+fi
 chown deploy:deploy "$SNIPPET"
 chmod 644 "$SNIPPET"
 

@@ -55,11 +55,18 @@ jobs:
             log "current upstream=${CURRENT} target=zettelkasten-${TARGET}"
 
             if [ "$CURRENT" != "zettelkasten-${TARGET}" ]; then
-              cat > "$ROOT/caddy/upstream.snippet" <<EOF
-            # Updated by ops-recover-serve at $(date -u +%Y-%m-%dT%H:%M:%SZ)
-            reverse_proxy zettelkasten-${TARGET}:10000
-            EOF
-              log "snippet rewritten -> zettelkasten-${TARGET}"
+              SNIP="$ROOT/caddy/upstream.snippet"
+              if ! grep -q 'transport http' "$SNIP"; then
+                log "FATAL: upstream.snippet has no transport block — refusing to"
+                log "FATAL: rewrite it. Those timeouts are protected (CLAUDE.md);"
+                log "FATAL: redeploy to restore the canonical snippet instead."
+                exit 1
+              fi
+              # Swap ONLY the color token, in place. Truncate+rewrite (never mv)
+              # so the caddy single-file bind mount keeps tracking this inode.
+              SWAPPED="$(sed -E "s/zettelkasten-(blue|green):10000/zettelkasten-${TARGET}:10000/g" "$SNIP")"
+              printf '%s\n' "$SWAPPED" > "$SNIP"
+              log "snippet color swapped -> zettelkasten-${TARGET} (transport block preserved)"
             fi
 
             # 3. Clear any stale maintenance flag, reload caddy, verify e2e.
