@@ -13,7 +13,13 @@ jobs:
     name: pytest --live (real APIs)
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 25
+    # 2026-08-01: raised 25 -> 60. From 2026-05-31 the 228 v2 integration tests
+    # died instantly on DNS (the ci-stub.supabase.co poisoning), so the suite
+    # "fit" in 25 minutes only because a third of it wasn't doing any work.
+    # With real connectivity restored they perform genuine round-trips against
+    # Supabase and the run exceeded the cap — surfacing as `cancelled`, which
+    # reads like an abort rather than a timeout.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
 
