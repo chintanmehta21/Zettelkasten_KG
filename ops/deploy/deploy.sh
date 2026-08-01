@@ -233,7 +233,19 @@ log "[migration] OK — proceeding with blue/green flip."
 # Skipped by default per operator decision — re-enable with
 # DEPLOY_ALLOWLIST_GATE=1 once the live kg_users table has been reconciled
 # (run ops/scripts/reconcile_kg_users.py --audit first).
+#
+# ⚠ 2026-08-01 — DO NOT SET DEPLOY_ALLOWLIST_GATE=1 AS-IS. The query below
+# reads `public.kg_users`, which was DROPPED in the DB v2 purge (Phase 6,
+# commit e168b38). Enabling this today aborts EVERY deploy with an
+# UndefinedTable error regardless of the user data it is meant to check —
+# and it aborts at a point where the previous colour is already stopped.
+# This is the same defect class as the smoke-fixture rot: an assertion
+# pinned to data that no longer exists.
+# Before re-enabling, port the query to the v2 owner of identity
+# (core.profiles) and re-verify expected_users.json against it.
 if [ "${DEPLOY_ALLOWLIST_GATE:-0}" = "1" ]; then
+    log "[deploy] WARNING: allowlist gate targets public.kg_users, dropped in Phase 6."
+    log "[deploy] WARNING: it will fail with UndefinedTable until ported to core.profiles."
     log "[deploy] Running kg_users allowlist gate..."
     set +e
     docker run --rm --network host \

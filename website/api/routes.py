@@ -404,7 +404,52 @@ async def warm():
         logger.warning("warm endpoint encountered %r", exc)
         detail = f"warmup_failed: {type(exc).__name__}"
 
-    return {"warmed": True, "rerank_ms": rerank_ms, "detail": detail}
+    # 2026-08-01: warm the DATA path too, not just the reranker.
+    #
+    # deploy.sh's comment claimed this endpoint warmed "cold Supabase RPC
+    # pools, cold pgvector index pages, and cold Gemini key-pool selectors".
+    # It did not — it warmed exactly one thing, the stage-2 ONNX session. So
+    # the pre-smoke warm-up left the entire retrieval path cold, which is a
+    # live candidate for the 04:08Z zero-citation smoke failure.
+    #
+    # A single cheap round-trip establishes the TCP+TLS+auth handshake and
+    # gets PostgREST/pooler plan caches primed. Deliberately NOT warmed here:
+    # anything that calls Gemini — RAG questions are metered per user and the
+    # smoke account is on a free plan, so warming the LLM path on every deploy
+    # (and every probe cycle) would burn real quota and turn a paid API into a
+    # hard dependency of the health signal. Failure is non-fatal by design:
+    # this endpoint must never gate the cutover on a soft dependency.
+    db_ms = 0.0
+    db_detail = "skipped"
+    try:
+        from website.core.supabase_v2.client import get_v2_client, is_v2_configured
+
+        if is_v2_configured():
+            t1 = _time.perf_counter()
+            # Cheapest possible authenticated round-trip through PostgREST.
+            get_v2_client().schema("core").table("profiles").select(
+                "id"
+            ).limit(1).execute()
+            db_ms = round((_time.perf_counter() - t1) * 1000, 1)
+            db_detail = "ok"
+        else:
+            db_detail = "v2_not_configured"
+    except Exception as exc:  # pragma: no cover - soft dependency, never fatal
+        logger.warning("warm endpoint db pre-warm failed %r", exc)
+        db_detail = f"db_warm_failed: {type(exc).__name__}"
+
+    return {
+        "warmed": True,
+        "rerank_ms": rerank_ms,
+        "detail": detail,
+        "db_ms": db_ms,
+        "db_detail": db_detail,
+        # Which worker answered — gunicorn round-robins across
+        # GUNICORN_WORKERS, so one warm request warms only ONE worker. The
+        # deploy script fires this repeatedly; surfacing the pid lets an
+        # operator confirm coverage rather than assume it.
+        "pid": os.getpid(),
+    }
 
 
 @router.get("/auth/config")
