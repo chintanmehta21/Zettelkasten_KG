@@ -370,6 +370,51 @@ async def health(request: Request):
     return payload
 
 
+@router.get("/readyz")
+async def readyz(response: Response):
+    """Readiness: can THIS worker actually serve a real request right now?
+
+    2026-08-01. ``/api/health`` is a LIVENESS signal — process is up, event loop
+    responsive — and it must stay shallow: it is Caddy's and Docker's restart
+    trigger, and a liveness probe that touches dependencies converts a soft
+    dependency into a hard one and can take the whole service down (AWS
+    Builders' Library; the Kubernetes probe docs carry the same caution).
+
+    Readiness is the separate question, and we had no answer for it: a
+    freshly-forked worker reported ``/api/health`` 200 while the retrieval path
+    was still cold, which is how a deploy smoke probe fired against a worker
+    that could not yet answer and returned zero citations.
+
+    Returns 200 only when the reranker session is loaded AND the data path has
+    been exercised at least once in this process. 503 otherwise, so a caller
+    can poll rather than sleep a fixed interval.
+
+    ``pid`` matters: gunicorn round-robins accept across GUNICORN_WORKERS, so a
+    single 200 proves ONE worker is ready. Callers wanting full coverage should
+    poll until they have seen every distinct pid.
+    """
+    from website.features.rag_pipeline.rerank import cascade as cascade_mod
+
+    reranker_ready = cascade_mod._STAGE2_SESSION is not None
+    data_path_ready = bool(_WARMED.get("db"))
+    ready = reranker_ready and data_path_ready
+
+    if not ready:
+        response.status_code = 503
+    return {
+        "ready": ready,
+        "reranker": reranker_ready,
+        "data_path": data_path_ready,
+        "pid": os.getpid(),
+    }
+
+
+# Per-process warm-up state. Module-level (not app.state) because gunicorn
+# --preload forks AFTER import: each worker gets its own copy, which is exactly
+# the granularity we want — readiness is a per-worker property.
+_WARMED: dict[str, bool] = {}
+
+
 @router.get("/health/warm")
 async def warm():
     """Pre-warm endpoint: triggers reranker first inference + tokenizer load.
@@ -432,6 +477,8 @@ async def warm():
             ).limit(1).execute()
             db_ms = round((_time.perf_counter() - t1) * 1000, 1)
             db_detail = "ok"
+            # Mark this worker's data path as exercised — /api/readyz reads it.
+            _WARMED["db"] = True
         else:
             db_detail = "v2_not_configured"
     except Exception as exc:  # pragma: no cover - soft dependency, never fatal

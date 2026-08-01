@@ -446,10 +446,39 @@ except Exception:
         # does NOT touch embeddings, the Supabase pool, PostgREST, or the Gemini
         # key pool, despite what the comment above implies. Widening it is
         # tracked as item 2.5 in docs/claude_audits/hardening_plan_2026-08-01.md.)
-        for _warm in 1 2 3 4 5 6; do
-            curl -fsS --max-time 30 "http://127.0.0.1:${IDLE_PORT}/api/health/warm" >/dev/null 2>&1 || true
+        # Poll until we have observed GUNICORN_WORKERS distinct worker PIDs
+        # report ready, rather than firing a fixed number of requests and
+        # hoping. gunicorn round-robins accept, so N requests do NOT guarantee
+        # N distinct workers were warmed. Bounded by a deadline so a wedged
+        # worker fails the gate instead of hanging the deploy.
+        WARM_TARGET="${GUNICORN_WORKERS:-2}"
+        WARM_DEADLINE=$(( SECONDS + 180 ))
+        WARM_PIDS=""
+        while [ "$SECONDS" -lt "$WARM_DEADLINE" ]; do
+            _pid=$(curl -fsS --max-time 30 "http://127.0.0.1:${IDLE_PORT}/api/health/warm" 2>/dev/null \
+                   | python3 -c "import json,sys
+try: print(json.load(sys.stdin).get('pid',''))
+except Exception: print('')" 2>/dev/null || echo "")
+            if [ -n "$_pid" ]; then
+                case " $WARM_PIDS " in
+                    *" $_pid "*) : ;;
+                    *) WARM_PIDS="$WARM_PIDS $_pid" ;;
+                esac
+            fi
+            _count=$(printf '%s\n' $WARM_PIDS | grep -c . || true)
+            if [ "$_count" -ge "$WARM_TARGET" ]; then
+                log "[rag-smoke] warmed ${_count}/${WARM_TARGET} workers (pids:${WARM_PIDS} )"
+                break
+            fi
+            sleep 2
         done
-        unset _warm
+        if [ "${_count:-0}" -lt "$WARM_TARGET" ]; then
+            # Non-fatal: warm-up is best-effort, and the smoke retries below
+            # still give a cold worker time to catch up. Log it so a recurring
+            # shortfall is visible rather than silent.
+            log "[rag-smoke] WARN: only warmed ${_count:-0}/${WARM_TARGET} workers before deadline"
+        fi
+        unset _pid _count
 
         # iter-03 §B (2026-04-29): retry the smoke probe up to 3 times with
         # 15s backoff. Cold-start retrieval and intra-request memory ceiling
