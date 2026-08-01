@@ -33,7 +33,6 @@ from website.features.summarization_engine.core.models import (
     SummaryMetadata,
 )
 
-from tests.integration.v2.conftest import bypass_entitlements
 
 
 def _make_summary_result():
@@ -196,10 +195,13 @@ async def test_route_atomic_gate_order_phase9(monkeypatch):
     async def fake_consume(*_a, **_kw):
         consume_calls["n"] += 1
 
-    bypass_entitlements(monkeypatch)
+    # NOT bypass_entitlements() here: these tests assert the CALL ORDER
+    # (require -> summarize -> persist), so the entitlement gate must be
+    # instrumented rather than silently no-op'd.
+    monkeypatch.setattr(runner, "require_entitlement", fake_require)
+    monkeypatch.setattr(runner, "consume_entitlement", fake_consume)
     monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
     monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
-    bypass_entitlements(monkeypatch)
     monkeypatch.setattr(routes_mod, "_gemini_client", lambda: object())
     monkeypatch.setattr(
         runner,
@@ -264,10 +266,13 @@ async def test_route_does_not_consume_when_persist_fails(monkeypatch):
     async def fake_consume(*_a, **_kw):
         consume_called["n"] += 1
 
-    bypass_entitlements(monkeypatch)
+    # NOT bypass_entitlements() here: these tests assert the CALL ORDER
+    # (require -> summarize -> persist), so the entitlement gate must be
+    # instrumented rather than silently no-op'd.
+    monkeypatch.setattr(runner, "require_entitlement", fake_require)
+    monkeypatch.setattr(runner, "consume_entitlement", fake_consume)
     monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
     monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
-    bypass_entitlements(monkeypatch)
     monkeypatch.setattr(routes_mod, "_gemini_client", lambda: object())
     monkeypatch.setattr(
         runner,

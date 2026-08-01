@@ -21,6 +21,13 @@ import pytest
 from website.core.supabase_v2.client import get_v2_user_client
 from website.core.supabase_v2.repositories.rag_repository import RAGRepository
 from website.features.rag_pipeline.retrieval.graph_score import _usage_weight_bonus
+
+# 2026-08-01: the kwarg is ``workspace_id``, not ``user_id``. It was renamed
+# deliberately (Codex review #3262442111) because rag.search_signal_weights
+# filters WHERE workspace_id = p_workspace_id — passing an auth-subject/profile
+# UUID silently matched nothing. These tests already passed the WORKSPACE id as
+# the value, so only the keyword was stale; they had been failing with
+# TypeError: _usage_weight_bonus() got an unexpected keyword argument 'user_id'.
 from website.features.rag_pipeline.types import QueryClass
 
 
@@ -146,7 +153,7 @@ async def test_graph_score_signal_weight_bonus_matches_decay_formula(mint_user, 
     # Multi-hop: weights 10 + 8 = 18 → expected sigmoid bonus.
     bonus_mh = _usage_weight_bonus(
         repo,
-        user_id=ws_id,
+        workspace_id=ws_id,
         target_node_id=str(target),
         query_class=QueryClass.MULTI_HOP,
     )
@@ -155,7 +162,7 @@ async def test_graph_score_signal_weight_bonus_matches_decay_formula(mint_user, 
     # Lookup: only the 42.0 row matches (different query_class).
     bonus_lk = _usage_weight_bonus(
         repo,
-        user_id=ws_id,
+        workspace_id=ws_id,
         target_node_id=str(target),
         query_class=QueryClass.LOOKUP,
     )
@@ -177,7 +184,7 @@ async def test_graph_score_signal_weight_bonus_zero_when_no_rows(mint_user, asyn
 
     bonus = _usage_weight_bonus(
         repo,
-        user_id=ws_id,
+        workspace_id=ws_id,
         target_node_id=str(target),
         query_class=QueryClass.MULTI_HOP,
     )
@@ -211,7 +218,7 @@ async def test_graph_score_signal_weight_workspace_isolation(mint_user, asyncpg_
 
     bonus = _usage_weight_bonus(
         intruder_repo,
-        user_id=owner_ws,  # passes another user's workspace_id deliberately
+        workspace_id=owner_ws,  # passes another user's workspace_id deliberately
         target_node_id=str(target),
         query_class=QueryClass.MULTI_HOP,
     )
