@@ -39,7 +39,12 @@ services:
         max-file: "3"
     healthcheck:
       # iter-12: admin endpoint avoids SNI mismatch — Caddyfile only serves zettelkasten.in, not localhost
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2019/config/"]
+      # 2026-08-01: 127.0.0.1, NOT localhost. Caddy's admin API binds IPv4
+      # loopback only, while busybox wget resolves localhost to ::1 with no
+      # IPv4 fallback — so the probe got connection-refused and caddy sat
+      # "unhealthy" for 6 weeks while serving fine. Proven on the droplet:
+      # wget localhost:2019 -> exit 1, wget 127.0.0.1:2019 -> exit 0.
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:2019/config/"]
       interval: 30s
       timeout: 5s
       start_period: 15s

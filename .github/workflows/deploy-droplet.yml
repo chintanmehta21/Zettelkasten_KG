@@ -412,7 +412,7 @@ jobs:
                 --log-driver json-file \
                 --log-opt max-size=10m \
                 --log-opt max-file=3 \
-                --health-cmd "wget --quiet --tries=1 --spider http://localhost:2019/config/" \
+                --health-cmd "wget --quiet --tries=1 --spider http://127.0.0.1:2019/config/" \
                 --health-interval 30s \
                 --health-timeout 5s \
                 --health-start-period 15s \
@@ -489,9 +489,13 @@ jobs:
 
             ACTIVE_COLOR=""
 
-            # Tier 1: Try reading the state file
-            if [ -f /opt/zettelkasten/deploy/active_color ]; then
-              ACTIVE_COLOR=$(cat /opt/zettelkasten/deploy/active_color | tr -d '[:space:]')
+            # Tier 1: Try reading the state file.
+            # 2026-08-01: was /opt/zettelkasten/deploy/active_color, which
+            # deploy.sh never writes — the canonical file is
+            # $ROOT/ACTIVE_COLOR (see deploy.sh + rollback.sh). Tier 1 was
+            # therefore always dead and detection silently fell to Tier 2.
+            if [ -f /opt/zettelkasten/ACTIVE_COLOR ]; then
+              ACTIVE_COLOR=$(cat /opt/zettelkasten/ACTIVE_COLOR | tr -d '[:space:]')
             fi
 
             # Tier 2: Fallback to probing docker for running container
