@@ -40,4 +40,13 @@ jobs:
           # DSN; missing since the suite grew v2 coverage — every weekly run
           # errored at setup from 2026-05-31 onward.
           SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_V2_DATABASE_URL }}
+          # 2026-08-01: adding the DSN cut setup errors 221 -> 35, but the v2
+          # app fixtures still could not build a PostgREST client. get_v2_config
+          # resolves SUPABASE_V2_* first and falls back to these canonical
+          # names (client.py::_v2_env) — and the service-role key was never
+          # passed here at all. Mirrors cleanup-test-fixtures.yml, which works.
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: pytest --live -q
