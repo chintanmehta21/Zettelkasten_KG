@@ -155,7 +155,7 @@ def test_v2_summarize_anonymous_uses_default_user(app_client, monkeypatch):
     resp = app_client.post("/api/v2/summarize", json=payload)
     assert resp.status_code == 202, resp.text
 
-    assert seen == ["00000000-0000-0000-0000-000000000001"], (
+    assert seen == [_expected_anon_user_id()], (
         f"anonymous fallback wrong: {seen}"
     )
 
@@ -219,8 +219,22 @@ def test_v2_summarize_invalid_jwt_falls_back_to_anon(app_client, monkeypatch):
     # or 401s. Either is acceptable — the invariant is "no 5xx".
     assert resp.status_code < 500, resp.text
     if resp.status_code == 202:
-        # Anonymous fallback was taken — should match the sentinel UUID.
-        assert seen == ["00000000-0000-0000-0000-000000000001"], seen
+        # Anonymous fallback was taken — must match the resolved Zoro identity.
+        assert seen == [_expected_anon_user_id()], seen
+
+
+# 2026-08-01: assert against the RESOLVED anonymous identity, not the sentinel.
+# zettels_routes._zoro_user_id() reads ``_canonical_zoro`` from
+# ops/deploy/expected_users.json and only falls back to _SENTINEL_USER_ID
+# ("00000000-...-0001") when that lookup FAILS. These tests had hard-coded the
+# failure-path value, so with the file present they failed with
+# ``anonymous fallback wrong: ['a57e1f2f-...']`` — which was the CORRECT
+# behaviour. Deriving the expectation keeps the contract ("anonymous captures
+# map to canonical Zoro") true on both paths.
+def _expected_anon_user_id() -> str:
+    from website.api.zettels_routes import _zoro_user_id
+
+    return str(_zoro_user_id())
 
 
 # --- writer surface: workspace_id never crosses tenant boundaries ----------
