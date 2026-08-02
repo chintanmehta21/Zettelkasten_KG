@@ -118,6 +118,14 @@ tests/integration/v2/test_user_rag_kasten_bola.py::test_adhoc_with_other_users_k
 #   core.operations has no `accepted` column and never did (migration 48).
 #   'accepted' was a STATUS value, renamed to 'queued' by migration 51; the
 #   ops_accept p_accepted payload lands in `response`. Test never matched schema.
+# BUCKET 4 (2 tests) — root cause fixed, but STILL LISTED (not verified green).
+#   rag.assert_kasten_owner_can_grant() waives the owner check only for
+#   core.is_service_role(), which reads request.jwt.claims. A raw asyncpg
+#   connection has no claims, so the fixture's "service-role bypass" comment was
+#   false. Fixed by setting the claim transaction-locally; verified in isolation
+#   (core.is_service_role() -> True). NOT delisted: these tests seed 40 zettels
+#   and could not be run to completion on the dev box (embedding model cold), so
+#   CI is the verifier. If they XPASS(strict) in the next live run, delete these.
 tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_does_not_widen_personal_graph
 tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_grants_read_not_write
 #
