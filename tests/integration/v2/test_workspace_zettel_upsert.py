@@ -57,25 +57,11 @@ _CANONICAL_RPC_SQL = (
 )
 
 
-async def _ensure_workspace(pool: asyncpg.Pool) -> uuid.UUID:
-    """Insert a throwaway workspace row that the workspace_zettel can FK-reference."""
-    workspace_id = uuid.uuid4()
-    profile_id = uuid.uuid4()
-    async with pool.acquire() as conn:
-        # core.profiles → core.workspaces. Cheapest path that satisfies the
-        # FK without dragging in an auth.users row.
-        await conn.execute(
-            "INSERT INTO core.profiles (id, email, display_name) "
-            "VALUES ($1, $2, $3)",
-            profile_id, f"wz-rpc-test-{profile_id.hex[:8]}@example.com",
-            "wz-rpc-test",
-        )
-        await conn.execute(
-            "INSERT INTO core.workspaces (id, owner_profile_id, name) "
-            "VALUES ($1, $2, $3)",
-            workspace_id, profile_id, "wz-rpc-test-ws",
-        )
-    return workspace_id
+# A hand-rolled core.profiles insert is NOT viable: profiles_id_fkey references
+# auth.users(id), so a synthetic profile_id always violates the FK. Auth users
+# must be minted through the GoTrue admin API (mint_user) — that fires the
+# profile -> personal-workspace trigger chain and uses the e2e-*@test.com naming
+# the session-finish sweeper relies on. Raw SQL users would leak forever.
 
 
 async def _make_canonical(pool: asyncpg.Pool) -> uuid.UUID:
@@ -92,23 +78,22 @@ async def _make_canonical(pool: asyncpg.Pool) -> uuid.UUID:
 
 
 async def _cleanup_workspace(pool: asyncpg.Pool, workspace_id: uuid.UUID) -> None:
+    """Drop only the rows this test wrote.
+
+    The workspace/profile/auth-user themselves belong to ``mint_user`` and are
+    torn down by its fixture — deleting them here would double-free and race
+    that teardown.
+    """
     async with pool.acquire() as conn:
-        # Cascade order: workspace_chunk_membership → workspace_zettels → workspaces → profiles.
-        # Foreign-key ON DELETE CASCADE handles wcm + wz; workspaces.owner_profile_id
-        # is RESTRICT so we delete the workspace first, then the profile.
-        owner_profile_id = await conn.fetchval(
-            "DELETE FROM core.workspaces WHERE id = $1 RETURNING owner_profile_id",
+        await conn.execute(
+            "DELETE FROM content.workspace_zettels WHERE workspace_id = $1",
             workspace_id,
         )
-        if owner_profile_id is not None:
-            await conn.execute(
-                "DELETE FROM core.profiles WHERE id = $1", owner_profile_id,
-            )
 
 
 @pytest.mark.asyncio
-async def test_fresh_insert_returns_uuid_and_row_lands_live(asyncpg_pool: asyncpg.Pool):
-    workspace_id = await _ensure_workspace(asyncpg_pool)
+async def test_fresh_insert_returns_uuid_and_row_lands_live(asyncpg_pool: asyncpg.Pool, mint_user):
+    workspace_id = mint_user(workspace_count=1).workspace_ids[0]
     canonical_id = await _make_canonical(asyncpg_pool)
     try:
         async with asyncpg_pool.acquire() as conn:
@@ -134,8 +119,8 @@ async def test_fresh_insert_returns_uuid_and_row_lands_live(asyncpg_pool: asyncp
 
 
 @pytest.mark.asyncio
-async def test_repeat_with_same_pair_updates_in_place(asyncpg_pool: asyncpg.Pool):
-    workspace_id = await _ensure_workspace(asyncpg_pool)
+async def test_repeat_with_same_pair_updates_in_place(asyncpg_pool: asyncpg.Pool, mint_user):
+    workspace_id = mint_user(workspace_count=1).workspace_ids[0]
     canonical_id = await _make_canonical(asyncpg_pool)
     try:
         async with asyncpg_pool.acquire() as conn:
@@ -147,7 +132,7 @@ async def test_repeat_with_same_pair_updates_in_place(asyncpg_pool: asyncpg.Pool
             row_b = await conn.fetchrow(
                 _UPSERT_RPC_SQL,
                 workspace_id, canonical_id, "second", "engine-v2",
-                ["t2", "t3"], "noted", True, "api",
+                ["t2", "t3"], "noted", True, "share",
             )
         # SAME uuid — UPDATE branch, not a new INSERT.
         assert row_a["id"] == row_b["id"]
@@ -169,7 +154,7 @@ async def test_repeat_with_same_pair_updates_in_place(asyncpg_pool: asyncpg.Pool
         assert list(db_row["user_tags"]) == ["t2", "t3"]
         assert db_row["user_note"] == "noted"
         assert db_row["pinned"] is True
-        assert db_row["added_via"] == "api"
+        assert db_row["added_via"] == "share"
         assert db_row["deleted_at"] is None
         # No duplicate row.
         assert cnt == 1
@@ -178,13 +163,13 @@ async def test_repeat_with_same_pair_updates_in_place(asyncpg_pool: asyncpg.Pool
 
 
 @pytest.mark.asyncio
-async def test_re_add_after_soft_delete_creates_new_row(asyncpg_pool: asyncpg.Pool):
+async def test_re_add_after_soft_delete_creates_new_row(asyncpg_pool: asyncpg.Pool, mint_user):
     """Migration 66 semantics: a re-add after soft-delete must land a NEW
     workspace_zettel row, NOT silently restore the tombstoned one. The
     partial index does not see the tombstone, so ON CONFLICT does not
     fire and INSERT proceeds; both rows coexist with the same
     (workspace_id, canonical_zettel_id) — one live, one trashed."""
-    workspace_id = await _ensure_workspace(asyncpg_pool)
+    workspace_id = mint_user(workspace_count=1).workspace_ids[0]
     canonical_id = await _make_canonical(asyncpg_pool)
     try:
         async with asyncpg_pool.acquire() as conn:
@@ -230,12 +215,12 @@ async def test_re_add_after_soft_delete_creates_new_row(asyncpg_pool: asyncpg.Po
 
 @pytest.mark.asyncio
 async def test_concurrent_inserters_exactly_one_wins_others_update(
-    asyncpg_pool: asyncpg.Pool,
+    asyncpg_pool: asyncpg.Pool, mint_user,
 ):
     """Ten concurrent inserts on the same (workspace_id, canonical_zettel_id).
     PG INSERT ON CONFLICT is atomic — exactly one row exists at the end,
     and every caller returns that one uuid."""
-    workspace_id = await _ensure_workspace(asyncpg_pool)
+    workspace_id = mint_user(workspace_count=1).workspace_ids[0]
     canonical_id = await _make_canonical(asyncpg_pool)
     try:
         async def _one() -> uuid.UUID:

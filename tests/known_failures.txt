@@ -120,8 +120,11 @@ tests/integration/v2/test_user_rag_kasten_bola.py::test_adhoc_with_other_users_k
 #   ops_accept p_accepted payload lands in `response`. Test never matched schema.
 tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_does_not_widen_personal_graph
 tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_grants_read_not_write
-tests/integration/v2/test_workspace_zettel_upsert.py::test_concurrent_inserters_exactly_one_wins_others_update
-tests/integration/v2/test_workspace_zettel_upsert.py::test_fresh_insert_returns_uuid_and_row_lands_live
-tests/integration/v2/test_workspace_zettel_upsert.py::test_re_add_after_soft_delete_creates_new_row
-tests/integration/v2/test_workspace_zettel_upsert.py::test_repeat_with_same_pair_updates_in_place
+#
+# BUCKET 5 (4 tests) — FIXED, lines deleted 2026-08-02.
+#   The fixture hand-rolled core.profiles rows, but profiles_id_fkey references
+#   auth.users(id), so every synthetic profile_id violated the FK. Now minted
+#   via mint_user (GoTrue admin API -> trigger chain -> sweeper-visible naming).
+#   One of the four had a second, independent cause: added_via='api' is outside
+#   the workspace_zettels_added_via_check domain (telegram|website|share|migration).
 website/features/summarization_engine/tests/live/test_live_engine.py::test_live_web_summary_pipeline  # example.com yields 112 chars, below the thin-extraction floor
