@@ -74,16 +74,21 @@ async def _seed_session_in_kasten(
     *,
     workspace_id: uuid.UUID,
     profile_id: uuid.UUID,
-    sandbox_id: uuid.UUID | None,
+    kasten_id: uuid.UUID | None,
 ) -> uuid.UUID:
-    """Insert a chat session scoped (optionally) to a Kasten."""
+    """Insert a chat session scoped (optionally) to a Kasten.
+
+    Vocabulary split, deliberate: the DB column is ``kasten_id`` (rag.chat_sessions
+    has no ``sandbox_id``), while the HTTP request field is still ``sandbox_id``.
+    Rename SQL only — the API payload keys below are the contract under test.
+    """
     sid = uuid.uuid4()
     async with pool.acquire() as conn:
         await conn.execute(
             "INSERT INTO rag.chat_sessions "
-            "(id, workspace_id, profile_id, sandbox_id, title) "
+            "(id, workspace_id, profile_id, kasten_id, title) "
             "VALUES ($1, $2, $3, $4, $5)",
-            sid, workspace_id, profile_id, sandbox_id,
+            sid, workspace_id, profile_id, kasten_id,
             "ur05 cross-kasten BOLA fixture",
         )
     return sid
@@ -109,7 +114,7 @@ def test_stream_chat_against_other_users_session_denied(
             asyncpg_pool,
             workspace_id=a.workspace_ids[0],
             profile_id=a.auth_user_id,
-            sandbox_id=None,
+            kasten_id=None,
         )
     )
     with TestClient(v2_app) as client:
@@ -183,7 +188,7 @@ def test_stream_chat_against_kasten_user_does_not_own_denied(
         async def _read_back():
             async with asyncpg_pool.acquire() as conn:
                 row = await conn.fetchrow(
-                    "SELECT sandbox_id, workspace_id, profile_id "
+                    "SELECT kasten_id, workspace_id, profile_id "
                     "FROM rag.chat_sessions WHERE id = $1",
                     created_sid,
                 )
@@ -196,9 +201,9 @@ def test_stream_chat_against_kasten_user_does_not_own_denied(
             f"BOLA: session leaked into A's workspace — "
             f"workspace_id={row['workspace_id']}"
         )
-        assert row["sandbox_id"] != a_kid, (
+        assert row["kasten_id"] != a_kid, (
             f"BOLA: session bound to A's Kasten {a_kid} — should be None or "
-            f"rejected. Got sandbox_id={row['sandbox_id']}"
+            f"rejected. Got kasten_id={row['kasten_id']}"
         )
         # Cleanup: drop the leaked session so teardown isn't surprised.
         async def _cleanup():
@@ -278,7 +283,7 @@ def test_get_messages_of_other_users_session_denied(
             asyncpg_pool,
             workspace_id=a.workspace_ids[0],
             profile_id=a.auth_user_id,
-            sandbox_id=None,
+            kasten_id=None,
         )
     )
     with TestClient(v2_app) as client:

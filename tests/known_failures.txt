@@ -92,11 +92,32 @@ tests/integration/v2/test_user_zettels_xss_render.py::test_uz03_xss_payload_retu
 #   parameter, so the Python int was rejected. Four fixtures in
 #   tests/integration/v2/conftest.py carried the same defect already fixed once
 #   in seed_kg_graph. All 8 verified XPASS(strict) against the live DB.
-tests/integration/v2/test_stuck_running_reaper.py::test_reaper_leaves_queued_rows_alone
-tests/integration/v2/test_stuck_running_reaper.py::test_reaper_leaves_recent_running_rows_alone
-tests/integration/v2/test_stuck_running_reaper.py::test_reaper_marks_stuck_running_as_failed_worker_lost
-tests/integration/v2/test_user_rag_kasten_bola.py::test_get_messages_of_other_users_session_denied
-tests/integration/v2/test_user_rag_kasten_bola.py::test_stream_chat_against_other_users_session_denied
+#
+# BUCKET 3 (2 tests) — FIXED, lines deleted 2026-08-02.
+#   rag.chat_sessions has no `sandbox_id`; the column is `kasten_id`. SQL only —
+#   `sandbox_id` is still the HTTP request field and stays as-is.
+#
+# ADDED 2026-08-02 — REAL PRODUCT FINDING, awaiting operator decision.
+#   Fixing bucket 3 un-skipped these two, and they fail for a genuine reason:
+#   POST /api/rag/sessions writes the caller-supplied kasten_id with NO
+#   ownership check (session_store.create_session; only an FK-existence guard,
+#   which passes for a Kasten that exists but belongs to someone else). User B
+#   can mint a session in B's own workspace bound to user A's Kasten.
+#   NOT a data leak: ask_kasten._gate_kasten_ownership (ask_kasten.py:345)
+#   rejects cross-tenant kasten_id with 403 before retrieval runs. So this is a
+#   defence-in-depth / input-validation gap at write time, not exfiltration.
+#   Listed rather than fixed because adding an authz check is a security-model
+#   change (CLAUDE.md: needs explicit approval). Both failures are ONE cause.
+#   They were invisible in CI because the RAG runtime is unavailable there and
+#   both tests pytest.skip on 503 — see bucket C, which is therefore silently
+#   disabling BOLA coverage, not merely emitting a confusing status code.
+tests/integration/v2/test_user_rag_kasten_bola.py::test_stream_chat_against_kasten_user_does_not_own_denied
+tests/integration/v2/test_user_rag_kasten_bola.py::test_adhoc_with_other_users_kasten_id_does_not_leak
+#
+# BUCKET 2 (3 tests) — FIXED, lines deleted 2026-08-02.
+#   core.operations has no `accepted` column and never did (migration 48).
+#   'accepted' was a STATUS value, renamed to 'queued' by migration 51; the
+#   ops_accept p_accepted payload lands in `response`. Test never matched schema.
 tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_does_not_widen_personal_graph
 tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_grants_read_not_write
 tests/integration/v2/test_workspace_zettel_upsert.py::test_concurrent_inserters_exactly_one_wins_others_update
