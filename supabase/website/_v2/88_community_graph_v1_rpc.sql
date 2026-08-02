@@ -42,8 +42,13 @@ SECURITY DEFINER
 -- non-volatile function"), so the original STABLE + `SET LOCAL` form threw on
 -- EVERY call. That is the same defect migration 83 had to hot-fix for the stats
 -- RPCs after it surfaced as production 500s — this file copied 81's pre-83 form.
--- Function-level SET has identical semantics (applied on entry, restored on
--- exit) and is legal in a STABLE function. Verified against postgres:15.
+-- Function-level SET is legal in a STABLE function. Verified on postgres:15+17.
+-- See migration 90 for the measured SCOPE of each setting — in short:
+-- search_path and work_mem are effective here; statement_timeout is NOT
+-- effective for this function's own execution (the timeout is armed when the
+-- client's command starts), but PostgREST >= 12 reads it from the catalog and
+-- applies it at the start of the RPC transaction, which is the app's real call
+-- path. A direct asyncpg/psql call gets no timeout.
 SET search_path = public
 SET statement_timeout = '30s'
 SET work_mem = '32MB'

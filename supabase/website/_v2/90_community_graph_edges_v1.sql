@@ -88,12 +88,26 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
--- Per-call safety net (independent of role-level settings on community_reader).
 -- These MUST be function-level SET clauses, NOT `SET LOCAL` in the body: Postgres
 -- rejects SET inside a non-VOLATILE function ("SET is not allowed in a
 -- non-volatile function"), so a STABLE function with SET LOCAL fails on EVERY
--- call. Function-level SET has the same semantics (applied on entry, restored on
--- exit) and is legal here. Verified against postgres:15.
+-- call. Function-level SET is legal here. Verified against postgres:15 and 17.
+--
+-- SCOPE OF EACH SETTING (measured on postgres:17, do not overstate these):
+--   search_path  — effective. The load-bearing SECURITY DEFINER hardening.
+--   work_mem     — effective; applies to queries run inside the body.
+--   statement_timeout — NOT effective for this function's own execution. The
+--     timeout is armed when the CLIENT's command starts, so anything applied at
+--     function-entry cannot bound that command (confirmed empirically: a STABLE
+--     function with SET statement_timeout='1s' running pg_sleep(3) returns
+--     normally). It IS enforced on our production path anyway, because PostgREST
+--     >= 12 reads the function's configured statement_timeout from the catalog
+--     and issues it at the start of the RPC transaction (PostgREST #3001), and
+--     the app calls this through supabase-py/PostgREST. A direct asyncpg/psql
+--     call gets NO timeout — relevant for the @live tests and ops scripts.
+--   Role-level `ALTER ROLE community_reader SET ...` (migration 87) does NOT
+--     cover this either: those apply at session start and community_reader is
+--     NOLOGIN, so it never opens a session.
 SET search_path = public
 SET statement_timeout = '30s'
 SET work_mem = '32MB'
