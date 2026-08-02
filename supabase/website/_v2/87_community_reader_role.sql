@@ -35,12 +35,16 @@ END $$;
 -- next to the CREATE, so 88/90 can take ownership. Idempotent, and NOT a
 -- privilege escalation: the migration role already created the role and holds
 -- admin over it; community_reader itself stays NOLOGIN + non-BYPASSRLS.
-DO $$
-BEGIN
-  IF NOT pg_has_role(current_user, 'community_reader', 'MEMBER') THEN
-    EXECUTE format('GRANT community_reader TO %I', current_user);
-  END IF;
-END $$;
+-- UNCONDITIONAL on purpose. A `pg_has_role(current_user, ..., 'MEMBER')` guard
+-- here is WRONG and silently skips the grant: in PostgreSQL 16+ a CREATEROLE
+-- (non-superuser) that creates a role receives the membership with
+-- `admin_option = true` but `set_option = FALSE`, and pg_has_role(...,'MEMBER')
+-- still reports TRUE. So the guard passes while `SET ROLE` is denied ->
+-- "must be able to SET ROLE". Verified on PostgreSQL 17.10: creator sees
+-- MEMBER=true / set_option=false, SET ROLE denied; after this explicit GRANT,
+-- SET ROLE succeeds. An explicit GRANT defaults to SET TRUE. Re-granting is a
+-- harmless no-op, and the same syntax is valid back to PG15.
+GRANT community_reader TO CURRENT_USER;
 
 -- Hard guardrails (a runaway public-graph aggregation must not starve OLTP /
 -- OOM the 2 GB droplet). Mirrors 79's stats_reader settings.
