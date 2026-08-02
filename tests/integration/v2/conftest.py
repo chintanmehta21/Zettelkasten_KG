@@ -377,7 +377,9 @@ def seed_zettels(asyncpg_pool):
                          now() - ($1 || ' days')::interval)
                     RETURNING id
                     """,
-                    i,
+                    # str(i): ``$1::text`` and ``$1 || ' days'`` both force a TEXT
+                    # parameter, so asyncpg rejects an int. Same defect as seed_kg_graph.
+                    str(i),
                 )
                 await conn.execute(
                     """
@@ -389,7 +391,7 @@ def seed_zettels(asyncpg_pool):
                          'website',
                          now() - ($3 || ' days')::interval)
                     """,
-                    workspace_id, cz_id, i,
+                    workspace_id, cz_id, str(i),
                 )
     return _seed
 
@@ -413,7 +415,7 @@ def seed_kastens(asyncpg_pool):
                         (gen_random_uuid(), $1, 'kasten-' || $2::text,
                          now() - ($2 || ' days')::interval)
                     """,
-                    workspace_id, i,
+                    workspace_id, str(i),  # TEXT-inferred param; see seed_zettels
                 )
     return _seed
 
@@ -449,7 +451,7 @@ def seed_chat_messages(asyncpg_pool):
                     VALUES (gen_random_uuid(), $1, $2, 'user', 'q' || $3::text,
                             now() - ($3 || ' hours')::interval)
                     """,
-                    session_id, workspace_id, i,
+                    session_id, workspace_id, str(i),  # TEXT-inferred param
                 )
             # Lookup a canonical_zettel_id for citation payloads.
             cz_id = await conn.fetchval(
@@ -474,7 +476,7 @@ def seed_chat_messages(asyncpg_pool):
                             END,
                             'supported', now())
                     """,
-                    session_id, workspace_id, i, cz_id,
+                    session_id, workspace_id, str(i), cz_id,  # $3 is TEXT-inferred
                 )
     return _seed
 
@@ -519,7 +521,7 @@ def seed_zettels_with_tags(asyncpg_pool):
                         VALUES ($1, $2, '', ARRAY[$3]::text[], 'website',
                                 now() - ($4 || ' days')::interval)
                         """,
-                        workspace_id, cz_id, tag, offset,
+                        workspace_id, cz_id, tag, str(offset),  # $4 is TEXT-inferred
                     )
                     offset += 1
     return _seed

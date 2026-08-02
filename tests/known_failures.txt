@@ -83,15 +83,15 @@ tests/integration/v2/test_avatar_assignment.py::test_naruto_pinned_to_avatar_01 
 tests/integration/v2/test_api_graph_v2.py::test_api_graph_v2_seeded_zettel_appears_in_nodes
 tests/integration/v2/test_user_zettels_xss_render.py::test_uz03_xss_payload_returned_as_json_not_html
 
-# ── E. Untriaged — no verdict yet, first candidates for the next session ────
-tests/integration/v2/test_profile_stats_rpc.py::test_activity_section
-tests/integration/v2/test_profile_stats_rpc.py::test_domain_section
-tests/integration/v2/test_profile_stats_rpc.py::test_general_section
-tests/integration/v2/test_profile_stats_rpc.py::test_kasten_section
-tests/integration/v2/test_profile_stats_rpc.py::test_main_board_section
-tests/integration/v2/test_profile_stats_rpc.py::test_zettel_section
-tests/integration/v2/test_profile_stats_endpoint.py::test_endpoint_returns_304_on_matching_etag
-tests/integration/v2/test_profile_stats_endpoint.py::test_endpoint_returns_full_payload
+# ── E. Untriaged — bucketed by traceback signature 2026-08-02 (PR #168) ─────
+# Triage: docs/claude_audits/untriaged_20_buckets_2026-08-02.md
+# The 20 entries here were 6 root causes, not 20 bugs.
+#
+# BUCKET 1 (8 tests) — FIXED, lines deleted 2026-08-02.
+#   asyncpg "expected str, got int": `$N::text` / `$N || ' days'` force a TEXT
+#   parameter, so the Python int was rejected. Four fixtures in
+#   tests/integration/v2/conftest.py carried the same defect already fixed once
+#   in seed_kg_graph. All 8 verified XPASS(strict) against the live DB.
 tests/integration/v2/test_stuck_running_reaper.py::test_reaper_leaves_queued_rows_alone
 tests/integration/v2/test_stuck_running_reaper.py::test_reaper_leaves_recent_running_rows_alone
 tests/integration/v2/test_stuck_running_reaper.py::test_reaper_marks_stuck_running_as_failed_worker_lost
