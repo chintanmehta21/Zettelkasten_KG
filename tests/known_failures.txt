@@ -1,0 +1,106 @@
+# Known-failing live tests — the burn-down baseline.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# `pytest --live` was red and unnoticed from 2026-05-31 to 2026-08-01 (248
+# failures). A permanently-red suite protects nothing: nobody can tell a new
+# regression from the standing noise, so everyone stops looking. That is how
+# two rotted deploy fixtures stayed invisible for two months and eventually
+# took production down.
+#
+# The industry answer is a ratchet, not a heroic fix-everything push:
+#   1. record the current failures as an explicit, committed baseline;
+#   2. make CI fail only on NEW failures;
+#   3. burn the baseline down on a clock, and never let it grow.
+#
+# Sources for the shape of this file:
+#   * Software Engineering at Google, Ch.23 (Continuous Integration) — Google's
+#     Takeout team disabled failing tests tagged with a bug number to keep the
+#     suite green, then automated re-enablement.
+#   * Dropbox "Athena" (2019-05-22) — auto-quarantine out of presubmit, keep
+#     running post-submit, notify rather than auto-revert.
+#   * GitLab testing guide (Unhealthy tests) — a quarantined test MUST carry a
+#     tracking reference "so it doesn't stay in quarantine forever".
+#   * Martin Fowler, "Eradicating Non-Determinism in Tests" (2011-04-14) —
+#     quarantine needs a hard cap or a time limit, "otherwise you might as well
+#     get rid of all the tests".
+#
+# HOW IT WORKS
+# ------------
+# tests/conftest.py reads this file and applies `xfail` to each listed node id.
+#   strict  (default) -> an unexpected PASS FAILS the run. That is the point:
+#                        the moment someone fixes one, CI tells you to delete
+#                        the line. The list cleans itself.
+#   flaky            -> non-strict. Use ONLY for tests verified to pass in
+#                        isolation and fail under load. Never use it to hide a
+#                        deterministic failure.
+#
+# Format:  <pytest node id>  [# flaky] [# reason]
+# Lines beginning with # are comments.
+#
+# RULES
+#   * This file may SHRINK freely. Growing it needs a deliberate decision and
+#     should be justified in the PR description.
+#   * `skip` is never the right primitive here — it does not execute the test
+#     body, so a skipped test tells you nothing, ever. `xfail` runs it.
+#   * Do NOT add global `--reruns`. These tests call real Gemini; reruns
+#     multiply paid API usage to paper over a classification you already have.
+#
+# Baseline captured 2026-08-02 at master@fb363a11: 34 failed / 5402 passed / 0 errors
+# (down from 248 / 5128 / 35 on 2026-08-01).
+# Full triage + verdicts + sources: docs/claude_audits/open_issues_2026-08-02.md
+
+# ── A. Pricing / entitlements — OPERATOR-LOCKED, do not fix autonomously ────
+# CLAUDE.md pricing authority: never seed entitlements, never alter the golden
+# md5-protected RPC bodies, never invent plan state. Two of these are also
+# "assert an absolute count on a shared live table", which is a test-design bug
+# regardless of the pricing question (SWE at Google Ch.14; Supabase testing docs
+# both say scope assertions to data the test owns).
+tests/integration/v2/test_pricing_unmodified.py::test_pricing_subscriptions_unchanged_count  # drifted 0 -> 26 against real subscribers
+tests/integration/v2/test_pricing_unmodified.py::test_pricing_entitlements_unchanged_count
+tests/integration/v2/test_pricing_unmodified.py::test_pricing_consume_entitlement_body_unchanged
+tests/integration/v2/test_entitlement_tiers_catalog.py::test_free_tier_zettel_day_cap_enforced  # 3rd call returned 202, expected 402
+tests/integration/v2/test_pricing_mutations.py::test_create_order_without_billing_profile_proceeds_to_razorpay  # gate returns 502
+
+# ── B. Flaky under load — verified 8/8 pass in isolation (15s) ──────────────
+# NOT deterministic breakage. test_chat_concurrency already carries the autouse
+# reset_for_tests() fixture that was proposed as "the fix", so the fix was wrong.
+# Non-strict because they genuinely pass sometimes.
+tests/stress/test_burst_capacity.py::test_burst_50_acquirers_respects_queue_cap  # flaky
+tests/stress/test_burst_capacity.py::test_queue_depth_returns_to_zero_after_burst  # flaky
+tests/unit/api/test_chat_concurrency.py::test_queue_full_when_depth_exceeds_max  # flaky
+
+# ── C. CI environment — RAG runtime cannot be built in the live runner ──────
+# These expect 503 "queue saturated" and receive 503 "RAG runtime is not
+# available" (chat_routes.py:91). Same status, different cause. Needs a CI run
+# with debug on get_rag_runtime; not diagnosable from outside.
+tests/integration/v2/test_rag_rerank_queue_503.py::test_adhoc_returns_503_when_queue_saturated
+tests/integration/v2/test_rag_rerank_queue_503.py::test_create_message_stream_returns_503_when_queue_saturated
+
+# ── D. Behaviour needs confirming before the expectation is rewritten ───────
+tests/integration/v2/test_content_upsert.py::test_same_url_different_hash_creates_new_row  # does UNIQUE(normalized_url) dedup now beat content-hash? (PR #25)
+tests/integration/v2/test_avatar_assignment.py::test_naruto_pinned_to_avatar_01  # migration 78 pins avatar_01; prod holds avatar_41
+tests/integration/v2/test_api_graph_v2.py::test_api_graph_v2_seeded_zettel_appears_in_nodes
+tests/integration/v2/test_user_zettels_xss_render.py::test_uz03_xss_payload_returned_as_json_not_html
+
+# ── E. Untriaged — no verdict yet, first candidates for the next session ────
+tests/integration/v2/test_profile_stats_rpc.py::test_activity_section
+tests/integration/v2/test_profile_stats_rpc.py::test_domain_section
+tests/integration/v2/test_profile_stats_rpc.py::test_general_section
+tests/integration/v2/test_profile_stats_rpc.py::test_kasten_section
+tests/integration/v2/test_profile_stats_rpc.py::test_main_board_section
+tests/integration/v2/test_profile_stats_rpc.py::test_zettel_section
+tests/integration/v2/test_profile_stats_endpoint.py::test_endpoint_returns_304_on_matching_etag
+tests/integration/v2/test_profile_stats_endpoint.py::test_endpoint_returns_full_payload
+tests/integration/v2/test_stuck_running_reaper.py::test_reaper_leaves_queued_rows_alone
+tests/integration/v2/test_stuck_running_reaper.py::test_reaper_leaves_recent_running_rows_alone
+tests/integration/v2/test_stuck_running_reaper.py::test_reaper_marks_stuck_running_as_failed_worker_lost
+tests/integration/v2/test_user_rag_kasten_bola.py::test_get_messages_of_other_users_session_denied
+tests/integration/v2/test_user_rag_kasten_bola.py::test_stream_chat_against_other_users_session_denied
+tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_does_not_widen_personal_graph
+tests/integration/v2/test_user_zettels_bola.py::test_uz02_shared_kasten_grants_read_not_write
+tests/integration/v2/test_workspace_zettel_upsert.py::test_concurrent_inserters_exactly_one_wins_others_update
+tests/integration/v2/test_workspace_zettel_upsert.py::test_fresh_insert_returns_uuid_and_row_lands_live
+tests/integration/v2/test_workspace_zettel_upsert.py::test_re_add_after_soft_delete_creates_new_row
+tests/integration/v2/test_workspace_zettel_upsert.py::test_repeat_with_same_pair_updates_in_place
+website/features/summarization_engine/tests/live/test_live_engine.py::test_live_web_summary_pipeline  # example.com yields 112 chars, below the thin-extraction floor

@@ -19,6 +19,7 @@ WAVE-D Phase 1 additions:
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
 
@@ -345,3 +346,56 @@ def frozen_clock():
 
     with freeze_time("2026-05-12T00:00:00Z") as frozen:
         yield frozen
+
+
+# ── Known-failure ratchet (2026-08-02) ──────────────────────────────────────
+# Reads tests/known_failures.txt and xfails each listed node id, so CI goes
+# RED only on NEW failures. See that file's header for the rationale and
+# sources; docs/claude_audits/open_issues_2026-08-02.md for the triage.
+#
+# Deliberately uses xfail, never skip: skip does not execute the test body, so
+# a skipped test can never tell you it started passing. strict xfail turns an
+# unexpected PASS into a failure, which is what makes the baseline self-cleaning.
+_KNOWN_FAILURES_PATH = Path(__file__).parent / "known_failures.txt"
+
+
+def _load_known_failures() -> dict[str, bool]:
+    """Return {node_id: strict}. Missing file -> empty (ratchet simply off)."""
+    entries: dict[str, bool] = {}
+    if not _KNOWN_FAILURES_PATH.exists():
+        return entries
+    for raw in _KNOWN_FAILURES_PATH.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        node_id, _, trailing = line.partition("#")
+        node_id = node_id.strip()
+        if not node_id:
+            continue
+        # "# flaky" opts a genuinely-intermittent test out of strict mode.
+        entries[node_id] = "flaky" not in trailing.lower()
+    return entries
+
+
+def pytest_collection_modifyitems(config, items):  # noqa: F811 - second hook
+    """Apply the known-failure ratchet.
+
+    pytest calls EVERY conftest hook of the same name, so this coexists with
+    the --e2e deselection hook above rather than replacing it.
+    """
+    known = _load_known_failures()
+    if not known:
+        return
+    for item in items:
+        strict = known.get(item.nodeid)
+        if strict is None:
+            continue
+        item.add_marker(
+            pytest.mark.xfail(
+                reason=(
+                    "known failure (tests/known_failures.txt). "
+                    "If this now PASSES, delete its line from that file."
+                ),
+                strict=strict,
+            )
+        )
