@@ -84,7 +84,19 @@ $$;
 
 -- The function must run AS community_reader (non-BYPASSRLS) so the RLS policy
 -- bites if the predicate is ever dropped. OWNER change is the load-bearing DDL.
+--
+-- ALTER FUNCTION ... OWNER TO has TWO privilege requirements: (a) the CURRENT
+-- user must be able to SET ROLE to the new owner (membership granted in 87) and
+-- (b) the NEW OWNER must hold CREATE on the function's schema. community_reader
+-- deliberately has only USAGE, so CREATE is granted for the ownership change and
+-- revoked immediately — in this same transaction, so the COMMITTED state leaves
+-- the role read-only. Ownership does not need CREATE to persist afterwards.
+-- A superuser bypasses (a); on hosted Supabase and in Fresh-Supabase CI the
+-- migration role `postgres` is a privileged NON-superuser, which is how CI
+-- caught this ("must be able to SET ROLE \"community_reader\"").
+GRANT CREATE ON SCHEMA content TO community_reader;
 ALTER FUNCTION content.community_graph_v1(int, float) OWNER TO community_reader;
+REVOKE CREATE ON SCHEMA content FROM community_reader;
 
 -- The app calls this via the service_role connection; only service_role needs
 -- EXECUTE. Deny PUBLIC/anon/authenticated (no direct PostgREST exposure).

@@ -26,6 +26,22 @@ BEGIN
   END IF;
 END $$;
 
+-- Migrations 88 and 90 run `ALTER FUNCTION ... OWNER TO community_reader`, and
+-- Postgres requires the CURRENT user to be able to SET ROLE to the new owner
+-- ("must be able to SET ROLE \"community_reader\"" / "must be member of role").
+-- A superuser bypasses that check, but the migration role does NOT: on hosted
+-- Supabase (and in the Fresh-Supabase CI image) `postgres` is a privileged
+-- NON-superuser — which is exactly how CI caught this. Grant membership here,
+-- next to the CREATE, so 88/90 can take ownership. Idempotent, and NOT a
+-- privilege escalation: the migration role already created the role and holds
+-- admin over it; community_reader itself stays NOLOGIN + non-BYPASSRLS.
+DO $$
+BEGIN
+  IF NOT pg_has_role(current_user, 'community_reader', 'MEMBER') THEN
+    EXECUTE format('GRANT community_reader TO %I', current_user);
+  END IF;
+END $$;
+
 -- Hard guardrails (a runaway public-graph aggregation must not starve OLTP /
 -- OOM the 2 GB droplet). Mirrors 79's stats_reader settings.
 ALTER ROLE community_reader SET statement_timeout = '30s';

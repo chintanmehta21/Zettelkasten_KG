@@ -215,8 +215,14 @@ $$;
 
 -- Must run AS community_reader (non-BYPASSRLS) so the migration-87 RLS policy
 -- bites if the is_private predicate is ever dropped. Load-bearing DDL.
+-- See 88 for the full rationale: the ownership change needs SET ROLE rights
+-- (granted in 87) AND the new owner holding CREATE on the schema. Grant and
+-- revoke inside this transaction so the committed state keeps community_reader
+-- read-only (USAGE only).
+GRANT CREATE ON SCHEMA content TO community_reader;
 ALTER FUNCTION content.community_graph_edges_v1(int, int, int, real, real)
   OWNER TO community_reader;
+REVOKE CREATE ON SCHEMA content FROM community_reader;
 
 -- Called via the app's service_role connection only; no PostgREST anon exposure.
 REVOKE ALL ON FUNCTION content.community_graph_edges_v1(int, int, int, real, real) FROM public;
