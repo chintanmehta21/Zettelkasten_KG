@@ -243,13 +243,25 @@ async def _add_kasten_member(
     pool: asyncpg.Pool, *, kasten_id: uuid.UUID, workspace_id: uuid.UUID,
     role: str = "viewer",
 ) -> None:
-    """Insert a kasten_members row directly (service-role bypass)."""
+    """Insert a kasten_members row directly (service-role bypass).
+
+    rag.assert_kasten_owner_can_grant() only waives the owner check for
+    core.is_service_role(), which reads request.jwt.claims. A raw asyncpg
+    connection carries no claims, so the bypass this fixture always assumed
+    was never actually in effect. Set the claim transaction-locally (third arg
+    true) so it cannot leak to other users of the pooled connection.
+    """
     async with pool.acquire() as conn:
-        await conn.execute(
-            "INSERT INTO rag.kasten_members (kasten_id, workspace_id, role) "
-            "VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-            kasten_id, workspace_id, role,
-        )
+        async with conn.transaction():
+            await conn.execute(
+                "SELECT set_config('request.jwt.claims',"
+                " '{\"role\":\"service_role\"}', true)"
+            )
+            await conn.execute(
+                "INSERT INTO rag.kasten_members (kasten_id, workspace_id, role) "
+                "VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+                kasten_id, workspace_id, role,
+            )
 
 
 def test_uz02_shared_kasten_does_not_widen_personal_graph(
