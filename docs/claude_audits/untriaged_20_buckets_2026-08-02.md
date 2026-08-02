@@ -124,3 +124,68 @@ described — drifted 0 → **336** (not 26; that figure was from an earlier run
 One more: only the *first* `test_rag_rerank_queue_503` failure is
 "RAG runtime is not available". The second fails on
 `assert None == '5'` for a missing `Retry-After` header. Same file, two causes.
+
+---
+
+# Outcome (2026-08-02, PR #168)
+
+`tests/known_failures.txt`: **34 → 19** entries (17 removed, 2 added for a new finding).
+
+| Bucket | Tests | Result |
+|---|---|---|
+| 1 — asyncpg TEXT inference | 8 | **Fixed & verified** — 13 passed live |
+| 2 — `operations.accepted` | 3 | **Fixed & verified** — all XPASS |
+| 3 — `chat_sessions.sandbox_id` | 2 | **Fixed & verified** |
+| 4 — kasten membership grant | 2 | Root cause fixed & proven in isolation; **still listed**, CI verifies |
+| 5 — `profiles_id_fkey` | 4 | **Fixed & verified** — 4 passed live |
+| 6 — tag-count floor | 1 | **Not changed — needs your call** |
+
+## Bucket 6 needs a decision, not a fix
+
+`>= 8` tags is a **real product contract**, not test noise:
+`summarization/common/__init__.py:51` instructs the model to emit
+`"tags": array of 8-15 lowercase hyphenated tags`. So the assertion is correct
+and the engine (5 tags, `fallback_reason='gemini-2.5-pro-rate-limited'`)
+under-delivered against its own spec.
+
+The flaw is the **fixture URL**: `https://example.com` is a placeholder page with
+roughly one sentence of text. No compliant engine can derive 8 meaningful tags
+from it, so the test currently measures the fixture, not the pipeline.
+
+Two options, both defensible — this is a quality-bar decision, so it is yours:
+
+* **Keep `>= 8`, change the URL** to a stable content-rich page. Preserves the
+  quality gate; adds a live-network dependency and some flake risk.
+* **Keep `example.com`, assert shape** (tags non-empty and well-formed) and move
+  the `>= 8` contract to a test with real content. Removes flake; the ≥8 bar
+  then needs a home, or it stops being enforced anywhere.
+
+I did not pick one: lowering a summary-quality bar unasked is exactly the kind of
+silent scope reduction that needs sign-off.
+
+## New finding surfaced by the bucket-3 fix
+
+Fixing the stale column un-skipped two BOLA tests that then failed for a real
+reason. `POST /api/rag/sessions` writes the caller-supplied `kasten_id` with **no
+ownership check** (`session_store.create_session` — only an FK-existence guard,
+which passes for a Kasten that exists but belongs to someone else). User B can
+mint a session, in B's own workspace, bound to user A's Kasten.
+
+**Not a data leak.** `ask_kasten._gate_kasten_ownership` (ask_kasten.py:345)
+rejects a cross-tenant `kasten_id` with 403 before retrieval runs, and the second
+failure is only the server echoing back the ID B itself supplied. This is a
+defence-in-depth / input-validation gap at write time.
+
+Left unfixed deliberately: adding an authz check is a security-model change and
+CLAUDE.md requires explicit approval.
+
+**The reason this was invisible matters more than the gap itself.** Both tests
+`pytest.skip` on `503 RAG runtime unavailable`, which is exactly bucket C's
+condition. So bucket C is not "two confusing status codes" — it is **silently
+disabling BOLA coverage in CI**, and should be re-ranked accordingly.
+
+## Also corrected
+
+`_REAPER_SQL` in `test_stuck_running_reaper.py` is a hand-copy of migration 57's
+SQL, so the test verifies its own copy rather than the deployed reaper. It passes
+either way; worth noting as a separate weakness, not fixed here.
