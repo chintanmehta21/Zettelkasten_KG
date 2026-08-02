@@ -52,11 +52,14 @@ async def _insert_op(
     async with pool.acquire() as conn:
         await conn.execute(
             """
+            -- No `accepted` column: migration 48 never created one. 'accepted'
+            -- was a STATUS value (renamed to 'queued' by 51) and ops_accept's
+            -- p_accepted payload lands in `response`. Mirror that here.
             INSERT INTO core.operations
                 (operation_id, user_id, status, request_hash,
-                 accepted, response, error, created_at, updated_at, expires_at)
+                 response, error, created_at, updated_at, expires_at)
             VALUES ($1, $2, $3, $4,
-                    '{}'::jsonb, NULL, NULL,
+                    '{}'::jsonb, NULL,
                     $5, $5, now() + interval '24 hours')
             """,
             operation_id,
