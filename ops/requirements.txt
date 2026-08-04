@@ -45,12 +45,11 @@ hf-xet==1.5.1             # via huggingface-hub, -c ops/requirements-dev.txt
 hpack==4.1.0              # via h2, -c ops/requirements-dev.txt
 htmldate==1.10.0          # via trafilatura, -c ops/requirements-dev.txt
 httpcore==1.0.9           # via httpx, -c ops/requirements-dev.txt
-httpx==0.28.1             # via chonkie, google-genai, huggingface-hub, langfuse, openai, postgrest, pytest-httpx, storage3, supabase, supabase-auth, supabase-functions, -c ops/requirements-dev.txt, -r ops/requirements.in
+httpx==0.28.1             # via chonkie, google-genai, huggingface-hub, langfuse, openai, postgrest, storage3, supabase, supabase-auth, supabase-functions, -c ops/requirements-dev.txt, -r ops/requirements.in
 huggingface-hub==1.16.1   # via tokenizers, -c ops/requirements-dev.txt, -r ops/requirements.in
 hyperframe==6.1.0         # via h2, -c ops/requirements-dev.txt
 idna==3.18                # via anyio, email-validator, httpx, requests, tldextract, yarl, -c ops/requirements-dev.txt
 igraph==1.0.0             # via -c ops/requirements-dev.txt, -r ops/requirements.in
-iniconfig==2.3.0          # via pytest, -c ops/requirements-dev.txt
 jiter==0.14.0             # via openai, -c ops/requirements-dev.txt
 joblib==1.5.3             # via nltk, -c ops/requirements-dev.txt
 justext==3.0.2            # via trafilatura, -c ops/requirements-dev.txt
@@ -73,9 +72,8 @@ opentelemetry-exporter-otlp-proto-http==1.42.1  # via langfuse, -c ops/requireme
 opentelemetry-proto==1.42.1  # via opentelemetry-exporter-otlp-proto-common, opentelemetry-exporter-otlp-proto-http, -c ops/requirements-dev.txt
 opentelemetry-sdk==1.42.1  # via langfuse, opentelemetry-exporter-otlp-proto-http, -c ops/requirements-dev.txt
 opentelemetry-semantic-conventions==0.63b1  # via opentelemetry-sdk, -c ops/requirements-dev.txt
-packaging==25.0           # via deprecation, gunicorn, huggingface-hub, langfuse, onnxruntime, pytest, -c ops/requirements-dev.txt
+packaging==25.0           # via deprecation, gunicorn, huggingface-hub, langfuse, onnxruntime, -c ops/requirements-dev.txt
 pillow==12.2.0            # via newspaper4k, -c ops/requirements-dev.txt, -r ops/requirements.in
-pluggy==1.6.0             # via pytest, -c ops/requirements-dev.txt
 postgrest==2.31.0         # via supabase, -c ops/requirements-dev.txt
 prometheus-client==0.25.0  # via -c ops/requirements-dev.txt, -r ops/requirements.in
 propcache==0.5.2          # via aiohttp, yarl, -c ops/requirements-dev.txt
@@ -89,11 +87,9 @@ pycryptodomex==3.23.0     # via yt-dlp, -c ops/requirements-dev.txt
 pydantic==2.13.4          # via fastapi, google-genai, langfuse, openai, postgrest, pydantic-settings, realtime, storage3, supabase-auth, -c ops/requirements-dev.txt
 pydantic-core==2.46.4     # via pydantic, -c ops/requirements-dev.txt
 pydantic-settings==2.14.1  # via -c ops/requirements-dev.txt, -r ops/requirements.in
-pygments==2.20.0          # via pytest, rich, -c ops/requirements-dev.txt
+pygments==2.20.0          # via rich, -c ops/requirements-dev.txt
 pyjwt==2.13.0             # via supabase-auth, -c ops/requirements-dev.txt, -r ops/requirements.in
 pymupdf==1.27.2.3         # via -c ops/requirements-dev.txt, -r ops/requirements.in
-pytest==9.1.0             # via pytest-httpx, -c ops/requirements-dev.txt
-pytest-httpx==0.36.2      # via -c ops/requirements-dev.txt, -r ops/requirements.in
 python-dateutil==2.9.0.post0  # via dateparser, htmldate, newspaper4k, -c ops/requirements-dev.txt
 python-dotenv==1.2.2      # via pydantic-settings, -c ops/requirements-dev.txt
 python-magic==0.4.27      # via -c ops/requirements-dev.txt, -r ops/requirements.in

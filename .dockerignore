@@ -18,10 +18,14 @@ tests/
 .venv/
 venv/
 env/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Docker ignore patterns are filepath.Match, NOT gitignore — a bare pattern
+# only matches at the context root. Without the ** prefix, 673 host-compiled
+# .pyc under website/**/__pycache__/ shipped into the image (harmless only
+# because the host magic number != container 3.12).
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
 .Python
 .pytest_cache/
 .mypy_cache/
