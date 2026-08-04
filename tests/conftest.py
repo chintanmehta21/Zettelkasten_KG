@@ -74,8 +74,8 @@ def skip_destructive(request):
         pytest.skip('Destructive test — pass --destructive to run')
 
 
-def pytest_collection_modifyitems(config, items):
-    """Deselect e2e tests at collection time unless --e2e is passed.
+def _skip_e2e_without_flag(config, items):
+    """Skip e2e tests at collection time unless --e2e is passed.
 
     A function-level autouse fixture would fire too late: pytest-playwright
     parametrizes tests that use the ``page`` fixture by browser type AND
@@ -83,6 +83,12 @@ def pytest_collection_modifyitems(config, items):
     Chromium) BEFORE any function-level autouse fixture runs. CI without
     `playwright install` errors with ``BrowserType.launch: Executable
     doesn't exist``. Collection-time skip avoids fixture activation entirely.
+
+    2026-08-04: this was a SECOND module-level ``pytest_collection_modifyitems``
+    def. Python's later def shadowed it and pytest reads hooks by name off the
+    module, so it silently never ran — that is what broke the deploy gate. It
+    is now a helper called from the single hook below. See
+    docs/claude_audits/youtube_ingest_failure_2026-08-02.md.
     """
     if config.getoption('--e2e', default=False):
         return
@@ -377,12 +383,17 @@ def _load_known_failures() -> dict[str, bool]:
     return entries
 
 
-def pytest_collection_modifyitems(config, items):  # noqa: F811 - second hook
-    """Apply the known-failure ratchet.
+def pytest_collection_modifyitems(config, items):
+    """The ONE collection hook for this conftest: e2e skip + known-failure ratchet.
 
-    pytest calls EVERY conftest hook of the same name, so this coexists with
-    the --e2e deselection hook above rather than replacing it.
+    Must stay single. pytest calls every conftest hook of the same name across
+    DIFFERENT conftest files, but two defs in the SAME module are plain Python
+    shadowing — the later one wins and the earlier is dead code. That is
+    exactly how the e2e skip silently stopped running. Add new collection-time
+    behaviour as a helper called from here, never as another def of this name.
     """
+    _skip_e2e_without_flag(config, items)
+
     known = _load_known_failures()
     if not known:
         return

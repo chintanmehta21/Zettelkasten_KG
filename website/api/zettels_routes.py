@@ -104,9 +104,16 @@ _LIVE_TASKS: dict[str, asyncio.Task] = {}
 # a shutdown-cancel apart from a genuine client DELETE.
 _SHUTTING_DOWN = False
 
-# Drain budget. MUST stay under gunicorn --graceful-timeout (run.py: 200s),
-# leaving headroom for the infra-task drain + uvicorn teardown.
-LIVE_TASK_DRAIN_TIMEOUT_S = float(os.environ.get("ZETTEL_DRAIN_TIMEOUT_S", "120"))
+# Drain budget. NOT bounded by --graceful-timeout: on a max_requests recycle
+# uvicorn self-exits with no signal, so graceful_timeout (an Arbiter.stop()
+# concern) never applies. The real ceiling is --timeout 180 via murder_workers,
+# and the worker's heartbeat STOPS once shutdown begins — heartbeats are emitted
+# from on_tick(), which has already exited. Since gunicorn heartbeats at
+# timeout/2 (90s), the true budget is 180 - (up to 90s elapsed) = as low as 90s.
+# Overrunning it earns SIGABRT, which UvicornWorker resets to SIG_DFL: instant
+# death, no lifespan, exit 134 — strictly worse than not draining. 80s fits
+# under the worst case with margin.
+LIVE_TASK_DRAIN_TIMEOUT_S = float(os.environ.get("ZETTEL_DRAIN_TIMEOUT_S", "80"))
 
 
 async def drain_live_tasks(timeout: float | None = None) -> int:

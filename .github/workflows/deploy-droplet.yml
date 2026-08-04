@@ -56,7 +56,12 @@ jobs:
           SUPABASE_V2_ANON_KEY: "ci-stub-anon"
           SUPABASE_V2_SERVICE_ROLE_KEY: "ci-stub-service"
           NEXUS_TOKEN_ENCRYPTION_KEY: "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4="
-        run: pytest -q --maxfail=5
+        # -m "not e2e" is belt-and-braces alongside tests/conftest.py's
+        # collection-time skip: relying on the conftest alone is what broke this
+        # gate on 2026-08-02 (the hook was shadowed and never ran).
+        # --strict-markers makes a marker typo a hard error, not a silent
+        # select-everything.
+        run: pytest -q --maxfail=5 -m "not e2e" --strict-markers
 
   # 2026-05-11: removed `migrations-manifest-check` job. It used to apply legacy
   # kg_public/migrations to vanilla postgres:15 and verify against a v1 manifest

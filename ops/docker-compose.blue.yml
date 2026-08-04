@@ -44,7 +44,13 @@ services:
     mem_limit: 1600m
     memswap_limit: 2600m
     pids_limit: 512
-    stop_grace_period: 20s
+    # 2026-08-04: was 20s, which SIGKILLed the worker before its lifespan drain
+    # (80s) could finish — so every blue/green cutover destroyed in-flight
+    # zettels. Must exceed gunicorn --graceful-timeout (200s) so the drain is
+    # never the thing that gets truncated. Cost: a genuinely-hung container
+    # takes up to 4 min to die on deploy; the old color is stopped AFTER
+    # cutover, so this is deploy wall-time, not user-facing downtime.
+    stop_grace_period: 240s
     read_only: true
     tmpfs:
       - /tmp:size=64m

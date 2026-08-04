@@ -58,6 +58,45 @@ def test_deploy_workflow_does_not_pin_max_requests():
     )
 
 
+def test_drain_budget_fits_under_the_murder_clock():
+    """The drain must finish before gunicorn's murder_workers SIGABRT.
+
+    --graceful-timeout does NOT bound this path: on a max_requests recycle
+    uvicorn self-exits with no signal, so graceful_timeout (an Arbiter.stop()
+    concern) never applies. The binding limit is --timeout via murder_workers,
+    and the heartbeat stops the moment shutdown begins — gunicorn heartbeats at
+    timeout/2, so the worst-case remaining budget is timeout/2, not timeout.
+    Overrunning earns SIGABRT, which UvicornWorker resets to SIG_DFL: instant
+    death with no lifespan at all, i.e. worse than not draining.
+    """
+    gunicorn_timeout = 180.0  # run.py default; prod floor is also 180
+    worst_case_budget = gunicorn_timeout / 2.0
+    assert zr.LIVE_TASK_DRAIN_TIMEOUT_S < worst_case_budget, (
+        f"drain budget {zr.LIVE_TASK_DRAIN_TIMEOUT_S}s exceeds the worst-case "
+        f"{worst_case_budget}s before SIGABRT"
+    )
+
+
+def test_compose_stop_grace_exceeds_drain_budget():
+    """Docker SIGKILLs at stop_grace_period, truncating the drain on deploys.
+
+    A drain budget above this is silently a no-op for every blue/green cutover
+    — the most frequent shutdown we do.
+    """
+    import re
+
+    for color in ("blue", "green"):
+        text = (REPO_ROOT / f"ops/docker-compose.{color}.yml").read_text(
+            encoding="utf-8"
+        )
+        m = re.search(r"stop_grace_period:\s*(\d+)s", text)
+        assert m, f"{color}: stop_grace_period not set — Docker defaults to 10s"
+        assert int(m.group(1)) > zr.LIVE_TASK_DRAIN_TIMEOUT_S, (
+            f"{color}: stop_grace_period {m.group(1)}s <= drain budget "
+            f"{zr.LIVE_TASK_DRAIN_TIMEOUT_S}s; the drain is truncated on cutover"
+        )
+
+
 # --------------------------------------------------------------------------
 # C2 — in-flight user work drains before the worker goes away
 # --------------------------------------------------------------------------
