@@ -766,6 +766,55 @@ def _failed_response_for(
     ).model_dump(mode="json")
 
 
+# Ping interval. Must be well under the reaper's stale window (10 min,
+# migration 85) so a few dropped pings don't get a healthy job reclaimed —
+# reclaiming a LIVE job means re-running the pipeline and re-billing Gemini,
+# which has no idempotency key on generateContent.
+OPS_HEARTBEAT_INTERVAL_S = float(os.environ.get("OPS_HEARTBEAT_INTERVAL_S", "30"))
+
+
+async def _heartbeat_loop(*, user_id: UUID, operation_id: str) -> None:
+    """Ping core.operations every interval while the pipeline runs.
+
+    Cancelled by ``_run``'s finally on every exit path. Swallows its own errors:
+    a monitoring loop must never be the thing that kills the job it monitors.
+    """
+    try:
+        while True:
+            await asyncio.sleep(OPS_HEARTBEAT_INTERVAL_S)
+            try:
+                still_ours = await asyncio.to_thread(
+                    operations_repo.heartbeat,
+                    user_id=user_id,
+                    operation_id=operation_id,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 — transient, keep trying
+                # Do NOT give up on one failed ping. Exiting here would leave a
+                # healthy long-running job with no liveness, so the reaper would
+                # reclaim it and re-run the pipeline — re-billing Gemini, which
+                # has no idempotency key. Retry until cancelled.
+                logger.warning(
+                    "ops_heartbeat ping failed (op=%s); retrying", operation_id,
+                    exc_info=True,
+                )
+                continue
+            if not still_ours:
+                # The row is no longer 'running' — the reaper reclaimed it, or
+                # it was cancelled/finalized elsewhere. Stop pinging so we don't
+                # resurrect liveness for an operation another worker now owns.
+                logger.info(
+                    "ops_heartbeat: no longer owner of op=%s; stopping pings",
+                    operation_id,
+                )
+                return
+    except asyncio.CancelledError:
+        raise
+    except Exception:  # noqa: BLE001 — never propagate into the pipeline
+        logger.exception("heartbeat loop died (op=%s)", operation_id)
+
+
 async def _run(
     *,
     user_id: UUID,
@@ -804,6 +853,14 @@ async def _run(
             "operations_repo.start raised in _run (op=%s)", operation_id
         )
 
+    # Liveness while the pipeline runs (migration 85). Without this the reaper
+    # cannot distinguish a live 120s job from a worker that was SIGKILLed, so it
+    # would either reclaim healthy work (re-billing Gemini, which has no
+    # idempotency key) or wait out the full TTL on dead work.
+    hb_task = asyncio.create_task(
+        _heartbeat_loop(user_id=user_id, operation_id=operation_id),
+        name=f"ops_heartbeat:{operation_id}",
+    )
     try:
         result = await pipeline()
     except asyncio.CancelledError:
@@ -929,6 +986,11 @@ async def _run(
                 "operations_repo.finalize(failed) raised (op=%s)", operation_id
             )
         return
+    finally:
+        # Stop pinging in every exit path — success, failure, and cancellation.
+        # A leaked heartbeat would keep a dead operation looking alive and
+        # block the reaper from ever reclaiming it.
+        hb_task.cancel()
 
     # Success path. response = the full AddZettelResponse payload.
     # The pipeline stamps operation_id from body.client_action_id; the route

@@ -310,3 +310,136 @@ def get_operation(*, user_id: UUID, operation_id: str) -> dict[str, Any] | None:
             "operations_repo.get_operation failed (op=%s)", operation_id
         )
         return None
+
+
+# ---------------------------------------------------------------------------
+# Durable-retry surface (migration 85). Added 2026-08-05 so accepted work
+# survives an UNGRACEFUL worker death — SIGKILL, cgroup OOM, docker kill, or a
+# cutover that outruns stop_grace_period. PR #174's lifespan drain covers only
+# signal-initiated shutdown; none of those deliver a signal Python can catch.
+# ---------------------------------------------------------------------------
+
+
+def heartbeat(*, user_id: UUID, operation_id: str) -> bool:
+    """Liveness ping for a running operation (``core.ops_heartbeat``).
+
+    Returns False when the row is no longer running — which means the reaper
+    already reclaimed it and ANOTHER worker may now own this operation. The
+    caller should stop work rather than race the new owner.
+    """
+    try:
+        client = get_v2_client()
+        resp = client.schema(_SCHEMA).rpc(
+            "ops_heartbeat",
+            {"p_user_id": str(user_id), "p_operation_id": operation_id},
+        ).execute()
+    except Exception:
+        # Never let a monitoring ping kill the job it is monitoring. A missed
+        # heartbeat costs at most one requeue after the stale window.
+        logger.warning("ops_heartbeat failed (op=%s)", operation_id, exc_info=True)
+        return True
+    return _scalar(resp.data) is not None
+
+
+def step_put(
+    *,
+    user_id: UUID,
+    operation_id: str,
+    step_name: str,
+    result: dict[str, Any],
+    input_hash: str | None = None,
+) -> None:
+    """Journal a completed step so a retry can skip it.
+
+    Committed immediately, never batched to the end of the job — batching
+    defeats the entire purpose, which is surviving a crash mid-pipeline.
+    """
+    try:
+        client = get_v2_client()
+        client.schema(_SCHEMA).rpc(
+            "ops_step_put",
+            {
+                "p_user_id": str(user_id),
+                "p_operation_id": operation_id,
+                "p_step_name": step_name,
+                "p_result": result,
+                "p_input_hash": input_hash,
+            },
+        ).execute()
+    except Exception:
+        # A failed journal write costs a repeated step on retry, not
+        # correctness. Do not propagate into the pipeline.
+        logger.warning(
+            "ops_step_put failed (op=%s step=%s)", operation_id, step_name,
+            exc_info=True,
+        )
+
+
+def step_get(
+    *,
+    user_id: UUID,
+    operation_id: str,
+    step_name: str,
+    input_hash: str | None = None,
+) -> dict[str, Any] | None:
+    """Read a journaled step result, or None to recompute.
+
+    ``input_hash`` mismatch deliberately returns None: reusing a result derived
+    from different inputs is worse than paying for the recompute.
+    """
+    try:
+        client = get_v2_client()
+        resp = client.schema(_SCHEMA).rpc(
+            "ops_step_get",
+            {
+                "p_user_id": str(user_id),
+                "p_operation_id": operation_id,
+                "p_step_name": step_name,
+                "p_input_hash": input_hash,
+            },
+        ).execute()
+    except Exception:
+        logger.warning(
+            "ops_step_get failed (op=%s step=%s)", operation_id, step_name,
+            exc_info=True,
+        )
+        return None
+    value = _scalar(resp.data)
+    return value if isinstance(value, dict) else None
+
+
+def claim_next() -> dict[str, Any] | None:
+    """Claim one queued operation for this worker (``core.ops_claim_next``).
+
+    FOR UPDATE SKIP LOCKED inside the RPC, so the 2 gunicorn workers never grab
+    the same row. Returns None when the queue is empty.
+    """
+    try:
+        client = get_v2_client()
+        resp = client.schema(_SCHEMA).rpc("ops_claim_next", {}).execute()
+    except Exception:
+        logger.warning("ops_claim_next failed", exc_info=True)
+        return None
+    data = resp.data
+    if isinstance(data, list) and data:
+        first = data[0]
+        return first if isinstance(first, dict) else None
+    return None
+
+
+def _scalar(data: Any) -> Any:
+    """Unwrap PostgREST's scalar-RPC shapes.
+
+    A scalar-returning RPC comes back as the bare value, as ``[value]``, or as
+    ``[{'<fn_name>': value}]`` depending on client/postgrest version.
+    """
+    if data is None:
+        return None
+    if isinstance(data, list):
+        if not data:
+            return None
+        first = data[0]
+        if isinstance(first, dict):
+            return next(iter(first.values()), None)
+        return first
+    return data
