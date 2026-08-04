@@ -168,32 +168,77 @@ def main(argv: list[str] | None = None) -> int:
     # tests/integration/v2/conftest.py already solved this for the per-test
     # teardown path (Supabase Discussion #28776: admin.delete_user has no
     # cascade flag); this is the same fix for the standalone nightly job.
+    # 2026-08-04: removal now goes through the DATABASE, not the GoTrue admin
+    # API. The pre-clean above was necessary but NOT sufficient — deletes still
+    # returned HTTP 500 "AuthApiError: Database error deleting user" for every
+    # candidate. Diagnosis against prod:
+    #   * every FK referencing auth.users / core.profiles is CASCADE or
+    #     SET NULL — there is NO blocking constraint, in any schema;
+    #   * there are NO user-defined DELETE triggers on either table;
+    #   * `DELETE FROM auth.users WHERE id = ...` run directly against the DB
+    #     SUCCEEDS (probed inside a transaction that was rolled back).
+    # So the fault is inside the GoTrue admin endpoint, not our schema. Deleting
+    # through SQL lets Postgres' own CASCADE rules do exactly what the admin API
+    # would have relied on anyway.
     from website.core.account_purge import purge_user_dependencies
 
-    deleted, failed = 0, 0
-    for u, email, _created in candidates:
-        try:
+    try:
+        import psycopg
+
+        from website.core.supabase_v2.client import get_v2_database_url
+
+        dsn = get_v2_database_url()
+    except Exception as exc:  # noqa: BLE001
+        log.error("cannot open DB for purge: %s: %s", type(exc).__name__, exc)
+        return 2
+
+    deleted, failed, skipped = 0, 0, 0
+    with psycopg.connect(dsn, autocommit=False) as conn:
+        for u, email, _created in candidates:
+            # SAFETY (defence in depth): never trust the listing alone.
+            # 1. re-assert the e2e pattern on this row;
+            # 2. the DELETE matches on BOTH id AND the exact email, so a
+            #    garbled/incorrect listing can only ever affect 0 rows —
+            #    a real user cannot be removed by this script.
+            if not E2E_EMAIL_PATTERN.match(email):
+                log.warning("refusing to delete non-e2e email %r", email)
+                skipped += 1
+                continue
             try:
-                # admin.list_users returns id as a str; purge_user_dependencies
-                # is typed uuid.UUID. profile_id == auth user id today via the
-                # handle_new_auth_user trigger invariant (same assumption the
-                # test-fixture teardown makes).
-                purge_user_dependencies(uuid.UUID(str(u.id)))
-            except Exception as purge_exc:  # noqa: BLE001 — best-effort pre-clean
-                # Not fatal on its own: the delete below may still succeed if
-                # this user had no FK-bound rows. Logged so a systematic purge
-                # failure is visible rather than hidden behind the delete error.
-                log.warning(
-                    "purge_user_dependencies(%s) failed: %s: %s",
-                    email,
-                    type(purge_exc).__name__,
-                    purge_exc,
-                )
-            client.auth.admin.delete_user(u.id)
-            deleted += 1
-        except Exception as exc:  # noqa: BLE001
-            failed += 1
-            log.warning("delete %s failed: %s: %s", email, type(exc).__name__, exc)
+                # Best-effort pre-clean of rows the cascade intentionally does
+                # not own (anonymised feedback events etc.). Non-fatal.
+                try:
+                    purge_user_dependencies(uuid.UUID(str(u.id)))
+                except Exception as purge_exc:  # noqa: BLE001
+                    log.warning(
+                        "purge_user_dependencies(%s) failed: %s: %s",
+                        email,
+                        type(purge_exc).__name__,
+                        purge_exc,
+                    )
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM auth.users WHERE id = %s AND email = %s",
+                        (str(u.id), email),
+                    )
+                    affected = cur.rowcount
+                conn.commit()
+                if affected == 1:
+                    deleted += 1
+                else:
+                    # Already gone, or id/email disagreed. Not a hard error, but
+                    # surfaced rather than silently counted as a success.
+                    skipped += 1
+                    log.warning(
+                        "delete %s affected %d rows (expected 1)", email, affected
+                    )
+            except Exception as exc:  # noqa: BLE001
+                conn.rollback()
+                failed += 1
+                log.warning("delete %s failed: %s: %s", email, type(exc).__name__, exc)
+
+    if skipped:
+        log.info("skipped=%d (pattern mismatch or already absent)", skipped)
 
     log.info("done: deleted=%d failed=%d", deleted, failed)
     return 0 if failed == 0 else 1
