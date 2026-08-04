@@ -83,7 +83,12 @@ def pytest_collection_modifyitems(config, items):
     Chromium) BEFORE any function-level autouse fixture runs. CI without
     `playwright install` errors with ``BrowserType.launch: Executable
     doesn't exist``. Collection-time skip avoids fixture activation entirely.
+
+    Also applies the known-failure ratchet — both live here because this file
+    gets exactly ONE hook of this name (see ``_apply_known_failures``).
     """
+    _apply_known_failures(items)
+
     if config.getoption('--e2e', default=False):
         return
     skip_e2e_marker = pytest.mark.skip(reason='E2E test — pass --e2e to run')
@@ -377,11 +382,15 @@ def _load_known_failures() -> dict[str, bool]:
     return entries
 
 
-def pytest_collection_modifyitems(config, items):  # noqa: F811 - second hook
+def _apply_known_failures(items):
     """Apply the known-failure ratchet.
 
-    pytest calls EVERY conftest hook of the same name, so this coexists with
-    the --e2e deselection hook above rather than replacing it.
+    A plain helper, NOT a second ``pytest_collection_modifyitems``. pytest calls
+    one hook per *module*; two same-named defs in this file would rebind the
+    name and silently kill the first. That happened on 2026-08-02: the ratchet
+    hook shadowed the --e2e deselection above it, Playwright tests ran without
+    browsers installed, and master's pytest gate went red. Call sites go in the
+    single hook above.
     """
     known = _load_known_failures()
     if not known:
