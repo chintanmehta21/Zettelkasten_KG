@@ -95,20 +95,31 @@ SECURITY DEFINER
 --
 -- SCOPE OF EACH SETTING (measured on postgres:17, do not overstate these):
 --   search_path  — effective. The load-bearing SECURITY DEFINER hardening.
---   work_mem     — effective; applies to queries run inside the body.
+--     `pg_temp` is listed LAST deliberately: Postgres searches the temporary
+--     schema FIRST unless it appears explicitly, so bare `search_path = public`
+--     leaves a window for temp-object shadowing. Naming it last is the recipe
+--     from the CREATE FUNCTION docs ("Writing SECURITY DEFINER Functions
+--     Safely"). Harmless here (every table reference is schema-qualified), kept
+--     as defence in depth.
+--   work_mem     — effective, and load-bearing. Measured on the live corpus:
+--     the session default is 2184kB and the edge query spills (external merge,
+--     ~3.7MB to disk); at 32MB the plan has ZERO spilling nodes.
 --   statement_timeout — NOT effective for this function's own execution. The
 --     timeout is armed when the CLIENT's command starts, so anything applied at
 --     function-entry cannot bound that command (confirmed empirically: a STABLE
 --     function with SET statement_timeout='1s' running pg_sleep(3) returns
---     normally). It IS enforced on our production path anyway, because PostgREST
---     >= 12 reads the function's configured statement_timeout from the catalog
---     and issues it at the start of the RPC transaction (PostgREST #3001), and
---     the app calls this through supabase-py/PostgREST. A direct asyncpg/psql
---     call gets NO timeout — relevant for the @live tests and ops scripts.
+--     normally). PostgREST >= 12.2 can "hoist" a function's SET settings to
+--     transaction scope (PostgREST #3001), which would enforce it on the app's
+--     path (supabase-py -> PostgREST) — BUT only for settings listed in its
+--     `db-hoisted-tx-settings` config, which we have not verified for this
+--     Supabase instance. So treat the 30s as best-effort, not a guarantee, and
+--     assume NO timeout for direct asyncpg/psql callers (@live tests, ops
+--     scripts). The real burst protection is the app-side SWR cache + the
+--     bounded result size, not this GUC.
 --   Role-level `ALTER ROLE community_reader SET ...` (migration 87) does NOT
 --     cover this either: those apply at session start and community_reader is
 --     NOLOGIN, so it never opens a session.
-SET search_path = public
+SET search_path = public, pg_temp
 SET statement_timeout = '30s'
 SET work_mem = '32MB'
 AS $$

@@ -49,7 +49,7 @@ SECURITY DEFINER
 -- client's command starts), but PostgREST >= 12 reads it from the catalog and
 -- applies it at the start of the RPC transaction, which is the app's real call
 -- path. A direct asyncpg/psql call gets no timeout.
-SET search_path = public
+SET search_path = public, pg_temp
 SET statement_timeout = '30s'
 SET work_mem = '32MB'
 AS $$
