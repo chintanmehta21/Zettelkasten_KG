@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -158,9 +159,36 @@ def main(argv: list[str] | None = None) -> int:
             log.info("... and %d more (dry-run)", len(candidates) - 50)
         return 0
 
+    # Pre-clean FK-bound rows the GoTrue admin API does NOT cascade through
+    # (rag.retrieval_feedback_events, billing.pricing_subscriptions,
+    # rag.kasten_members, ...). Without this, admin.delete_user returns
+    # HTTP 500 "Database error deleting user" and the fixture user survives —
+    # which is why this nightly job failed every run from at least 2026-07-31
+    # to 2026-08-04 and let ~1.4k e2e zettels accumulate in content.
+    # tests/integration/v2/conftest.py already solved this for the per-test
+    # teardown path (Supabase Discussion #28776: admin.delete_user has no
+    # cascade flag); this is the same fix for the standalone nightly job.
+    from website.core.account_purge import purge_user_dependencies
+
     deleted, failed = 0, 0
     for u, email, _created in candidates:
         try:
+            try:
+                # admin.list_users returns id as a str; purge_user_dependencies
+                # is typed uuid.UUID. profile_id == auth user id today via the
+                # handle_new_auth_user trigger invariant (same assumption the
+                # test-fixture teardown makes).
+                purge_user_dependencies(uuid.UUID(str(u.id)))
+            except Exception as purge_exc:  # noqa: BLE001 — best-effort pre-clean
+                # Not fatal on its own: the delete below may still succeed if
+                # this user had no FK-bound rows. Logged so a systematic purge
+                # failure is visible rather than hidden behind the delete error.
+                log.warning(
+                    "purge_user_dependencies(%s) failed: %s: %s",
+                    email,
+                    type(purge_exc).__name__,
+                    purge_exc,
+                )
             client.auth.admin.delete_user(u.id)
             deleted += 1
         except Exception as exc:  # noqa: BLE001
