@@ -56,7 +56,15 @@ jobs:
           SUPABASE_V2_ANON_KEY: "ci-stub-anon"
           SUPABASE_V2_SERVICE_ROLE_KEY: "ci-stub-service"
           NEXUS_TOKEN_ENCRYPTION_KEY: "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4="
-        run: pytest -q --maxfail=5
+        # `-m "not e2e"` for the same reason as ci.yml: the Playwright browser
+        # suite ERRORs in CI ("BrowserType.launch: Executable doesn't exist" —
+        # playwright 1.60 wants a chromium build the runner image lacks), and
+        # tests/conftest.py's collection-time skip is not enough because
+        # pytest-playwright still sets up its browser fixture first. Without
+        # this the gate fails and "SSH deploy to droplet" is SKIPPED — i.e. it
+        # blocks EVERY deploy, which is what happened on master@6658ccef.
+        # e2e.yml remains the browser home (it does a real `playwright install`).
+        run: pytest -q --maxfail=5 -m "not e2e"
 
   # 2026-05-11: removed `migrations-manifest-check` job. It used to apply legacy
   # kg_public/migrations to vanilla postgres:15 and verify against a v1 manifest
