@@ -252,6 +252,9 @@ jobs:
           # picks these up from container env (--env-file). deploy.sh extracts
           # only DEPLOY_* lines (no full source — secrets stay scoped to the
           # docker --env-file path, never the host shell).
+          # 2026-08-02: do NOT re-add GUNICORN_MAX_REQUESTS/_JITTER here. Pinning
+          # 100/50 overrode run.py's 1000/200 and recycled workers mid-ingest
+          # (zettel lost @ 132 requests). run.py is the single source of truth.
           STATIC_BODY=$(printf '%s\n' \
             "WEBHOOK_MODE=true" \
             "WEBHOOK_PORT=10000" \
@@ -263,8 +266,6 @@ jobs:
             "RAG_SMOKE_KASTEN_ID=087184be-3a87-4eb0-9b74-8313077b85ea" \
             "RAG_SMOKE_EXPECT_TITLE=TheEconomist/big-mac-data" \
             "RAG_STAGE2_SUB_BATCH=3" \
-            "GUNICORN_MAX_REQUESTS=100" \
-            "GUNICORN_MAX_REQUESTS_JITTER=50" \
             "RAG_LATENCY_SOFT_S=5" \
             "RAG_LATENCY_HARD_S=20" \
             "RAG_RETRIEVAL_LIMIT_FAST=20" \

@@ -30,7 +30,10 @@ youtube-transcript-api>=1.0
 # Floor pinned to 2026.03.17 so the 2026 player-client set (tv_simply,
 # android_sdkless, web_safari) is available. Weekly rebuild is the
 # freshness strategy — see .github/workflows/yt-dlp-freshness.yml.
-yt-dlp[default]>=2026.03.17
+# 2026-08-02: `curl-cffi` extra is REQUIRED — tier_ytdlp_cookies_impersonate
+# passes impersonate="chrome"; without this backend all 5 player clients fail
+# with 'Impersonate target "chrome" is not available' and tier 3 is dead.
+yt-dlp[default,curl-cffi]>=2026.03.17
 
 # Web frontend
 # Upper-bounded: FastAPI is 0.x and ships breaking changes in MINOR releases

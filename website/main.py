@@ -201,6 +201,16 @@ async def _lifespan(
     try:
         yield
     finally:
+        # 2026-08-02: user work drains FIRST. An in-flight Add-Zettel task needs
+        # a live event loop + DB to finish and persist, so this must run before
+        # the infra tasks below are cancelled. Bounded so the whole shutdown
+        # still fits inside gunicorn --graceful-timeout (run.py: 200s).
+        try:
+            from website.api.zettels_routes import drain_live_tasks
+
+            await drain_live_tasks()
+        except Exception:  # noqa: BLE001 — shutdown must never raise
+            logger.exception("drain_live_tasks failed during shutdown")
         hb_stop.set()
         task.cancel()
         await enrichment_worker.request_stop()

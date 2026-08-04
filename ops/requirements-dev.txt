@@ -16,14 +16,15 @@ beautifulsoup4==4.15.0    # via newspaper4k, -r ops/requirements.in
 blake3==1.0.8             # via -r ops/requirements.in
 brotli==1.2.0             # via newspaper4k, yt-dlp, -r ops/requirements.in
 cachetools==7.1.4         # via -r ops/requirements.in
-certifi==2026.5.20        # via httpcore, httpx, requests, sentry-sdk, trafilatura, yt-dlp
-cffi==2.0.0               # via cryptography
+certifi==2026.5.20        # via curl-cffi, httpcore, httpx, requests, sentry-sdk, trafilatura, yt-dlp
+cffi==2.0.0               # via cryptography, curl-cffi
 charset-normalizer==3.4.7  # via htmldate, requests, trafilatura
 chonkie==1.6.8            # via -r ops/requirements.in
 chonkie-core==0.10.2      # via chonkie
 click==8.3.3              # via deepeval, nltk, uvicorn
 courlan==1.4.0            # via trafilatura
 cryptography==49.0.0      # via google-auth, pyjwt, -r ops/requirements.in
+curl-cffi==0.15.0         # via yt-dlp
 datasets==5.0.0           # via ragas, -r ops/requirements-dev.in
 dateparser==1.4.1         # via htmldate, -r ops/requirements.in
 deepeval==3.9.7           # via -r ops/requirements-dev.in
@@ -158,7 +159,7 @@ requests==2.33.1          # via arxiv, datasets, deepeval, flashrank, google-aut
 requests-file==3.0.1      # via tldextract
 requests-toolbelt==1.0.0  # via langsmith
 respx==0.22.0             # via -r ops/requirements-dev.in
-rich==14.3.4              # via deepeval, instructor, ragas, typer
+rich==14.3.4              # via curl-cffi, deepeval, instructor, ragas, typer
 scikit-network==0.33.5    # via ragas
 scipy==1.17.1             # via scikit-network, -r ops/requirements.in
 sentry-sdk==2.62.0        # via deepeval
