@@ -13,14 +13,15 @@ beautifulsoup4==4.15.0    # via newspaper4k, -c ops/requirements-dev.txt, -r ops
 blake3==1.0.8             # via -c ops/requirements-dev.txt, -r ops/requirements.in
 brotli==1.2.0             # via newspaper4k, yt-dlp, -c ops/requirements-dev.txt, -r ops/requirements.in
 cachetools==7.1.4         # via -c ops/requirements-dev.txt, -r ops/requirements.in
-certifi==2026.5.20        # via httpcore, httpx, requests, trafilatura, yt-dlp, -c ops/requirements-dev.txt
-cffi==2.0.0               # via cryptography, -c ops/requirements-dev.txt
+certifi==2026.5.20        # via curl-cffi, httpcore, httpx, requests, trafilatura, yt-dlp, -c ops/requirements-dev.txt
+cffi==2.0.0               # via cryptography, curl-cffi, -c ops/requirements-dev.txt
 charset-normalizer==3.4.7  # via htmldate, requests, trafilatura, -c ops/requirements-dev.txt
 chonkie==1.6.8            # via -c ops/requirements-dev.txt, -r ops/requirements.in
 chonkie-core==0.10.2      # via chonkie, -c ops/requirements-dev.txt
 click==8.3.3              # via nltk, uvicorn, -c ops/requirements-dev.txt
 courlan==1.4.0            # via trafilatura, -c ops/requirements-dev.txt
 cryptography==49.0.0      # via google-auth, pyjwt, -c ops/requirements-dev.txt, -r ops/requirements.in
+curl-cffi==0.15.0         # via yt-dlp, -c ops/requirements-dev.txt
 dateparser==1.4.1         # via htmldate, -c ops/requirements-dev.txt, -r ops/requirements.in
 defusedxml==0.7.1         # via youtube-transcript-api, -c ops/requirements-dev.txt, -r ops/requirements.in
 deprecation==2.1.0        # via postgrest, storage3, -c ops/requirements-dev.txt
@@ -106,7 +107,7 @@ realtime==2.31.0          # via supabase, -c ops/requirements-dev.txt
 regex==2026.5.9           # via dateparser, nltk, -c ops/requirements-dev.txt
 requests==2.33.1          # via arxiv, flashrank, google-auth, google-genai, newspaper4k, opentelemetry-exporter-otlp-proto-http, python-podcastindex, razorpay, requests-file, tldextract, youtube-transcript-api, yt-dlp, -c ops/requirements-dev.txt
 requests-file==3.0.1      # via tldextract, -c ops/requirements-dev.txt
-rich==14.3.4              # via typer, -c ops/requirements-dev.txt
+rich==14.3.4              # via curl-cffi, typer, -c ops/requirements-dev.txt
 scipy==1.17.1             # via -c ops/requirements-dev.txt, -r ops/requirements.in
 sgmllib3k==1.0.0          # via feedparser, -c ops/requirements-dev.txt
 shellingham==1.5.4        # via typer, -c ops/requirements-dev.txt

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
@@ -94,6 +95,54 @@ _BG_TASKS: set[asyncio.Task] = set()
 # the local coroutine reachable so the event loop does not GC it and so
 # DELETE /api/zettels/operations/{id} can cooperatively cancel it.
 _LIVE_TASKS: dict[str, asyncio.Task] = {}
+
+# 2026-08-02 incident: a gunicorn max_requests recycle cancelled an in-flight
+# Add-Zettel task 37s in. The lifespan drained only infra tasks, so user work
+# got no grace, and _run's CancelledError branch finalized the row terminal
+# 'cancelled' ("cancelled by the client") — a lie that also hid it from the
+# stuck-running reaper, which only reaps status='running'. Flag lets _run tell
+# a shutdown-cancel apart from a genuine client DELETE.
+_SHUTTING_DOWN = False
+
+# Drain budget. MUST stay under gunicorn --graceful-timeout (run.py: 200s),
+# leaving headroom for the infra-task drain + uvicorn teardown.
+LIVE_TASK_DRAIN_TIMEOUT_S = float(os.environ.get("ZETTEL_DRAIN_TIMEOUT_S", "120"))
+
+
+async def drain_live_tasks(timeout: float | None = None) -> int:
+    """Await in-flight Add-Zettel background tasks at worker shutdown.
+
+    Called from the lifespan `finally` BEFORE infra tasks are cancelled — the
+    pipeline needs a live event loop and DB access to finish and persist.
+    Returns the number still unfinished when the budget expired; those get
+    cancelled by loop teardown and land on _run's worker_recycled path.
+    """
+    global _SHUTTING_DOWN
+    _SHUTTING_DOWN = True
+    pending = [t for t in _LIVE_TASKS.values() if not t.done()]
+    if not pending:
+        return 0
+    budget = LIVE_TASK_DRAIN_TIMEOUT_S if timeout is None else timeout
+    logger.info(
+        "drain_live_tasks: awaiting %d in-flight op(s) (budget=%.0fs)",
+        len(pending),
+        budget,
+    )
+    _done, not_done = await asyncio.wait(pending, timeout=budget)
+    if not_done:
+        logger.warning(
+            "drain_live_tasks: %d op(s) unfinished after %.0fs; they will be "
+            "finalized worker_recycled",
+            len(not_done),
+            budget,
+        )
+    return len(not_done)
+
+
+def _reset_shutdown_flag_for_tests() -> None:
+    """Test-only: clear the module-level shutdown latch between cases."""
+    global _SHUTTING_DOWN
+    _SHUTTING_DOWN = False
 
 
 def _spawn_bg(coro) -> None:
@@ -651,6 +700,7 @@ def _failed_response_for(
     operation_id: str,
     persist_requested: bool,
     url: str | None = None,
+    worker_recycled: bool = False,
 ) -> dict[str, Any]:
     """Build the AddZettelResponse(status='failed', ...) body for an async-
     background-worker exception. Used by `_run` on the failed / cancelled paths
@@ -662,11 +712,28 @@ def _failed_response_for(
     facto for failure forensics — the 24h TTL on the row plus the absence of
     container-stdout persistence on the droplet previously made URL recovery
     impossible after the fact (Nimit sweep, 2026-05-25)."""
-    if isinstance(exc, asyncio.CancelledError):
+    if isinstance(exc, asyncio.CancelledError) and worker_recycled:
+        # 2026-08-02: the worker was recycled/shut down mid-run. Reporting this
+        # as a client cancel sent forensics down the wrong path for an hour.
+        reason = "worker recycled mid-operation"
+        error_payload: dict[str, Any] | None = _problem_dict(
+            status_code=503,
+            title="Server restarted mid-operation",
+            detail=(
+                "The server restarted while this was still processing. "
+                "Nothing was saved — please try again."
+            ),
+            type_slug="worker_recycled",
+            operation_id=operation_id,
+            instance=f"/api/zettels/operations/{operation_id}",
+            url=url,
+            extra={"retryable": True},
+        )
+    elif isinstance(exc, asyncio.CancelledError):
         reason = "operation cancelled"
         # Phase 3: route the cancel shape through the unified builder so it
         # matches the rest of the RFC 9457 family byte-for-byte.
-        error_payload: dict[str, Any] | None = _problem_dict(
+        error_payload = _problem_dict(
             status_code=499,
             title="Operation cancelled",
             detail="The operation was cancelled by the client.",
@@ -733,28 +800,59 @@ async def _run(
     try:
         result = await pipeline()
     except asyncio.CancelledError:
-        # Cooperative cancellation (DELETE /api/zettels/operations/{id} or
-        # task.cancel() from the local LIVE_TASKS map).
+        # Two very different things arrive here as the same exception:
+        #   - a genuine client cancel (DELETE /api/zettels/operations/{id})
+        #   - the worker being recycled/shut down out from under us
+        # Conflating them produced the 2026-08-02 "cancelled by the client"
+        # misattribution on a job the client never touched.
+        recycled = _SHUTTING_DOWN
         failed_body = _failed_response_for(
             asyncio.CancelledError(),
             operation_id=operation_id,
             persist_requested=persist_requested,
             url=url,
+            worker_recycled=recycled,
         )
         if auth_intent:
             failed_body["auth_intent"] = auth_intent
+        if recycled:
+            # This path fired no alert at all before, which is exactly why the
+            # 2026-08-02 loss went unnoticed. Client DELETEs stay silent —
+            # they are user intent, not incidents.
+            from website.features.web_monitor import _hash_id, maybe_fire_app_error
+
+            maybe_fire_app_error(
+                dedup_key="add_zettel_worker_recycled",
+                route="/api/zettels/add[async]",
+                exc_type="WorkerRecycled",
+                message=(
+                    "Worker shut down before the operation finished; "
+                    "accepted work was lost."
+                ),
+                request_id=operation_id,
+                fields={
+                    "operation_id": operation_id,
+                    "user_hash": _hash_id(str(user_id)),
+                    "stage": "shutdown_drain_timeout",
+                },
+                severity="warning",
+            )
         try:
             await asyncio.to_thread(
                 operations_repo.finalize,
                 user_id=user_id,
                 operation_id=operation_id,
-                target="cancelled",
+                # 'cancelled' is reserved for actual client intent. A recycle is
+                # a server failure and must read as one.
+                target="failed" if recycled else "cancelled",
                 response=failed_body,
                 error=failed_body.get("error"),
             )
         except Exception:
             logger.exception(
-                "operations_repo.finalize(cancelled) raised (op=%s)", operation_id
+                "operations_repo.finalize(%s) raised (op=%s)",
+                "failed/worker_recycled" if recycled else "cancelled",
+                operation_id,
             )
         raise
     except Exception as exc:

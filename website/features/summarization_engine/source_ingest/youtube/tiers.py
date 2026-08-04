@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import asyncio
-import json
+import functools
 import logging
 import os
 import re
 import tempfile
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -348,6 +347,27 @@ def _yt_proxy_url() -> str:
     return ""
 
 
+@functools.lru_cache(maxsize=1)
+def impersonate_target_available(target: str = "chrome") -> bool:
+    """Whether yt-dlp can actually impersonate ``target`` in this image.
+
+    2026-08-02: `ops/requirements.in` pinned `yt-dlp[default]`, which omits the
+    curl-cffi backend, so tier 3 failed all 5 player clients per request with
+    'Impersonate target "chrome" is not available' — silently, for months.
+    Probed once per process and reported as a single tier error instead.
+    """
+    try:
+        from yt_dlp import YoutubeDL
+        from yt_dlp.networking.impersonate import ImpersonateTarget
+
+        with YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
+            return bool(
+                ydl._impersonate_target_available(ImpersonateTarget.from_str(target))
+            )
+    except Exception:  # noqa: BLE001 — probe must never break ingestion
+        return False
+
+
 async def tier_ytdlp_cookies_impersonate(video_id: str, config: dict) -> TierResult:
     """Tier 3: yt-dlp with --cookies-from-burner-account + --impersonate chrome
     (curl_cffi) + PO-token from bgutil sidecar. Unlocks age-restricted +
@@ -368,6 +388,21 @@ async def tier_ytdlp_cookies_impersonate(video_id: str, config: dict) -> TierRes
             success=False,
             latency_ms=0,
             error="YT_COOKIES_PATH not set or missing — see docs/runbooks/yt-fallback-stack.md",
+        )
+
+    # Fail once, loudly, instead of once per player client. Surfaces on
+    # /api/health under yt_tier_health via the chain runner's record_failure.
+    if not impersonate_target_available():
+        logger.error(
+            "[yt-tier3] curl-cffi impersonation unavailable — tier 3 is dead. "
+            "Image must install yt-dlp[default,curl-cffi]."
+        )
+        return TierResult(
+            tier=TierName.YTDLP_PLAYER_ROTATION,
+            transcript="",
+            success=False,
+            latency_ms=0,
+            error="impersonate backend missing (install yt-dlp[default,curl-cffi])",
         )
 
     clients = config.get(
