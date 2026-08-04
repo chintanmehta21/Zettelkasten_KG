@@ -90,6 +90,36 @@ jobs:
               echo "--- $f ---"
               cat "$f" 2>/dev/null || true
             done
+            # 2026-08-05 step 0: a single cumulative pswpin reading is useless —
+            # what matters is the RATE. 692 MB of cold swap is benign; the same
+            # 692 MB with continuous swap-in is thrashing, and on 1 vCPU those
+            # major faults serialize behind ONNX compute. Sample twice, 60s
+            # apart, and print the delta. Read-only.
+            echo "===== swap I/O RATE (pswpin/pswpout delta over 60s) ====="
+            read_swp() { grep -E '^(pswpin|pswpout|pgmajfault) ' /proc/vmstat; }
+            echo "--- t0 ---"; read_swp
+            S_IN0=$(awk '/^pswpin /{print $2}' /proc/vmstat)
+            S_OUT0=$(awk '/^pswpout /{print $2}' /proc/vmstat)
+            S_MAJ0=$(awk '/^pgmajfault /{print $2}' /proc/vmstat)
+            sleep 60
+            echo "--- t1 (after 60s) ---"; read_swp
+            S_IN1=$(awk '/^pswpin /{print $2}' /proc/vmstat)
+            S_OUT1=$(awk '/^pswpout /{print $2}' /proc/vmstat)
+            S_MAJ1=$(awk '/^pgmajfault /{print $2}' /proc/vmstat)
+            echo "DELTA_60s pswpin=$((S_IN1-S_IN0)) pswpout=$((S_OUT1-S_OUT0)) pgmajfault=$((S_MAJ1-S_MAJ0))"
+            echo "  (pages; x4KiB for bytes. pswpin~0 => swap is COLD/benign."
+            echo "   sustained pswpin>0 => thrashing, latency debt is real.)"
+            echo "===== PSI memory pressure (host + per-container) ====="
+            # k8s SIG-Node thresholds: some avg60 <5% healthy, 10-20% warning,
+            # >20% critical/thrashing. 'full' = ALL tasks stalled.
+            echo "--- host /proc/pressure/memory ---"
+            cat /proc/pressure/memory 2>&1 || echo "  (PSI unavailable)"
+            echo "--- host /proc/pressure/io ---"
+            cat /proc/pressure/io 2>&1 || true
+            for f in /sys/fs/cgroup/system.slice/docker-*.scope/memory.pressure; do
+              [ -r "$f" ] || continue
+              echo "--- $f ---"; cat "$f" 2>/dev/null || true
+            done
             echo "===== cgroup v2 memory.peak (per-container hi-water) ====="
             for f in /sys/fs/cgroup/system.slice/docker-*.scope/memory.peak; do
               [ -r "$f" ] || continue
