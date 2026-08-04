@@ -316,6 +316,13 @@ def maybe_fire_do_alert(
 _PSI_MEM = Path("/proc/pressure/memory")
 _CGROUP_MEM_CURRENT = Path("/sys/fs/cgroup/memory.current")
 _CGROUP_MEM_MAX = Path("/sys/fs/cgroup/memory.max")
+# 2026-08-05: the only unambiguous "we are actively killing processes" signal.
+# Under cgroup v2 the kernel kills a process INSIDE the cgroup, not necessarily
+# PID 1 — so a gunicorn worker dies, the arbiter respawns it, the container
+# stays up with restarts=0, and Docker's State.OOMKilled never surfaces it.
+# That is exactly how two kills went unnoticed before the 2026-08-02 incident.
+# mem_ratio/PSI are leading indicators; this is the confirmed-damage counter.
+_CGROUP_MEM_EVENTS = Path("/sys/fs/cgroup/memory.events")
 
 # Thresholds (per OOM/memory subagent recommendation 2026-05-24). Each metric
 # has WARN/CRITICAL bands and a SAFE re-arm band; the sampler fires once when
@@ -378,6 +385,29 @@ def _read_cgroup_mem_ratio() -> tuple[float | None, int | None, int | None]:
     return current / max_bytes, current, max_bytes
 
 
+def _read_cgroup_oom_kill() -> int | None:
+    """Return cumulative ``oom_kill`` from cgroup v2 ``memory.events``, or None.
+
+    Counts processes in this cgroup killed by any OOM killer since the cgroup
+    was created. Cumulative, so alerting keys off the DELTA between samples —
+    a non-zero absolute value on a long-lived container is just history.
+    """
+    try:
+        text = _CGROUP_MEM_EVENTS.read_text()
+    except (FileNotFoundError, PermissionError, OSError):
+        return None
+    for line in text.splitlines():
+        # Prefix-match is wrong here: 'oom_kill' and 'oom_group_kill' both
+        # start with 'oom'. Split and compare the key exactly.
+        parts = line.split()
+        if len(parts) == 2 and parts[0] == "oom_kill":
+            try:
+                return int(parts[1])
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
 def _read_asyncio_task_count() -> int:
     try:
         return len(asyncio.all_tasks())
@@ -394,6 +424,11 @@ class _SamplerState:
     mem_armed_severity: str | None = None
     tasks_breach: int = 0
     tasks_armed_severity: str | None = None
+    # Last observed cumulative oom_kill. None = not yet sampled; the first
+    # sample only establishes the baseline so a container that already has
+    # historical kills doesn't page us at boot.
+    oom_kill_last: int | None = None
+    oom_kill_total_seen: int = 0
 
 
 class MemorySampler:
@@ -446,10 +481,12 @@ class MemorySampler:
         psi = _read_psi_full_avg10()
         mem_ratio, mem_current, mem_max = _read_cgroup_mem_ratio()
         tasks = _read_asyncio_task_count()
+        oom_kill = _read_cgroup_oom_kill()
 
         self._evaluate_psi(psi)
         self._evaluate_mem(mem_ratio, mem_current, mem_max)
         self._evaluate_tasks(tasks)
+        self._evaluate_oom_kill(oom_kill)
 
         return {
             "psi_full_avg10": psi,
@@ -457,6 +494,7 @@ class MemorySampler:
             "mem_current_bytes": mem_current,
             "mem_max_bytes": mem_max,
             "asyncio_tasks": tasks,
+            "oom_kill_total": oom_kill,
             "state": {
                 "psi_breach": self.state.psi_breach,
                 "psi_armed_severity": self.state.psi_armed_severity,
@@ -464,8 +502,47 @@ class MemorySampler:
                 "mem_armed_severity": self.state.mem_armed_severity,
                 "tasks_breach": self.state.tasks_breach,
                 "tasks_armed_severity": self.state.tasks_armed_severity,
+                "oom_kill_last": self.state.oom_kill_last,
+                "oom_kill_total_seen": self.state.oom_kill_total_seen,
             },
         }
+
+    def _evaluate_oom_kill(self, oom_kill: int | None) -> None:
+        """Fire on any INCREASE in the cgroup's oom_kill counter.
+
+        No hysteresis and no sustained-samples gate: a kill is confirmed damage,
+        not a trend. Every increment fires, deduped by the alert channel's own
+        throttle. A counter that goes backwards means the cgroup was recreated
+        (container restart) — re-baseline rather than reporting a negative.
+        """
+        if oom_kill is None:
+            return
+        previous = self.state.oom_kill_last
+        self.state.oom_kill_last = oom_kill
+        if previous is None or oom_kill < previous:
+            # First sample, or cgroup recreated. Baseline only — never alert.
+            return
+        delta = oom_kill - previous
+        if delta <= 0:
+            return
+        self.state.oom_kill_total_seen += delta
+        maybe_fire_do_alert(
+            dedup_key="cgroup_oom_kill",
+            title=":skull: Process OOM-killed inside the container cgroup",
+            body=(
+                f"`memory.events oom_kill` rose by {delta} "
+                f"(now {oom_kill}). The kernel SIGKILLed a process in this "
+                f"cgroup — almost certainly a gunicorn worker, which the "
+                f"arbiter silently respawns. Any in-flight work it held is "
+                f"lost with no graceful-shutdown path."
+            ),
+            severity="critical",
+            fields={
+                "oom_kill_delta": str(delta),
+                "oom_kill_total": str(oom_kill),
+                "seen_this_process": str(self.state.oom_kill_total_seen),
+            },
+        )
 
     def _evaluate_psi(self, psi: float | None) -> None:
         if psi is None:

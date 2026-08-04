@@ -101,7 +101,15 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PORT=10000 \
-    PROMETHEUS_MULTIPROC_DIR=/app/var/prom
+    PROMETHEUS_MULTIPROC_DIR=/app/var/prom \
+    MALLOC_ARENA_MAX=2
+# MALLOC_ARENA_MAX (2026-08-05, step 4 of the memory remediation): glibc creates
+# up to 8 x ncores malloc arenas, each its own fragmentation pool. ORT spawns
+# intra-op threads, which is what multiplies arenas here despite the 1 vCPU.
+# Under the GIL extra arenas buy us almost nothing, so cap at 2 and reclaim the
+# per-arena slack. Must be an image ENV, not a runtime tweak: glibc reads it at
+# the first malloc, long before any Python code could set it.
+# Instantly reversible — unset it and rebuild.
 
 # Multiprocess Prometheus exposition needs a shared directory each worker
 # writes its metrics shards to. Phase 4 / Task 4.6 originally placed this

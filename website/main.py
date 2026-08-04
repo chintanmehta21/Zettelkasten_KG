@@ -232,6 +232,51 @@ async def _lifespan(
 app = create_app(lifespan=_lifespan)
 
 
+def _freeze_preloaded_heap() -> dict[str, int]:
+    """Move import-time objects into the GC's permanent generation before fork.
+
+    2026-08-05, step 3 of the memory remediation. With ``--preload`` the master
+    imports everything (including the BGE/FlashRank models) and workers inherit
+    it copy-on-write. The cyclic GC then breaks that sharing: every gen-2 pass
+    in a worker *writes* to object headers it is merely inspecting, dirtying
+    COW pages and forcing private copies. ``gc.freeze()`` moves those objects
+    into a permanent generation the collector never scans again.
+
+    Origin of the technique: Instagram's copy-on-write-friendly GC work.
+
+    Honest bound: this removes the *GC-scan* source of page dirtying only.
+    ``Py_INCREF`` still writes a refcount into the object header whenever a
+    worker touches an object, so COW breakage is reduced, not eliminated. Our
+    resident bulk is ONNX weights in the C++ heap, which the Python GC never
+    touches at all — so expect tens of MB here, not hundreds.
+
+    Must run in the MASTER, pre-fork. Never call this from a worker: frozen
+    objects are never collected again, so freezing per-request state leaks.
+    Module scope under ``--preload`` is exactly the pre-fork point.
+    """
+    import gc
+
+    # Collect first so genuine garbage is reclaimed rather than made permanent.
+    collected = gc.collect()
+    gc.freeze()
+    frozen = gc.get_freeze_count()
+    stats = {"collected": collected, "frozen": frozen}
+    logger.info(
+        "gc.freeze: %d objects frozen pre-fork (collected %d first)",
+        frozen,
+        collected,
+    )
+    return stats
+
+
+# Guarded so an operator can A/B the COW effect without a code change.
+if os.environ.get("GC_FREEZE_PREFORK", "1") not in ("0", "false", "False"):
+    try:
+        _freeze_preloaded_heap()
+    except Exception:  # noqa: BLE001 — never block boot on an optimisation
+        logger.exception("gc.freeze pre-fork failed (non-fatal)")
+
+
 def main() -> None:
     settings = get_settings()
     logging.basicConfig(
