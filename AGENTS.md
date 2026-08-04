@@ -1,3 +1,14 @@
+<!--
+  AGENTS.md — AUTO-SYNCED from CLAUDE.md by ops/git-hooks/pre-commit.
+  DO NOT EDIT DIRECTLY. Edit CLAUDE.md instead; this file will regenerate
+  on the next commit that stages CLAUDE.md.
+
+  Why this mirror exists: Codex CLI auto-loads AGENTS.md (the OpenAI /
+  Linux-Foundation cross-tool standard). Claude Code auto-loads CLAUDE.md.
+  Single source of truth (CLAUDE.md) + auto-sync = both LLMs see identical
+  project rules with zero drift.
+-->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -8,7 +19,7 @@ Zettelkasten Website — a FastAPI web app that captures URLs (Reddit, YouTube, 
 
 **Status**: Production-ready. DigitalOcean blue/green deploy stack merged: 2026-04-10.
 **Repo**: https://github.com/chintanmehta21/Zettelkasten_KG
-**Verified sources**: YouTube, GitHub, Newsletter (Substack), Generic (HN/web)
+**Verified sources**: YouTube, GitHub, Reddit, Newsletter (Substack-class allowlist), arXiv, HackerNews, Twitter/X, LinkedIn, Podcast (Apple/Spotify/Overcast/Snipd), Generic web (`SourceType.WEB` fallback). Live router map: `website/features/summarization_engine/core/router.py::_DOMAIN_RULES`.
 
 Single interface: a FastAPI web UI (`website/`) with Add Zettel API at `/api/zettels/add` and an interactive 3D knowledge graph at `/knowledge-graph`.
 
@@ -186,7 +197,7 @@ The `Settings` singleton is accessed everywhere via `get_settings()` (lru_cache)
 
 ### Reddit credentials and RAG chunk density
 
-`REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` are **required for OAuth-backed Reddit extraction** (used by the website `RedditIngestor` and by `ops/scripts/backfill_chunks.py --refetch-source` when it encounters `/r/` URLs). Without them the ingestor degrades to the public JSON endpoint + HTML scraping, which often returns thin content for Reddit's anti-bot walls and caps RAG chunk density at ~1 chunk per post. On the production droplet, set both in the container env (via `--env-file`) or in the secret file mounted at `/etc/secrets/api_env`. See `ops/.env.example` for the template.
+The live Add-Zettel Reddit path — `website/features/summarization_engine/source_ingest/reddit/ingest.py::RedditIngestor` — extracts via the **public Reddit JSON endpoint (`<url>.json`) + HTML-scraping fallback + pullpush.io removed-comment recovery**. It uses **no OAuth and no PRAW** (PRAW is not a dependency in `ops/requirements*.txt`), so `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` do **not** affect Add-Zettel ingestion. Those creds gate only the **OAuth branch of `ops/scripts/backfill_chunks.py --refetch-source`** when it encounters `/r/` URLs; without them that script also falls back to the public JSON + HTML path, which returns thin content behind Reddit's anti-bot walls and caps RAG chunk density at ~1 chunk per post. (The experimental Nexus "connect a Reddit account" feature is separate and uses its own `NEXUS_REDDIT_CLIENT_*` OAuth creds.) For the backfill script on the production droplet, set `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` in the container env (via `--env-file`) or the secret file mounted at `/etc/secrets/api_env`. See `ops/.env.example` for the template.
 
 ## Architecture
 

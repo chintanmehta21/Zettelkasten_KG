@@ -87,3 +87,130 @@ def test_detect_route_decision_marks_bad_youtube_shape_without_changing_family()
     assert decision.source_type == SourceType.YOUTUBE
     assert decision.supported is False
     assert decision.reason == "unsupported_youtube_channel"
+
+
+@pytest.mark.parametrize(
+    ("url", "subtype", "supported"),
+    [
+        # Post permalinks — supported (existing ingestion behavior preserved).
+        ("https://www.reddit.com/r/onions/comments/abc123/some_slug/", "post", True),
+        ("https://www.reddit.com/r/onions/comments/abc123/", "post", True),
+        ("https://old.reddit.com/r/Python/comments/abc/test/", "post", True),
+        ("https://www.reddit.com/comments/abc123", "post", True),
+        ("https://redd.it/abc123", "post_shortlink", True),
+        # Comment permalink — unsupported (6th segment is a comment id; the JSON
+        # shape differs from a thread and the summarizer would mis-extract).
+        (
+            "https://www.reddit.com/r/onions/comments/abc123/some_slug/def456/",
+            "comment_permalink",
+            False,
+        ),
+        # Subreddit listings — unsupported. THIS is the silent-pollution case:
+        # the old generic route accepted these and persisted empty zettels.
+        ("https://www.reddit.com/r/onions/", "subreddit_listing", False),
+        ("https://www.reddit.com/r/onions/top/?t=all", "subreddit_listing", False),
+        ("https://www.reddit.com/r/onions/hot", "subreddit_listing", False),
+        # Wiki pages — unsupported (need bespoke ingestion).
+        ("https://www.reddit.com/r/onions/wiki/index", "wiki", False),
+        # User profiles — unsupported.
+        ("https://www.reddit.com/user/spez/", "user_profile", False),
+        ("https://www.reddit.com/u/spez", "user_profile", False),
+        # Multireddit — unsupported.
+        ("https://www.reddit.com/user/spez/m/tech/", "multireddit", False),
+    ],
+)
+def test_reddit_route_subtypes(url, subtype, supported):
+    decision = detect_route_decision(url)
+    assert decision.source_type == SourceType.REDDIT
+    assert decision.subtype == subtype
+    assert decision.supported is supported
+
+
+def test_reddit_listing_carries_unsupported_reason():
+    decision = detect_route_decision("https://www.reddit.com/r/onions/top/?t=all")
+    assert decision.supported is False
+    assert decision.reason == "unsupported_reddit_url_shape"
+
+
+# ---------------------------------------------------------------------------
+# G2 — newsletter probe (refine_web_route)
+# ---------------------------------------------------------------------------
+from website.features.summarization_engine.core.router import refine_web_route  # noqa: E402
+
+_WEB_DECISION = detect_route_decision("https://example.com/some-article")
+
+
+def _const_fetcher(html: str):
+    async def _f(_url: str) -> str:
+        return html
+
+    return _f
+
+
+async def test_probe_reclassifies_blogposting_jsonld():
+    html = (
+        '<html><head><script type="application/ld+json">'
+        '{"@context":"https://schema.org","@type":"BlogPosting","headline":"x"}'
+        "</script></head></html>"
+    )
+    d = await refine_web_route(
+        "https://blog.example/post-1", _WEB_DECISION, fetcher=_const_fetcher(html)
+    )
+    assert d.source_type == SourceType.NEWSLETTER
+    assert d.subtype == "post"
+
+
+async def test_probe_reclassifies_substack_generator():
+    html = '<head><meta name="generator" content="Substack"></head>'
+    d = await refine_web_route(
+        "https://sub.example/p/a", _WEB_DECISION, fetcher=_const_fetcher(html)
+    )
+    assert d.source_type == SourceType.NEWSLETTER
+
+
+async def test_probe_reclassifies_ghost_generator():
+    html = '<head><meta content="Ghost 5.20" name="generator"></head>'
+    d = await refine_web_route(
+        "https://ghost.example/welcome", _WEB_DECISION, fetcher=_const_fetcher(html)
+    )
+    assert d.source_type == SourceType.NEWSLETTER
+
+
+async def test_probe_ignores_plain_news_article_with_rss_and_newsarticle():
+    # og:type=article + RSS feed + NewsArticle JSON-LD, but NO BlogPosting and
+    # NO newsletter-platform generator. Must NOT be reclassified (news != newsletter).
+    html = (
+        "<head>"
+        '<meta property="og:type" content="article">'
+        '<link rel="alternate" type="application/rss+xml" href="/feed.xml">'
+        '<meta name="generator" content="WordPress 6.4">'
+        '<script type="application/ld+json">{"@type":"NewsArticle"}</script>'
+        "</head>"
+    )
+    d = await refine_web_route(
+        "https://news.example/story", _WEB_DECISION, fetcher=_const_fetcher(html)
+    )
+    assert d.source_type == SourceType.WEB
+
+
+async def test_probe_fault_tolerant_on_fetch_error():
+    async def _boom(_url: str) -> str:
+        raise RuntimeError("network down")
+
+    d = await refine_web_route(
+        "https://broken.example/p", _WEB_DECISION, fetcher=_boom
+    )
+    assert d.source_type == SourceType.WEB
+
+
+async def test_probe_does_not_fetch_non_web_decision():
+    gh = detect_route_decision("https://github.com/foo/bar")
+    calls = {"n": 0}
+
+    async def _counting(_url: str) -> str:
+        calls["n"] += 1
+        return '<meta name="generator" content="Ghost">'
+
+    d = await refine_web_route("https://github.com/foo/bar", gh, fetcher=_counting)
+    assert d is gh
+    assert calls["n"] == 0

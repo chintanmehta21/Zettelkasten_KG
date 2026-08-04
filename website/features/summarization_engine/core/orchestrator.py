@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 from uuid import UUID
 
 from website.core.request_context import get_operation_id
@@ -26,7 +26,11 @@ from website.features.summarization_engine.core.models import (
     SourceType,
     SummaryResult,
 )
-from website.features.summarization_engine.core.router import detect_route_decision
+from website.features.summarization_engine.core.router import (
+    RouteDecision,
+    detect_route_decision,
+    refine_web_route,
+)
 from website.features.summarization_engine.source_ingest import get_ingestor
 from website.features.summarization_engine.summarization import get_summarizer
 
@@ -126,6 +130,36 @@ async def summarize_url(
     )).summary_result
 
 
+async def _resolve_route(
+    url: str,
+    source_type: SourceType | None,
+    *,
+    fetcher: Callable[[str], Awaitable[str]] | None = None,
+) -> RouteDecision:
+    """Resolve the final RouteDecision for a URL.
+
+    Pure-sync detection first; then, only when the caller did not pin a
+    ``source_type`` and the URL fell to generic WEB, an out-of-band newsletter
+    probe (``refine_web_route``) may upgrade WEB -> NEWSLETTER. The probe is
+    fault-tolerant by contract; the extra ``try`` here is belt-and-suspenders
+    so a probe defect can never break ingestion at the entry point.
+    """
+    route_decision = detect_route_decision(url)
+    if source_type is None and route_decision.source_type == SourceType.WEB:
+        try:
+            route_decision = await refine_web_route(url, route_decision, fetcher=fetcher)
+        except Exception:
+            logger.warning("orchestrator.web_probe_failed url=%s", url, exc_info=True)
+    if source_type is not None and source_type != route_decision.source_type:
+        route_decision = route_decision.__class__(
+            source_type=source_type,
+            subtype=route_decision.subtype,
+            supported=route_decision.supported,
+            reason=route_decision.reason,
+        )
+    return route_decision
+
+
 async def summarize_url_bundle(
     url: str,
     *,
@@ -148,14 +182,7 @@ async def summarize_url_bundle(
     if not validate_url(url):
         raise RoutingError("Invalid or blocked URL", url=url)
 
-    route_decision = detect_route_decision(url)
-    if source_type is not None and source_type != route_decision.source_type:
-        route_decision = route_decision.__class__(
-            source_type=source_type,
-            subtype=route_decision.subtype,
-            supported=route_decision.supported,
-            reason=route_decision.reason,
-        )
+    route_decision = await _resolve_route(url, source_type)
     if not route_decision.supported:
         raise UnsupportedURLShapeError(
             source_type=route_decision.source_type.value,
