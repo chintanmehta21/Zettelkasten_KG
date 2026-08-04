@@ -48,7 +48,20 @@ jobs:
           SUPABASE_V2_SERVICE_ROLE_KEY: "ci-stub-service"
           NEXUS_TOKEN_ENCRYPTION_KEY: "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4="
         run: |
-          pytest -q --maxfail=5
+          # Deselect the Playwright browser suite. tests/conftest.py already
+          # adds a collection-time skip for the `e2e` marker, but that is NOT
+          # sufficient in CI: pytest-playwright still sets up its browser
+          # fixture and every e2e test ERRORs with "BrowserType.launch:
+          # Executable doesn't exist" (playwright 1.60 wants chromium build
+          # 1223, absent from the runner image). That is why master@20292452's
+          # own ci.yml run is currently red. Verified by A/B in CI on this PR:
+          # green WITH this flag, red WITHOUT it. Marker deselection happens
+          # before fixture setup, so it actually holds.
+          # Keep it HERE, not in pyproject addopts — a global `-m "not e2e"`
+          # would make e2e.yml (which runs tests/integration/browser/ with a
+          # real `playwright install`) collect zero tests and trip its own
+          # "0 tests collected" guard.
+          pytest -q --maxfail=5 -m "not e2e"
 
   stylelint-changed:
     name: stylelint (changed CSS lines)
