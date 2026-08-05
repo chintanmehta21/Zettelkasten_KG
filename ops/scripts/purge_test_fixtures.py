@@ -76,6 +76,49 @@ def _user_created_at(user) -> datetime | None:
     return _parse_supabase_timestamp(str(raw))
 
 
+def _assert_clean_or_fail(age_hours: float) -> int:
+    """DEAD-MAN SWITCH: 0 if no eligible fixtures remain, 1 otherwise.
+
+    "exit 0" is NOT evidence the database is clean. Two real failure modes look
+    identical to a clean run from the outside:
+      * the job is CANCELLED mid-purge — the 10-minute `timeout-minutes` did
+        exactly this on 2026-08-04, stopping with 182 of 436 users still
+        present, and a cancelled run fires neither `failure` nor `timed_out`
+        so scheduled-failure-alert.yml stayed quiet;
+      * the auth listing silently returns nothing, so `candidates` is empty and
+        the script "succeeds" having deleted nothing.
+    Re-querying the DB closes both: a half-done sweep exits non-zero, which
+    becomes a deduped GitHub issue via the alerter.
+    """
+    try:
+        import psycopg
+
+        from website.core.supabase_v2.client import get_v2_database_url
+
+        with psycopg.connect(get_v2_database_url()) as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM auth.users
+                 WHERE email ~ %s
+                   AND created_at < now() - make_interval(hours => %s)
+                """,
+                (E2E_EMAIL_PATTERN.pattern, float(age_hours)),
+            )
+            remaining = cur.fetchone()[0]
+    except Exception as exc:  # noqa: BLE001 — the check itself must be loud
+        log.error("--assert-clean check failed: %s: %s", type(exc).__name__, exc)
+        return 1
+    if remaining:
+        log.error(
+            "ASSERT-CLEAN FAILED: %d eligible e2e fixture user(s) still present "
+            "after the purge (expected 0) — the sweep did not finish.",
+            remaining,
+        )
+        return 1
+    log.info("assert-clean OK: 0 eligible fixtures remain")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -94,6 +137,15 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=200,
         help="auth.admin.list_users page size (default: 200).",
+    )
+    parser.add_argument(
+        "--assert-clean",
+        action="store_true",
+        help=(
+            "After purging, re-query the DB and fail if ANY eligible fixture "
+            "remains. Without this a half-finished or no-op run is "
+            "indistinguishable from a clean one."
+        ),
     )
     args = parser.parse_args(argv)
 
@@ -150,6 +202,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if not candidates:
+        # Still run the dead-man check. "No candidates" is ambiguous: either
+        # genuinely clean, OR the auth listing returned nothing while fixtures
+        # sit in the DB — the second is precisely the silent failure mode.
+        if args.assert_clean and not args.dry_run:
+            return _assert_clean_or_fail(args.age_hours)
         return 0
 
     if args.dry_run:
@@ -241,6 +298,12 @@ def main(argv: list[str] | None = None) -> int:
         log.info("skipped=%d (pattern mismatch or already absent)", skipped)
 
     log.info("done: deleted=%d failed=%d", deleted, failed)
+
+    if args.assert_clean:
+        rc = _assert_clean_or_fail(args.age_hours)
+        if rc:
+            return rc
+
     return 0 if failed == 0 else 1
 
 

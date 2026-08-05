@@ -36,25 +36,60 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r ops/requirements-dev.txt
 
+      # ── Test-project isolation (2026-08-05) ──────────────────────────────
+      # These tests MUTATE the database they point at: they mint real auth
+      # users (e2e-<hex>@test.com), workspaces and content rows. Pointing them
+      # at production means production accumulates synthetic data — which is
+      # exactly how 1392 of 1520 content rows (92%) ended up being fixtures
+      # once the nightly purge broke.
+      #
+      # Industry practice is to isolate at the ENVIRONMENT boundary, not to
+      # filter test rows out at read time: Stripe binds credentials to a
+      # sandbox, and Supabase ships database branching where each branch is
+      # "a separate environment with its own Supabase instance and API
+      # credentials" that deliberately starts with NO production data.
+      #
+      # Migration is credential-driven and needs no code change: set the
+      # SUPABASE_TEST_* secrets and every reference below switches over. Until
+      # they exist the workflow behaves exactly as before, so this commit is a
+      # no-op in effect. See docs/runbooks/live-tests-on-a-branch.md.
+      - name: Warn if live tests are about to mutate PRODUCTION
+        if: ${{ secrets.SUPABASE_TEST_DATABASE_URL == '' }}
+        run: |
+          echo "::warning title=Live tests are running against PRODUCTION::SUPABASE_TEST_* secrets are not set, so this run will mint fixture users in the production project. See docs/runbooks/live-tests-on-a-branch.md to point it at an isolated Supabase branch."
+
+      # A Supabase branch starts EMPTY, and branching only auto-replays
+      # supabase/migrations — which is empty in this repo (our schema lives in
+      # supabase/website/_v2 behind apply_migrations.py). So the branch needs
+      # our migrations applied before the suite can run. Guarded on the TEST
+      # DSN being present so this can never touch production.
+      - name: Apply _v2 migrations to the test project
+        if: ${{ secrets.SUPABASE_TEST_DATABASE_URL != '' }}
+        env:
+          SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_TEST_DATABASE_URL }}
+          MIGRATION_MANIFEST_REQUIRED: "0"
+        run: python ops/scripts/apply_migrations.py --v2
+
       - name: pytest --live
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # `A || B` falls back when A is an empty/unset secret.
+          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
           # 2026-07-31: v2 integration fixtures (asyncpg_pool) require the direct
           # DSN; missing since the suite grew v2 coverage — every weekly run
           # errored at setup from 2026-05-31 onward.
-          SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_V2_DATABASE_URL }}
+          SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_TEST_DATABASE_URL || secrets.SUPABASE_V2_DATABASE_URL }}
           # 2026-08-01: adding the DSN cut setup errors 221 -> 35, but the v2
           # app fixtures still could not build a PostgREST client. get_v2_config
           # resolves SUPABASE_V2_* first and falls back to these canonical
           # names (client.py::_v2_env) — and the service-role key was never
           # passed here at all. Mirrors cleanup-test-fixtures.yml, which works.
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
-          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_TEST_JWT_SECRET || secrets.SUPABASE_JWT_SECRET }}
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_TEST_DATABASE_URL || secrets.SUPABASE_DATABASE_URL }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
           # 2026-08-01 ROOT CAUSE of 228/248 failures since 2026-05-31.
           # Seven unit-test modules run os.environ.setdefault("SUPABASE_V2_URL",
           # "https://ci-stub.supabase.co") at MODULE level. pytest imports every
@@ -66,7 +101,7 @@ jobs:
           # poisoned client served the whole session -> NXDOMAIN on
           # ci-stub.supabase.co -> "[Errno -2] Name or service not known".
           # Setting the V2 names explicitly makes those setdefault calls no-ops.
-          SUPABASE_V2_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_V2_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_V2_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_V2_URL: ${{ secrets.SUPABASE_TEST_URL || secrets.SUPABASE_URL }}
+          SUPABASE_V2_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_V2_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pytest --live -q

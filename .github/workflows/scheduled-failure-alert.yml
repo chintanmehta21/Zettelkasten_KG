@@ -35,9 +35,17 @@ jobs:
     # Only fire on genuine failure. Note: a run that is SKIPPED reports success
     # to workflow_run, which is exactly why the Postman suites looked green for
     # months — skip-detection is a separate problem, tracked in the hardening plan.
+    #
+    # 2026-08-05: added `cancelled`. A job that exceeds its `timeout-minutes` is
+    # reported CANCELLED, not `failure`/`timed_out`, so it slipped this gate.
+    # Observed for real: the nightly cleanup hit its 10-min ceiling mid-purge,
+    # stopped with 182 of 436 fixture users still present, and nothing fired.
+    # A human-cancelled run is rare enough that the odd false positive is far
+    # cheaper than another silent half-finished sweep.
     if: >
       github.event.workflow_run.conclusion == 'failure' ||
-      github.event.workflow_run.conclusion == 'timed_out'
+      github.event.workflow_run.conclusion == 'timed_out' ||
+      github.event.workflow_run.conclusion == 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
