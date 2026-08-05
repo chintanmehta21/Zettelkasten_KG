@@ -490,6 +490,29 @@ body {
 .kg-panel-badge.medium     { color: hsl(142, 40%, 62%); border-color: hsla(142, 40%, 62%, 0.25); background: hsla(142, 40%, 62%, 0.1); }
 .kg-panel-badge.web        { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.1); }
 
+/* Part B Phase 1 — persistent "Private" badge. Teal only (amber reserved for
+   the 3D viz; never purple). Shown ONLY on the caller's own hidden zettels;
+   DOM wiring in app.js via privacyBadge() pure helper. */
+.kg-private-badge {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid #14b8a6;
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.12);
+  color: #14b8a6;
+  white-space: nowrap;
+}
+.kg-private-badge.hidden { display: none; }
+
 /* Circular icon buttons (view original, add to kasten).
    Teal palette + hover/focus tokens mirror My-Zettels' .home-card-goto-btn
    (user_zettels.css) so the two surfaces read as a matched pair. */

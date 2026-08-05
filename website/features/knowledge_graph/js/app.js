@@ -131,6 +131,39 @@ function buildGraphApiUrl(view, minStrength) {
   params.set('min_strength', String(minStrength));
   return '/api/graph?' + params.toString();
 }
+// Part B Phase 1: view=global is a PUBLIC, edge-cached response. Sending
+// Authorization on it makes Cloudflare BYPASS the cache (and risks keying a
+// private response as public). currentView is binary: 'my' keeps auth,
+// anything else (global) sends NO Authorization header.
+function headersForView(view, authHeadersFn) {
+  if (view === 'my') return authHeadersFn();
+  return {};
+}
+// Part B Phase 1 — pure privacy-UX helpers (DOM wiring lives outside the fence).
+// Opt-OUT model: zettels are public by default; the action toggles privacy.
+function privacyToggleLabel(isPrivate) {
+  return isPrivate ? 'Make public' : 'Make private';
+}
+// Persistent "Private" badge spec, shown ONLY on hidden zettels. TEAL only
+// (amber is reserved for the /knowledge-graph 3D viz; never purple). Returns a
+// spec the DOM layer applies.
+function privacyBadge(isPrivate) {
+  if (!isPrivate) return { visible: false, text: '', className: '' };
+  return { visible: true, text: 'Private', className: 'kg-private-badge' };
+}
+// Undo toast copy after a toggle (NN/G: reversible action over a blocking modal).
+function undoToastText(nowPrivate) {
+  return nowPrivate ? 'Marked private. Undo?' : 'Made public. Undo?';
+}
+// Part B Phase 1 (2026-06-16): community empty-state decision. Only the GLOBAL
+// view shows "No community zettels yet"; Personal keeps its Part A empty state.
+// With the file-store retired this is the only empty-global path. Pure decision.
+function communityEmptyState(view, nodeCount) {
+  if (view === 'global' && (Number(nodeCount) || 0) === 0) {
+    return { show: true, text: 'No community zettels yet' };
+  }
+  return { show: false, text: '' };
+}
 // A4 (2026-06-15): pure decision for live auth-state changes. Returns null
 // for no-op events (e.g. a session-less REPLAY/RESTORE at boot) so the
 // subscriber does nothing. On SIGNED_OUT while viewing Personal we switch
@@ -542,9 +575,20 @@ function authChangeDecision(event, hasSession, currentView) {
   // addable when it itself is user-owned OR shares a link with a user-owned
   // node — i.e. the user has earned visibility into it through their graph.
   function loadUserOwnedIds() {
+    // Part B hard-401: view=my now returns 401 for unauthenticated users
+    // (not the old 200-empty). A 401 here means the user is logged out
+    // (never-authenticated path); a genuinely-expired session fires the
+    // zk_fetch 401->refresh->banner pipeline first and may retry.
+    // Either way, on any non-OK (including 401), degrade to an empty set
+    // without breaking the page. The Personal toggle is already greyed for
+    // logged-out users so userOwnedIds=empty is the correct steady state.
     zkFetch('/api/graph?view=my', { headers: authHeaders() })
-      .then(r => r.ok ? r.json() : Promise.reject('user-graph'))
+      .then(r => {
+        if (r.status === 401) return null;  // logged-out: empty set, no throw
+        return r.ok ? r.json() : Promise.reject('user-graph');
+      })
       .then(data => {
+        if (!data) return;  // 401 degraded path: leave userOwnedIds empty
         userOwnedIds = new Set((data.nodes || []).map(n => n.id));
         _rebuildAddableSet();
         refreshOpenPanelAddBtn();
@@ -625,6 +669,36 @@ function authChangeDecision(event, hasSession, currentView) {
     requestAnimationFrame(() => t.classList.add('visible'));
     setTimeout(() => t.classList.remove('visible'), 2400);
     setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 2900);
+  }
+
+  // Part B Phase 1: undo toast for the Make-private / Make-public toggle.
+  // Extends showToast with an "Undo?" clickable action link. Teal, never purple.
+  // onUndo is called when the user clicks "Undo?"; the toast auto-hides either
+  // way after 4 s. Creates a fresh element so multiple rapid toggles each get
+  // their own toast (no race with the simple kg-toast singleton).
+  function showPrivacyUndoToast(text, onUndo) {
+    var t = document.createElement('div');
+    t.className = 'kg-toast';
+    t.style.cssText = 'display:flex;align-items:center;gap:0.5em;';
+    var msg = document.createElement('span');
+    msg.textContent = text.replace('Undo?', '').trim();
+    var undo = document.createElement('button');
+    undo.textContent = 'Undo';
+    undo.style.cssText = 'background:none;border:none;color:#14b8a6;cursor:pointer;font:inherit;padding:0;text-decoration:underline;';
+    var _dismissed = false;
+    undo.addEventListener('click', function () {
+      if (_dismissed) return;
+      _dismissed = true;
+      t.classList.remove('visible');
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 450);
+      if (typeof onUndo === 'function') onUndo();
+    });
+    t.appendChild(msg);
+    t.appendChild(undo);
+    document.body.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('visible'); });
+    setTimeout(function () { t.classList.remove('visible'); }, 4000);
+    setTimeout(function () { _dismissed = true; if (t.parentNode) t.parentNode.removeChild(t); }, 4500);
   }
 
   if (viewToggle) {
@@ -790,7 +864,7 @@ function authChangeDecision(event, hasSession, currentView) {
     // server uses min_strength as part of its 30s cache key, so passing it
     // pre-filters payload AND keeps cache-key alignment with the client cull).
     const apiUrl = buildGraphApiUrl(currentView, minStrength);
-    zkFetch(apiUrl, { headers: authHeaders() })
+    zkFetch(apiUrl, { headers: headersForView(currentView, authHeaders) })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
       .then(data => {
@@ -807,6 +881,9 @@ function authChangeDecision(event, hasSession, currentView) {
         } catch (_e) { /* metric must never break the load path */ }
         fullData.nodes = (fullData.nodes || []).map(node => {
           node.group = normalizeGroup(node.group);
+          // I1: seed the in-memory privacy flag the make-private toggle reads
+          // from the API's is_private field (Personal-view nodes now carry it).
+          node._isPrivate = !!node.is_private;
           return node;
         });
         // F8: shallow-clone instead of JSON round-trip. ForceGraph mutates
@@ -819,6 +896,9 @@ function authChangeDecision(event, hasSession, currentView) {
         };
         graphData.nodes = (graphData.nodes || []).map(node => {
           node.group = normalizeGroup(node.group);
+          // I1: same privacy-flag seed on the ForceGraph-rendered node objects
+          // (these are the ones handleNodeClick -> panel toggle receives).
+          node._isPrivate = !!node.is_private;
           return node;
         });
         nodeDegrees = computeDegrees(fullData);
@@ -863,6 +943,11 @@ function authChangeDecision(event, hasSession, currentView) {
           initGraph();
           updateStats();
         }
+        // Part B 1.6: empty-community overlay (global + 0 server nodes). Applied
+        // AFTER applyFilters/initGraph so the filter empty-state can't overwrite
+        // it; only the global view triggers it (communityEmptyState gates on view).
+        var _ce = communityEmptyState(currentView, (data.nodes || []).length);
+        if (_ce.show) showOverlay('overlay-empty', _ce.text);
         hideOverlay('overlay-loading');
         // X6: deep-link `?node=<id>` is now wired through `graph.onEngineStop`
         // (inside initGraph) so the focus fires precisely when the force
@@ -1499,6 +1584,99 @@ function authChangeDecision(event, hasSession, currentView) {
     // add that particular Kasten from Global to their own Kasten."
     if (addBtn) {
       _applyAddBtnState(node);
+    }
+
+    // Part B Phase 1 — Make-private / Make-public toggle.
+    // Only show the button when the selected node is user-owned (reuse
+    // userOwnedIds so BOLA is enforced at both the UI gate and the endpoint).
+    // No consent modal — the signup notice (Task 1.8) is the consent surface.
+    // The endpoint itself enforces ownership; the button is a UX gate only.
+    var privacyBtn = document.getElementById('panel-privacy');
+    var privateBadge = document.getElementById('panel-private-badge');
+    if (privacyBtn) {
+      var _isOwned = userOwnedIds.has(node.id);
+      if (_isOwned) {
+        var _isPrivate = !!(node._isPrivate);  // in-memory state; falsy = public (default)
+        var _badge = privacyBadge(_isPrivate);
+        // Apply badge visibility.
+        if (privateBadge) {
+          if (_badge.visible) {
+            privateBadge.textContent = _badge.text;
+            privateBadge.classList.remove('hidden');
+          } else {
+            privateBadge.classList.add('hidden');
+          }
+        }
+        // Apply button label + aria-pressed state.
+        privacyBtn.setAttribute('aria-pressed', String(_isPrivate));
+        privacyBtn.title = privacyToggleLabel(_isPrivate);
+        privacyBtn.setAttribute('aria-label', privacyToggleLabel(_isPrivate));
+        privacyBtn.classList.remove('hidden');
+        // Wire the click handler fresh each time the panel opens so it always
+        // closes over the current node reference.
+        privacyBtn.onclick = function () {
+          var _nowPrivate = !!(node._isPrivate);
+          var _endpoint = '/api/zettels/' + node.workspace_zettel_id + (_nowPrivate ? '/public' : '/private');
+          // workspace_zettel_id is the per-user overlay id (NOT canonical).
+          // The endpoint derives ownership from the Bearer JWT; never trust client sub.
+          if (!node.workspace_zettel_id) {
+            showToast('Privacy toggle unavailable for this zettel');
+            return;
+          }
+          zkFetch(_endpoint, { method: 'POST', headers: authHeaders() })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (typeof data.is_private !== 'boolean') throw new Error('unexpected');
+              // Flip in-memory state on the node.
+              node._isPrivate = data.is_private;
+              // Update badge.
+              var _newBadge = privacyBadge(node._isPrivate);
+              if (privateBadge) {
+                if (_newBadge.visible) {
+                  privateBadge.textContent = _newBadge.text;
+                  privateBadge.classList.remove('hidden');
+                } else {
+                  privateBadge.classList.add('hidden');
+                }
+              }
+              // Update button label + state.
+              privacyBtn.setAttribute('aria-pressed', String(node._isPrivate));
+              privacyBtn.title = privacyToggleLabel(node._isPrivate);
+              privacyBtn.setAttribute('aria-label', privacyToggleLabel(node._isPrivate));
+              // Show undo toast — clicking Undo fires the inverse endpoint.
+              showPrivacyUndoToast(undoToastText(node._isPrivate), function () {
+                var _undoEndpoint = '/api/zettels/' + node.workspace_zettel_id + (node._isPrivate ? '/public' : '/private');
+                zkFetch(_undoEndpoint, { method: 'POST', headers: authHeaders() })
+                  .then(function (r) { return r.json(); })
+                  .then(function (d) {
+                    if (typeof d.is_private !== 'boolean') return;
+                    node._isPrivate = d.is_private;
+                    var _undoBadge = privacyBadge(node._isPrivate);
+                    if (privateBadge) {
+                      if (_undoBadge.visible) {
+                        privateBadge.textContent = _undoBadge.text;
+                        privateBadge.classList.remove('hidden');
+                      } else { privateBadge.classList.add('hidden'); }
+                    }
+                    privacyBtn.setAttribute('aria-pressed', String(node._isPrivate));
+                    privacyBtn.title = privacyToggleLabel(node._isPrivate);
+                    privacyBtn.setAttribute('aria-label', privacyToggleLabel(node._isPrivate));
+                    // Refresh the graph so the global view reflects the change.
+                    if (currentView === 'global') loadGraphData();
+                  })
+                  .catch(function (e) { showToast('Undo failed'); });
+              });
+              // Refresh global view so the change is immediately visible.
+              if (currentView === 'global') loadGraphData();
+            })
+            .catch(function () { showToast('Privacy toggle failed'); });
+        };
+      } else {
+        // Not user-owned — hide button and badge.
+        privacyBtn.classList.add('hidden');
+        privacyBtn.onclick = null;
+        if (privateBadge) privateBadge.classList.add('hidden');
+      }
     }
 
     tags.innerHTML = (Array.isArray(node.tags) ? node.tags : []).map(

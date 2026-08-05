@@ -195,10 +195,17 @@ def mint_kasten(
     # ``website.core.persist`` and need a reset so a fresh JWT scope is built.
     monkeypatch.setenv("DB_SCHEMA_VERSION", "v2")
     from website.api import auth as auth_mod
-    auth_mod._jwks_client = None
     from website.core import persist as persist_mod
-    persist_mod._v2_core_repo = None
-    persist_mod._v2_content_repo = None
+
+    # These are module-level singletons. Reset them via monkeypatch.setattr, NOT
+    # raw assignment: raw assignment is never undone, so after one v2 test the
+    # whole session runs with _jwks_client=None and every later auth-touching
+    # test re-fetches JWKS over the network (ConnectError -> 500 on /api/graph).
+    # That made ~12 unrelated tests fail in the full suite while passing in
+    # isolation. monkeypatch restores the originals at teardown.
+    monkeypatch.setattr(auth_mod, "_jwks_client", None, raising=False)
+    monkeypatch.setattr(persist_mod, "_v2_core_repo", None, raising=False)
+    monkeypatch.setattr(persist_mod, "_v2_content_repo", None, raising=False)
 
     async def _noop(*_args, **_kwargs):  # noqa: D401 — entitlement bypass
         return None

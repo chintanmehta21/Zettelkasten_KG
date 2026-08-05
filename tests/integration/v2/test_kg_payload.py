@@ -18,6 +18,35 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+def _stub_community_graph(monkeypatch, payload: dict):
+    """Serve ``payload`` as the community graph for the anon/global view.
+
+    Part B replaced the file-store Global with the community graph, so these
+    payload-shape tests inject through the community repository. Also forces the
+    v2 gate on (the global branch degrades to an empty graph when Supabase is
+    unconfigured, which is the case in CI) and clears the community cache so a
+    previous test's payload cannot bleed through.
+    """
+    from website.api.graph_cache import get_default_cache
+    from website.api.module_runners import view_graph
+
+    class _StubRepo:
+        def get_community_graph(self, *, limit=5000, min_strength=0.0):
+            import copy
+
+            return copy.deepcopy(payload)
+
+        def read_cache_version(self) -> int:
+            return 0
+
+    monkeypatch.setattr(view_graph, "_use_supabase_v2", lambda: True)
+    monkeypatch.setattr(view_graph, "_community_repository", lambda: _StubRepo())
+    get_default_cache().invalidate("__community__")
+    monkeypatch.setattr(
+        view_graph, "_is_cacheable_page", lambda *_a, **_kw: False, raising=False
+    )
+
+
 def _build_test_app():
     """Construct a minimal FastAPI app exposing /api/graph against an
     in-memory file-store stub. Avoids Supabase / auth / lifespan startup.
@@ -207,7 +236,9 @@ def test_payload_trims_embedding_via_endpoint(monkeypatch) -> None:
         ],
         "links": [],
     }
-    monkeypatch.setattr(routes_module, "get_graph", lambda: payload_with_embeddings)
+    # Part B: the default (anon) view is the COMMUNITY graph, not the retired
+    # file-store, so the fixture is injected through the community repository.
+    _stub_community_graph(monkeypatch, payload_with_embeddings)
     monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d, **_kw: d)
 
     app = _build_test_app()
@@ -255,7 +286,7 @@ def test_payload_under_300kb_brotli_at_1k_nodes(monkeypatch) -> None:
             for i in range(n)
         ],
     }
-    monkeypatch.setattr(routes_module, "get_graph", lambda: fixture)
+    _stub_community_graph(monkeypatch, fixture)
     monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d, **_kw: d)
 
     app = _build_test_app()

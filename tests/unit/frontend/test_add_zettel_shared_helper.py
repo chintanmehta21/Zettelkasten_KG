@@ -317,7 +317,9 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_home"
-        / "index.html": "/home/js/home.js?v=20260531a",
+        # Bumped 20260531a -> 20260617a by Community Graph Part B: the /home
+        # public-content notice changed home.js, so the cache-bust must move.
+        / "index.html": "/home/js/home.js?v=20260617a",
         ROOT
         / "website"
         / "features"
@@ -349,7 +351,7 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
     assert "/home/css/home.css?v=20260609a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260531a" in (
+    assert "/home/js/home.js?v=20260617a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/zettels/css/user_zettels.css?v=20260526a" in (

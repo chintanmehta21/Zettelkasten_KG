@@ -8,6 +8,11 @@ Covers: view inference (anonymous → global, authenticated → my),
 strict ``view=my`` semantics (no fallthrough to global per new_apis1.md),
 D1 verdict (anonymous NEVER serves Zoro's personal graph), kasten BOLA
 gate, kasten subgraph filtering, and input validation.
+
+Part B (Task 1.1): the ``view='global'`` branch now builds from the
+CommunityGraphRepository wrapper (is_private=false, no user_id, no
+file-store fallback). The two global-branch tests are updated accordingly;
+``source='file-store'`` is retired from the global path.
 """
 from __future__ import annotations
 
@@ -121,30 +126,45 @@ async def test_kasten_view_requires_kasten_id(_stub_routes_helpers):
 
 
 @pytest.mark.asyncio
-async def test_anonymous_default_serves_global_file_store(_stub_routes_helpers, _passthrough_cache):
-    """No user + no view → file-store global (NEVER Zoro per D1)."""
-    file_store = {"nodes": [{"id": "global-1"}], "links": [], "total_nodes": 1}
+async def test_anonymous_default_serves_global_community(_stub_routes_helpers, _passthrough_cache):
+    """No user + no view → community global (NEVER Zoro per D1; file-store RETIRED Part B)."""
+    community_graph = {"nodes": [{"id": "web-abc123abcd12", "canonical_zettel_id": "abc123", "name": "test", "group": "web", "url": "", "author": "Naruto", "contributor_count": 1}], "links": [], "total_nodes": 1}
+    mock_repo = MagicMock()
+    mock_repo.get_community_graph.return_value = community_graph
+    mock_repo.read_cache_version.return_value = 0
+    # The community branch is v2-only and degrades to an empty graph when the v2
+    # client is unconfigured, so state that precondition explicitly rather than
+    # inheriting an ambient DB_SCHEMA_VERSION from whatever ran earlier.
     with patch(
-        "website.core.graph_store.get_graph", return_value=file_store
+        "website.api.module_runners.view_graph._use_supabase_v2", return_value=True
+    ), patch(
+        "website.api.module_runners.view_graph._community_repository",
+        return_value=mock_repo,
     ):
         result = await run_view_graph(user=None, view=None)
     assert result["meta"]["view"] == "global"
-    assert result["meta"]["source"] == "file-store"
-    assert result["nodes"] == [{"id": "global-1"}]
+    assert result["meta"]["source"] == "community"
+    assert result["nodes"] == community_graph["nodes"]
 
 
 @pytest.mark.asyncio
-async def test_explicit_global_view_serves_file_store(_stub_routes_helpers, _passthrough_cache):
-    """Authenticated user with view='global' STILL gets file-store (not their own)."""
-    file_store = {"nodes": [], "links": [], "total_nodes": 0}
+async def test_explicit_global_view_serves_community(_stub_routes_helpers, _passthrough_cache):
+    """Authenticated user with view='global' gets community graph (not their own; file-store RETIRED Part B)."""
+    community_graph = {"nodes": [], "links": [], "total_nodes": 0}
+    mock_repo = MagicMock()
+    mock_repo.get_community_graph.return_value = community_graph
+    mock_repo.read_cache_version.return_value = 0
     with patch(
-        "website.core.graph_store.get_graph", return_value=file_store
+        "website.api.module_runners.view_graph._use_supabase_v2", return_value=True
+    ), patch(
+        "website.api.module_runners.view_graph._community_repository",
+        return_value=mock_repo,
     ):
         result = await run_view_graph(
             user={"sub": str(NARUTO)}, view="global"
         )
     assert result["meta"]["view"] == "global"
-    assert result["meta"]["source"] == "file-store"
+    assert result["meta"]["source"] == "community"
 
 
 @pytest.mark.asyncio

@@ -222,7 +222,11 @@ class AnonSessionCookieMiddleware:
                 # JWT but no anon cookie) must not be tagged with an anon sid —
                 # that visitor is already a real user, not a claim candidate.
                 authenticated = bool(_state_get(scope, "authenticated", False))
-                if not authenticated:
+                # Part B Phase 1: edge-cacheable responses (view=global) must
+                # never carry Set-Cookie — a stray cookie forces Cloudflare BYPASS.
+                # Routes set suppress_anon_cookie=True on request.state to opt out.
+                suppress = bool(_state_get(scope, "suppress_anon_cookie", False))
+                if not authenticated and not suppress:
                     cookie_value = (
                         f"{self._COOKIE_NAME}={minted}; Max-Age={self._MAX_AGE}; "
                         f"Path=/; HttpOnly; Secure; SameSite=Lax"

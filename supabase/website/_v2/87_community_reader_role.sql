@@ -1,0 +1,98 @@
+-- Migration 87 (Community Graph Part B / Phase 0 — P0-c): least-privilege
+-- public-read role + RLS fail-closed policy.
+--
+-- WHY: the app talks to Supabase via the service_role client, which has
+-- BYPASSRLS — so RLS is INERT on the app path and the app-layer WHERE filter is
+-- the only runtime gate there. The decisive upgrade (design D4, APPROVED
+-- 2026-06-16): serve view=global through a SEPARATE non-BYPASSRLS, SELECT-only
+-- role that OWNS the community RPC (migration 88). Because a SECURITY DEFINER
+-- function executes as its owner, the RPC body runs as community_reader, and a
+-- forgotten predicate then FAILS CLOSED at the row level via the policy below —
+-- under opt-out, that policy protects the marked-PRIVATE subset.
+--
+-- Mirrors 79_stats_reader_role.sql (NOLOGIN role + hard timeouts + static
+-- least-priv SELECT grants) and the RLS-policy idiom in 29_kasten_sharing_rls.sql.
+-- community_reader needs SELECT on every table the RPC reads (it runs AS this
+-- role): content.workspace_zettels + content.canonical_zettels (the surface) and
+-- core.workspaces + core.profiles (attribution display_name join).
+-- Idempotent: pg_roles guard + DROP/CREATE POLICY + IF NOT EXISTS grants.
+
+BEGIN;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'community_reader') THEN
+    CREATE ROLE community_reader NOLOGIN;
+  END IF;
+END $$;
+
+-- Migrations 88 and 90 run `ALTER FUNCTION ... OWNER TO community_reader`, and
+-- Postgres requires the CURRENT user to be able to SET ROLE to the new owner
+-- ("must be able to SET ROLE \"community_reader\"" / "must be member of role").
+-- A superuser bypasses that check, but the migration role does NOT: on hosted
+-- Supabase (and in the Fresh-Supabase CI image) `postgres` is a privileged
+-- NON-superuser — which is exactly how CI caught this. Grant membership here,
+-- next to the CREATE, so 88/90 can take ownership. Idempotent, and NOT a
+-- privilege escalation: the migration role already created the role and holds
+-- admin over it; community_reader itself stays NOLOGIN + non-BYPASSRLS.
+-- UNCONDITIONAL on purpose. A `pg_has_role(current_user, ..., 'MEMBER')` guard
+-- here is WRONG and silently skips the grant: in PostgreSQL 16+ a CREATEROLE
+-- (non-superuser) that creates a role receives the membership with
+-- `admin_option = true` but `set_option = FALSE`, and pg_has_role(...,'MEMBER')
+-- still reports TRUE. So the guard passes while `SET ROLE` is denied ->
+-- "must be able to SET ROLE". Verified on PostgreSQL 17.10: creator sees
+-- MEMBER=true / set_option=false, SET ROLE denied; after this explicit GRANT,
+-- SET ROLE succeeds. An explicit GRANT defaults to SET TRUE. Re-granting is a
+-- harmless no-op, and the same syntax is valid back to PG15.
+GRANT community_reader TO CURRENT_USER;
+
+-- Hard guardrails (a runaway public-graph aggregation must not starve OLTP /
+-- OOM the 2 GB droplet). Mirrors 79's stats_reader settings.
+ALTER ROLE community_reader SET statement_timeout = '30s';
+ALTER ROLE community_reader SET idle_in_transaction_session_timeout = '60s';
+ALTER ROLE community_reader SET lock_timeout = '5s';
+ALTER ROLE community_reader SET work_mem = '32MB';
+
+GRANT USAGE ON SCHEMA content, core TO community_reader;
+
+-- Static least-privilege grant list. community_reader OWNS the community RPC
+-- (88) and runs its body; these are exactly the tables that RPC reads.
+GRANT SELECT ON
+  content.workspace_zettels,
+  content.canonical_zettels,
+  core.workspaces,
+  core.profiles
+TO community_reader;
+
+-- Fail-closed RLS: RLS is already ENABLED on content.workspace_zettels
+-- (08_rls_policies.sql:22). Add a SELECT policy scoping community_reader to
+-- PUBLIC (non-private, non-deleted) rows ONLY. service_role keeps BYPASSRLS
+-- (its own FOR ALL policy is unchanged); authenticated's own-workspace SELECT
+-- policy is unchanged; there is NO anon SELECT policy (verified) so PostgREST
+-- anon cannot read this table.
+DROP POLICY IF EXISTS workspace_zettels_community_reader_select ON content.workspace_zettels;
+CREATE POLICY workspace_zettels_community_reader_select ON content.workspace_zettels
+    FOR SELECT TO community_reader USING (is_private = false AND deleted_at IS NULL);
+
+-- The RPC (88) runs AS community_reader and INNER-JOINs three RLS-enabled lookup
+-- tables (content.canonical_zettels + core.workspaces + core.profiles, all
+-- ENABLE'd in 08_rls_policies.sql:11,12,20) that have NO community_reader policy
+-- — without these the join returns ZERO rows (fail-closed but non-functional:
+-- a permanently empty community graph). community_reader is reachable ONLY
+-- through the forced-predicate RPC (the is_private gate is the workspace_zettels
+-- policy above), so a permissive USING (true) on these lookup tables is safe:
+-- the RPC body only emits rows joined to a non-private workspace_zettel.
+DROP POLICY IF EXISTS canonical_zettels_community_reader_select ON content.canonical_zettels;
+CREATE POLICY canonical_zettels_community_reader_select ON content.canonical_zettels
+    FOR SELECT TO community_reader USING (true);
+DROP POLICY IF EXISTS workspaces_community_reader_select ON core.workspaces;
+CREATE POLICY workspaces_community_reader_select ON core.workspaces
+    FOR SELECT TO community_reader USING (true);
+DROP POLICY IF EXISTS profiles_community_reader_select ON core.profiles;
+CREATE POLICY profiles_community_reader_select ON core.profiles
+    FOR SELECT TO community_reader USING (true);
+
+COMMIT;
+
+NOTIFY pgrst, 'reload config';
+NOTIFY pgrst, 'reload schema';

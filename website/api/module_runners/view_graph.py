@@ -89,6 +89,14 @@ def _file_store_graph() -> dict[str, Any]:
     return _get()
 
 
+def _community_repository() -> Any:
+    from website.core.supabase_v2.repositories.community_repository import (
+        CommunityGraphRepository,
+    )
+
+    return CommunityGraphRepository()
+
+
 def _rag_repository() -> Any:
     from website.core.supabase_v2.repositories.rag_repository import (
         RAGRepository,
@@ -131,6 +139,25 @@ def _empty_personal_graph(user_sub: str | None) -> dict[str, Any]:
             "source": "no-scope",
             "user_sub": user_sub,
         },
+    }
+
+
+def _empty_community_graph() -> dict[str, Any]:
+    """Explicit empty community graph when the v2 client is unavailable.
+
+    Constructing the community repository raises when Supabase is unconfigured
+    (CI, local dev without .env.v2). Serving an empty graph keeps ``view=global``
+    a 200 instead of a 500. We deliberately do NOT fall back to the retired
+    file-store seed (Rev 3) — an empty community surfaces the "No community
+    zettels yet" overlay client-side. A genuine RPC/DB error is NOT swallowed
+    here: it still propagates, so an outage stays visible rather than being
+    cached as a plausible-looking empty graph.
+    """
+    return {
+        "nodes": [],
+        "links": [],
+        "total_nodes": 0,
+        "meta": {"view": "global", "source": "community"},
     }
 
 
@@ -263,37 +290,46 @@ async def run_view_graph(
         raise ValueError("view='kasten' requires a kasten_id")
 
     # ── view='global' ──────────────────────────────────────────────────
-    # D1 verdict (web-research locked): the file-store graph is the
-    # canonical public surface. Zoro's personal v2 graph is NEVER served
-    # to anonymous viewers — and the strict ``view='my'`` semantics below
-    # mean that an unauthenticated caller explicitly asking for "my"
-    # graph gets an empty personal graph, NEVER the global file-store
-    # (which would silently broaden the view they asked for).
+    # Part B (Phase 1, opt-OUT, Rev 3): Global IS the PUBLIC community graph,
+    # built from the forced-predicate wrapper (is_private=false workspace_zettels
+    # only, no user_id, deduped by canonical). The file-store seed is RETIRED
+    # from the live path — there is real community data. An empty community
+    # surfaces the empty-state overlay client-side (Task 1.6); we NEVER fall
+    # back to the file-store. Zoro's personal v2 graph is still NEVER served
+    # to anonymous viewers (D1 verdict unchanged; the community RPC strips
+    # user_id at the DB layer so no BOLA breach is possible).
     if resolved_view == "global":
-        # LD-10: enrich on the FULL graph (no min_strength filter inside the
-        # cached loader) so a continuous min_strength across requests within
-        # the same bucket cannot stale-bind. The final per-request exact
-        # threshold is applied AFTER the cache lookup.
+        # The community surface is v2-only. Without a configured v2 client the
+        # repository constructor raises, which would turn the PUBLIC graph into
+        # a 500; degrade to an explicit empty community graph instead.
+        if not _use_supabase_v2():
+            return _empty_community_graph()
+
         async def _load_global() -> dict[str, Any]:
-            payload = routes_mod._enrich_graph_with_analytics(
-                _file_store_graph(), min_strength=None
+            community = await asyncio.to_thread(
+                _community_repository().get_community_graph,
+                limit=limit,
+                min_strength=0.0 if min_strength is None else min_strength,
             )
+            payload = routes_mod._enrich_graph_with_analytics(community, min_strength=None)
             payload = routes_mod._trim_graph_response(payload)
             payload.setdefault("meta", {})["view"] = "global"
-            payload["meta"]["source"] = "file-store"
+            payload["meta"]["source"] = "community"
             return payload
 
-        # K1: anonymous viewers share a synthetic "__anon__" user_id so the
-        # cache de-duplicates concurrent loads of the file-store payload and
-        # invalidations from mutation handlers (which now also drop __anon__).
-        # LD-7: bypass cache for non-default pagination — file-store has fewer
-        # than 100 nodes today, so non-default offsets are operator/admin only.
         if not _is_cacheable_page(limit, offset):
             uncached = await _load_global()
             return routes_mod._apply_min_strength_filter(uncached, min_strength)
         cache = _get_default_cache()
-        bucket = _bucket_label_global(min_strength)
-        cached = await cache.get_or_load("__anon__", bucket, _load_global)
+        # Fold the cross-worker version counter into the bucket so a make-private/
+        # make-public bump invalidates every worker's per-process cache. Reading
+        # the counter is one tiny indexed SELECT (TTL-bounded by the cache).
+        try:
+            version = await asyncio.to_thread(_community_repository().read_cache_version)
+        except Exception:  # noqa: BLE001 — counter read must never break serving
+            version = 0
+        bucket = _bucket_label_global(min_strength) + f":v{version}"
+        cached = await cache.get_or_load("__community__", bucket, _load_global)
         return routes_mod._apply_min_strength_filter(cached, min_strength)
 
     # Beyond this point we need an authenticated user. Anonymous +
@@ -447,7 +483,7 @@ def _bucket_label_kasten(
 def _bucket_label_global(
     min_strength: float | None, *, limit: int = _DEFAULT_LIMIT, offset: int = _DEFAULT_OFFSET
 ) -> str:
-    """K1: bucket key for the anonymous file-store branch."""
+    """Base bucket key for the community global branch (versioned suffix appended at call site)."""
     from website.api.graph_cache import bucket_for_strength
 
     return f"global:{bucket_for_strength(min_strength)}:{limit}:{offset}"

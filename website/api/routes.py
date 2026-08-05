@@ -997,6 +997,11 @@ _EXPORT_MAX_PER_WORKSPACE = 10000  # safety cap; current users are <100
 # UI double-clicks once the "Download my data" button lands.
 _EXPORT_RATE_LIMIT_WINDOW_SECONDS = 3600
 _EXPORT_RATE_LIMIT_MAX = 5
+# M1: per-user cap on the privacy toggle (/private + /public). 60/min absorbs
+# legitimate bulk opt-out from the KG UI while blocking a hot loop from
+# hammering the audit-row write + cache-version bump on the 2GB droplet.
+_SET_PRIVATE_RATE_LIMIT_WINDOW_SECONDS = 60
+_SET_PRIVATE_RATE_LIMIT_MAX = 60
 # Zettel content classes NOT in this export — surfaced to the user so the export
 # is explicitly "structured, commonly used, machine-readable" (Art. 20 wording)
 # AND honest about its scope.
@@ -1509,6 +1514,12 @@ def _v2_assemble_graph(
                     "url": str(canonical.get("normalized_url") or ""),
                     "date": str(pub_date),
                     "node_date": str(pub_date),
+                    # I1: the overlay row's UUID + privacy flag the make-private
+                    # toggle needs. Without these the app.js handler's
+                    # `if (!node.workspace_zettel_id)` guard trips on every click
+                    # and the only user privacy control is inert.
+                    "workspace_zettel_id": str(row.get("id") or ""),
+                    "is_private": bool(row.get("is_private")),
                 }
             )
 
@@ -1721,6 +1732,21 @@ async def graph_data(
             detail="view=kasten requires a kasten_id query parameter",
         )
 
+    # Rev 3 (operator-approved 2026-06-16): view=my / kasten REQUIRE auth.
+    # Resolve the effective view exactly as run_view_graph does
+    # (_resolve_view): an explicit view wins; otherwise infer from auth.
+    # Anonymous callers asking for a personal/kasten view get a hard 401 so
+    # the frontend's zk_fetch 401->refresh->banner pipeline fires. Anonymous
+    # global (explicit or inferred) stays 200. We do NOT swap the dependency
+    # (get_optional_user must remain so the anonymous global path works).
+    effective_view = view or ("my" if user is not None else "global")
+    if effective_view in ("my", "kasten") and user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = await run_view_graph(
             user=user,
@@ -1745,21 +1771,41 @@ async def graph_data(
         len((payload or {}).get("nodes", []) or []),
     )
 
-    # Conditional-request + private-cache contract (audit 2026-06-04).
-    # `private` is mandatory: per-user graphs must never be edge-cached
-    # (Cloudflare async-SWR, 2026-02-26, would otherwise serve A's graph to B).
-    # ETag is a weak validator over the FINAL serialized body, so it reflects
-    # the exact view/min_strength/limit slice the client received; weak so a
-    # Cloudflare-rewritten validator still matches via if_none_match (RFC 7232).
+    # Conditional-request + cache contract (Part A + Part B Phase 1).
+    # ETag is a weak validator over the FINAL serialized body so it reflects
+    # the exact view/min_strength/limit slice; weak so a Cloudflare-rewritten
+    # validator still matches via if_none_match (RFC 7232 + CF-ETags note).
+    resolved = (payload or {}).get("meta", {}).get("view") or effective_view
+    if resolved == "global":
+        # Signal AnonSessionCookieMiddleware to suppress Set-Cookie on this
+        # response: a stray Set-Cookie header forces Cloudflare cache BYPASS,
+        # breaking the public edge-cache contract for view=global.
+        request.state.suppress_anon_cookie = True
     body = json.dumps(
         jsonable_encoder(payload), ensure_ascii=False, separators=(",", ":")
     ).encode("utf-8")
     etag = 'W/"' + hashlib.blake2s(body, digest_size=16).hexdigest() + '"'
-    cache_headers = {
-        "Cache-Control": "private, max-age=30, stale-while-revalidate=300",
-        "ETag": etag,
-        "Vary": "Accept-Encoding",
-    }
+
+    if resolved == "global":
+        # Part B Phase 1: the public community graph is edge-cacheable.
+        # `public` + `s-maxage` lets Cloudflare cache; `Vary: Accept-Encoding`
+        # ONLY (CF ignores every other Vary value — Vary: Authorization is false
+        # safety). No Set-Cookie is emitted on this path; a stray Set-Cookie
+        # forces Cloudflare BYPASS. The JS client also drops Authorization for
+        # global (headersForView in app.js) so no auth token is in the request.
+        cache_headers = {
+            "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
+            "ETag": etag,
+            "Vary": "Accept-Encoding",
+        }
+    else:
+        # view=my / kasten: per-user, NEVER edge-cached (CF async-SWR would
+        # otherwise serve user A's graph to user B). Part A behaviour unchanged.
+        cache_headers = {
+            "Cache-Control": "private, max-age=30, stale-while-revalidate=300",
+            "ETag": etag,
+            "Vary": "Accept-Encoding",
+        }
     if if_none_match(request.headers.get("if-none-match"), etag):
         return Response(status_code=304, headers=cache_headers)
     return Response(content=body, media_type="application/json", headers=cache_headers)
@@ -1791,6 +1837,102 @@ def _is_supabase_uuid(value: str | None) -> bool:
         return True
     except (TypeError, ValueError):
         return False
+
+
+@router.post("/zettels/{workspace_zettel_id}/private")
+async def make_zettel_private(
+    workspace_zettel_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Hide ONE of the caller's zettels from the community graph (opt-out).
+
+    Verifies caller OWNS the workspace_zettel (BOLA → 403 if not), then flips
+    is_private=true. The repository writes the append-only privacy-audit row
+    and bumps the cross-worker cache version — this handler does NOT duplicate
+    those side-effects. Zettels are PUBLIC by default (opt-out model, Rev 3).
+    """
+    return await _set_zettel_private(workspace_zettel_id, user, private=True)
+
+
+@router.post("/zettels/{workspace_zettel_id}/public")
+async def make_zettel_public(
+    workspace_zettel_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Restore the caller's zettel to the community graph (undo opt-out).
+
+    Ownership enforced (BOLA → 403). Audit row + cache bump handled by the
+    repository's set_private, not here.
+    """
+    return await _set_zettel_private(workspace_zettel_id, user, private=False)
+
+
+async def _set_zettel_private(workspace_zettel_id: str, user: dict, *, private: bool):
+    """Shared implementation for /private and /public privacy endpoints.
+
+    Resolves the caller's workspace via get_supabase_v2_scope, checks that the
+    workspace_zettel belongs to that workspace (BOLA gate — never trusts a
+    client-supplied user_id), then calls CommunityGraphRepository.set_private
+    which atomically flips is_private, writes the zettel_privacy_events audit
+    row, and bumps the cross-worker community_cache_version counter.
+    """
+    from uuid import UUID as _UUID
+
+    from website.core.supabase_v2.repositories.community_repository import (
+        CommunityGraphRepository,
+    )
+
+    try:
+        wz_uuid = _UUID(str(workspace_zettel_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="workspace_zettel_id must be a UUID")
+
+    # M1: per-user rate limit (in-memory per-worker; same _rate_store pattern as
+    # me_export). Prune the window before counting so the dict stays bounded.
+    now_ts = time.time()
+    rate_key = f"set_private:{user['sub']}"
+    bucket = _rate_store[rate_key]
+    bucket[:] = [ts for ts in bucket if now_ts - ts < _SET_PRIVATE_RATE_LIMIT_WINDOW_SECONDS]
+    if len(bucket) >= _SET_PRIVATE_RATE_LIMIT_MAX:
+        retry_after = int(_SET_PRIVATE_RATE_LIMIT_WINDOW_SECONDS - (now_ts - bucket[0])) + 1
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "privacy_rate_limited",
+                "message": f"Too many privacy changes. Try again in {retry_after}s.",
+            },
+            headers={"Retry-After": str(max(1, retry_after))},
+        )
+    bucket.append(now_ts)
+
+    scope = get_supabase_v2_scope(user.get("sub"))
+    if scope is None:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    _content_repo, profile_id, workspace_id = scope
+
+    client = get_v2_client()
+    # BOLA ownership gate: the caller's workspace_id must own this overlay row.
+    # Never trust a client-supplied user_id — derive from the verified JWT sub.
+    owned = (
+        client.schema("content")
+        .table("workspace_zettels")
+        .select("id")
+        .eq("id", str(wz_uuid))
+        .eq("workspace_id", str(workspace_id))
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if not (owned.data or []):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    repo = CommunityGraphRepository(client)
+    # set_private writes the zettel_privacy_events audit row AND bumps the
+    # cross-worker cache version internally — do NOT duplicate them here.
+    repo.set_private(
+        workspace_zettel_id=wz_uuid, private=private, actor_user_id=profile_id
+    )
+    return {"workspace_zettel_id": str(wz_uuid), "is_private": private}
 
 
 @router.delete("/zettels/{node_id}")
