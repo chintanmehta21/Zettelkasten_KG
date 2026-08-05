@@ -7,6 +7,15 @@ on:
   schedule:
     - cron: '17 3 * * *'  # 03:17 UTC daily
   workflow_dispatch:
+    inputs:
+      age_hours:
+        description: >-
+          Only purge fixtures older than this many hours. The 24h default is a
+          safety margin so a purge cannot yank fixtures out from under an
+          in-flight test run. Lower it ONLY when you know no live-test run is
+          in progress (e.g. clearing stragglers before a release).
+        required: false
+        default: '24'
 
 permissions:
   contents: read
@@ -20,7 +29,12 @@ jobs:
     # runs green while doing nothing — the same silent-skip class that hid
     # the deploy smoke-fixture rot for weeks.
     environment: production
-    timeout-minutes: 10
+    # 2026-08-05: raised 10 -> 30. A 436-user backlog needs ~17 min because
+    # purge_user_dependencies makes several REST calls per user, so the 10-min
+    # budget CANCELLED the job mid-purge, leaving 182 users behind. A cancelled
+    # run reports neither `failure` nor `timed_out`, so the alerter did not fire
+    # (now also matches `cancelled`) — but the real fix is not to hit the ceiling.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,4 +53,7 @@ jobs:
           SUPABASE_V2_ANON_KEY: ${{ secrets.SUPABASE_V2_ANON_KEY }}
           SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_V2_DATABASE_URL }}
           PYTHONIOENCODING: utf-8
-        run: python ops/scripts/purge_test_fixtures.py --age-hours 24
+        run: >-
+          python ops/scripts/purge_test_fixtures.py
+          --age-hours ${{ github.event.inputs.age_hours || '24' }}
+          --assert-clean
