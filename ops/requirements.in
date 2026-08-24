@@ -8,7 +8,7 @@
 # (dev first, then runtime constrained to it, so both locks share versions.)
 
 # Settings / config management
-pydantic-settings[yaml]>=2.0
+pydantic-settings[yaml]>=2.15.0
 
 # HTTP client (async, for redirect resolution and web scraping)
 httpx>=0.28
@@ -17,11 +17,11 @@ httpx>=0.28
 beautifulsoup4>=4.12
 
 # Article content extraction (readability-style)
-trafilatura>=2.0
+trafilatura>=2.2.0
 
 # Google Gemini API
-google-genai>=1.0,<2.0
-aiohttp>=3.10
+google-genai>=2.19.0,<3.0
+aiohttp>=3.14.3
 
 # YouTube transcript extraction
 youtube-transcript-api>=1.0
@@ -30,15 +30,15 @@ youtube-transcript-api>=1.0
 # Floor pinned to 2026.03.17 so the 2026 player-client set (tv_simply,
 # android_sdkless, web_safari) is available. Weekly rebuild is the
 # freshness strategy — see .github/workflows/yt-dlp-freshness.yml.
-yt-dlp[default]>=2026.03.17
+yt-dlp[default]>=2026.8.19
 
 # Web frontend
 # Upper-bounded: FastAPI is 0.x and ships breaking changes in MINOR releases
 # (0.137.0's include_router route-tree refactor broke CI). Cap to the current
 # minor; bump deliberately via the lockfile + Dependabot, not by surprise.
-fastapi>=0.137.1,<0.138
-uvicorn>=0.34
-gunicorn>=25.1
+fastapi>=0.141.1,<0.142
+uvicorn>=0.52.4
+gunicorn>=26.1.0
 
 # Supabase (multi-user knowledge graph storage)
 supabase>=2.7.0,<3.0.0
@@ -52,11 +52,11 @@ asyncpg>=0.29
 PyJWT>=2.8.0
 
 # Encrypted Nexus OAuth token storage (Fernet)
-cryptography>=43.0
+cryptography>=50.0.0
 
 # Graph algorithms (PageRank, community detection, centrality)
 networkx>=3.2
-scipy>=1.12
+scipy>=1.18.0
 # WAVE-C 1c-A.5: igraph for D-KG-5 — pinned ≥0.11 because that's the first
 # release where ``community_multilevel`` accepts a stable seed kwarg.
 igraph>=0.11
@@ -68,17 +68,17 @@ igraph>=0.11
 brotli>=1.1
 
 # Vector normalization for MRL-truncated embeddings
-numpy>=1.26
-chonkie>=1.6.0
-langfuse>=3.0.0,<4
+numpy>=2.5.2
+chonkie>=1.7.0
+langfuse>=4.14.4,<5
 
 # Summarization engine v2
-feedparser>=6.0.11
-PyMuPDF>=1.24
-arxiv>=2.1.0
-newspaper4k>=0.9.3
+feedparser>=6.0.14
+PyMuPDF>=1.28.2
+arxiv>=4.0.1
+newspaper4k>=0.9.6
 python-podcastindex>=1.0.0
-sse-starlette>=2.0
+sse-starlette>=3.4.8
 pytest-httpx>=0.34
 python-multipart>=0.0.20
 
@@ -95,19 +95,19 @@ filetype>=1.2
 
 # Cascade reranker (FlashRank + BGE-base ONNX)
 flashrank>=0.2
-onnxruntime>=1.17
+onnxruntime>=1.29.0
 huggingface_hub>=0.20
 
 # Query metadata extraction (Phase 1)
-dateparser>=1.2
-tldextract>=5.1
-cachetools>=5.3
+dateparser>=1.4.2
+tldextract>=5.3.2
+cachetools>=7.1.7
 
 # KG render+correctness overhaul (2026-05-23):
 # - prometheus_client: drift counters + /api/metrics endpoint (Phase 3 + 4)
 # - blake3: content-hash key for analytics memoization (LD-9, Phase 3)
-prometheus_client>=0.20
-blake3>=0.4
+prometheus_client>=0.26.0
+blake3>=1.0.9
 
 # Razorpay payments (orders, subscriptions, webhook signature verify)
 razorpay>=1.4
@@ -127,7 +127,7 @@ stamina>=26.1.0,<27
 python-magic>=0.4.27,<0.5
 # slack_sdk: Slack Web API client for chat.postMessage + files_upload_v2.
 # Bot Token + Block Kit pattern; replaces incoming-webhook (cannot attach files).
-slack_sdk>=3.27,<4
-Pillow>=10.3
+slack_sdk>=3.43.0,<4
+Pillow>=12.3.0
 # Used by feedback DTOs for anon_email validation (EmailStr)
 email-validator>=2.0
